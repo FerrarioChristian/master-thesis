@@ -1,0 +1,106 @@
+\documentclass[a4paper, oneside]{book}
+\usepackage{graphicx} % allows inserting graphics
+\usepackage{algpseudocode} % allows code snippets
+\usepackage{algorithm}
+\newtheorem{definition}{Definition}[section]
+\usepackage[hidelinks, colorlinks=true,linkcolor=black, citecolor=black,
+urlcolor=black]{hyperref}
+\usepackage{subcaption}
+\usepackage[export]{adjustbox}
+\usepackage{wrapfig} % allows warped figures
+\usepackage[acronym]{glossaries} % add glossary
+\usepackage{subfiles} % support multiple files
+\usepackage{fancyhdr} % more control on headers and footers
+\graphicspath{ {./images/} }
+\usepackage{lmodern}
+\usepackage{setspace}
+\usepackage{adjustbox}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{markdown}
+\usepackage{enumitem} % Per modificare gli elenchi puntati
+\usepackage{array}
+\usepackage{amssymb}
+\usepackage{nameref}
+\usepackage[breakable,skins]{tcolorbox}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{tcolorbox}
+\usepackage{xcolor}
+\definecolor{darkgreen}{RGB}{0,100,0}
+\newfloat{tcolorboxfloat}{htbp}{lob}
+\usepackage{comment}
+\usetikzlibrary{shapes.geometric, arrows, positioning}
+\usepackage{pbox}
+\pagestyle{plain}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{statistics}
+\usepackage{changepage} % Per l'ambiente adjustwidth
+\usepackage[edges]{forest}
+\usepackage{tikz}
+\usepackage{lmodern}
+\usepackage{fontawesome} % per icone come \faFolder
+\usepackage{todonotes}
+
+%  Blocchi di codice
+\usepackage{xkeyval}
+\usepackage{framed}
+\usepackage[T1]{fontenc}
+\usepackage{listings, listings-rust}
+\usepackage{xcolor}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codeorange}{rgb}{1,0.49,0}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.96}
+\lstset{
+  language=Rust,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\footnotesize\ttfamily},
+  numbers=left,
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegray},
+  keywordstyle=\color{codeorange},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codegreen},
+  breaklines=true,
+  breakatwhitespace=false,
+  tabsize=2,
+  morekeywords={@Service},
+  literate={Ø}{{\O}}1,
+  xleftmargin=10pt,
+  captionpos=b,
+  upquote=false,
+}
+
+\forestset{
+  cst tree/.style={
+    for tree={
+      l=0cm,
+      l sep=0.2cm,
+      inner sep=0.1cm,
+      s sep=0.1cm,
+      font=\footnotesize,
+    }
+  }
+}
+
+% Package Bibliografia e Sitografia
+\usepackage[
+  backend=biber,
+  style=ieee,
+  sorting=none,
+]{biblatex}
+\addbibresource{bibliografia.bib}
+
+\defbibheading{bibliography}[\bibname]{%
+  \chapter*{Bibliography and Sitography}%
+  \addcontentsline{toc}{chapter}{Bibliography and Sitography}%
+}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
