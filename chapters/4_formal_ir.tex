@@ -2,23 +2,28 @@
 \label{ch:ir_formalization}
 
 \section{Introduction}
-The proposed analysis process is configured as a pipeline of
-functional transformations. Given a source code $S$ belonging to a
-language $L \in \{C, C++, Java, Python, Rust\}$, the system generates
-an abstract Component Tree through an extraction function $E: CST_L
-\to IR$. The goal of the IR is to provide a domain $\mathcal{D}_{IR}$
-that is a \textit{conservative extension}
-\cite{TODO:conservative_extension} of the high-level syntactic
-constructs, guaranteeing Type
-Safety in the subsequent dependency resolution phase $R: IR \to
-\mathcal{G}$, where $\mathcal{G}$ is the dependency graph.
+The analysis pipeline described in Chapter \ref{ch:analysis_pipeline}
+is structured as a composition of typed transformations. Given a
+source file $S$ belonging to a language $L \in \mathcal{L}$,
+Tree-sitter produces a Concrete Syntax Tree (CST), which is then
+transformed by the extraction function $E$ (detailed in Chapter
+\ref{ch:extraction}) into a forest of Module hierarchies:
+$$E : \mathcal{L} \times \mathcal{S}_{code} \to \vec{\mathcal{M}}$$
+The goal of this chapter is to formally define the domain
+$\mathcal{D}_{IR}$ of the Intermediate Representation, i.e., the
+set of all valid Module hierarchies $\vec{\mathcal{M}}$ that can be
+produced by the extraction function. The IR is designed as a
+\textit{conservative extension} \cite{TODO:conservative_extension}
+of the high-level syntactic constructs shared across languages: it
+preserves the essential architectural semantics (types, functions,
+fields, inheritance, modules) while abstracting away
+language-specific syntactic details.
 
-Formally, we define the \textbf{Intermediate Representation Domain}
-$\mathcal{D}_{IR}$ as the space of all possible valid
-\textit{Component Trees}. Each instance $T \in \mathcal{D}_{IR}$
-corresponds to the root of a hierarchy of components (represented by
-the Module type $\mathcal{M}$, defined below) that recursively
-aggregates the entire structure of the analyzed software.
+The subsequent phases of the pipeline, Name Resolution ($R$,
+Chapter \ref{ch:name_resolution}) and Graph Construction ($\gamma$,
+Chapter \ref{ch:graph_construction}), operate exclusively on
+$\mathcal{D}_{IR}$, which guarantees that their logic is completely
+language-independent.
 
 \section{The Type System $\mathcal{T}$}
 To ensure language agnosticism, we define the type system as an
@@ -93,7 +98,7 @@ generation occurs exclusively from \texttt{Resolved} or
 
 \begin{figure}[htpb]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/typeref_lifecycle.png}
+  \includegraphics[width=0.8\textwidth]{images/formal_ir/typeref_lifecycle.png}
   \caption{State machine diagram illustrating the lifecycle of a Type
   Reference ($\tau$) from syntactic extraction to semantic resolution.}
   \label{fig:typeref_lifecycle}
@@ -106,27 +111,29 @@ and behavior of the entity.
 
 \subsection{Members and Signatures}
 We define the \textbf{Field} type ($f$), representing an attribute or
-data field, defined as the product of an identifier, a type
-reference, and a set of associated annotations/decorators:
-$$f = \iota \times \tau \times \mathcal{P}(\tau)$$
-We define the \textbf{Parameter} type ($p$) to handle parameters
-passed to functions:
-$$p = \iota^? \times \tau \times \mathbb{B}$$ where the identifier
-$\iota^?$ is optional (to support lambda functions and anonymous
-parameters), $\tau$ is the type, and $\mathbb{B}$ indicates the
-variadic property of the parameter.
+data field. A field is modeled as the tuple of an identifier
+$\iota \in \mathcal{I}$, a type reference $\tau$, and a vector of
+annotation type references:
+$$f = \langle \iota, \tau, \vec{\tau}_{ann} \rangle$$
 
-To abstract the concept of a function's "signature" from the
+We define the \textbf{Parameter} type ($p$) for function parameters:
+$$p = \langle \iota^?, \tau, \mathbb{B} \rangle$$ where the identifier
+$\iota^?$ is optional (to support lambda functions and anonymous
+parameters), $\tau$ is the declared type, and $\mathbb{B}$ indicates
+whether the parameter is variadic.
+
+To abstract the concept of a function's ``signature'' from the
 component that implements it, we introduce the \textbf{Signature}
 type ($\sigma$):
-$$\sigma = \vec{p} \times \tau_{ret}$$
-where $\vec{p}$ is the parameter vector and $\tau_{ret}$ is the return type.
+$$\sigma = \langle \vec{p}, \tau_{ret} \rangle$$
+where $\vec{p}$ is the ordered parameter vector and $\tau_{ret}$ is
+the return type reference.
 
 Building on this, to model the hierarchical body of a function, we
 introduce the \textbf{Block} construct ($\mathcal{B}$). A lexical
 block (typically delimited by braces \texttt{\{\}}) isolates an
 internal scope where local variables can be declared. Leveraging the
-same structure as data fields ($f = \iota \times \tau$), local
+same structure as data fields ($f = \langle \iota, \tau, \dots \rangle$), local
 variables are elegantly formalized as a vector of $f$. The block
 tracks its behavioral dependencies and can recursively nest further
 blocks (as in \texttt{if} or \texttt{while} statements):
@@ -144,9 +151,9 @@ state, and $\vec{\tau}_{casts}$ captures explicit type casts (e.g.,
 Finally, we define the universal \textbf{Function} type
 ($\mathcal{F}$) as a container that binds a qualified name to a
 specific signature, an optional root block modeling its body, a
-boolean flag for constructors, and a set of annotations:
+boolean flag for constructors, and a vector of annotations:
 $$\mathcal{F} = \langle \pi, \sigma, \mathcal{B}^?,
-\mathbb{B}_{ctor}, \mathcal{P}(\tau) \rangle$$
+\mathbb{B}_{ctor}, \vec{\tau}_{ann} \rangle$$
 
 The architectural role of an $\mathcal{F}$ (whether it acts as a
 Method or a Free Function) is not encoded in its type, but is
@@ -155,7 +162,7 @@ placed (within a structured type or a module).
 
 Overloading is naturally handled by the cardinality of the set of
 functions within a structured type or module: an entity can contain
-multiple functions with the same $\mathcal{I}$ but different
+multiple functions with the same $\iota$ but different
 signatures $\sigma$.
 
 \subsection{Structured Types ($\mathcal{S}$)}
@@ -164,36 +171,65 @@ EnumVariant} \}$ be the domain of structured type categories. A
 structured type is defined by the tuple:
 $$\mathcal{S} = \langle \pi, k \in \mathcal{K}, \vec{f},
 \vec{\mathcal{F}}, \vec{\tau}_{sup}, \vec{\mathcal{S}}_{nest},
-\mathcal{P}(\tau), \vec{\delta}_{imp} \rangle$$
+\vec{\tau}_{ann}, \vec{\delta}_{imp} \rangle$$
 where:
 \begin{itemize}
-  \item $\pi$: the unique name identifying the entity within the system.
+  \item $\pi$: the qualified name identifying the entity within the system.
   \item $k$: the structural category (defined in $\mathcal{K}$) that
     preserves the original semantics of the construct.
-  \item $\vec{f}$: the set of fields that compose the state of the entity.
-  \item $\vec{\mathcal{F}}$: the set of functions (assuming the role
+  \item $\vec{f}$: the vector of fields that compose the state of the entity.
+  \item $\vec{\mathcal{F}}$: the vector of functions (assuming the role
     of methods) that define the behavior of the entity.
-  \item $\vec{\tau}_{sup}$: the set of references to super-types,
+  \item $\vec{\tau}_{sup}$: the vector of references to super-types,
     modeling inheritance or trait/interface implementation relationships.
-  \item $\vec{\mathcal{S}}_{nest}$: the set of nested types.
-  \item $\mathcal{P}(\tau)$: the set of annotations, attributes, or
-    decorators applied to the entity.
-  \item $\vec{\delta}_{imp}$: the set of explicit dependencies
-    (imports) defined within the scope of the structured type.
+  \item $\vec{\mathcal{S}}_{nest}$: the vector of nested types.
+  \item $\vec{\tau}_{ann}$: the vector of annotation, attribute, or
+    decorator type references applied to the entity.
+  \item $\vec{\delta}_{imp}$: the vector of import declarations
+    visible within the scope of the structured type (see the
+    definition of $\delta_{imp}$ in Section \ref{sec:module_def}).
 \end{itemize}
+
+\begin{lstlisting}[language=Java,caption={An example of a structured type in Java}]
+@Entity
+public class Car extends Vehicle implements Serializable {
+    private Engine engine;
+    private int speed;
+
+    public void accelerate(int amount) { ... }
+}
+\end{lstlisting}
+
+This is modeled in the IR as:
+$\mathcal{S} = \langle \langle\texttt{Car}\rangle, \text{Class},
+[\texttt{engine}: \tau_{\texttt{Engine}},\ \texttt{speed}: \tau_{\texttt{int}}],
+[\texttt{accelerate}],
+[\tau_{\texttt{Vehicle}},\ \tau_{\texttt{Serializable}}],
+[\ ],
+[\tau_{\texttt{Entity}}],
+[\ ] \rangle$
 
 \subsection{Type Alias ($\mathcal{A}$)}
 A \textbf{Type Alias} allows defining a new name for an existing
 type. It is modeled as the tuple:
 $$\mathcal{A} = \langle \pi, \tau_{target} \rangle$$
 where $\tau_{target}$ is the reference to the original type. During
-graph construction, they are maintained as independent nodes to
-accurately track the semantic use of domains.
+graph construction, type aliases are maintained as independent nodes
+to accurately track the semantic use of domains.
+
+For example, the Rust declaration \texttt{type NodeId = usize;} is
+modeled as $\mathcal{A} = \langle \langle\texttt{NodeId}\rangle,
+\tau_{\texttt{usize}} \rangle$, and the C++ declaration
+\texttt{using StringList = std::vector<std::string>;} as
+$\mathcal{A} = \langle \langle\texttt{StringList}\rangle,
+\tau_{\texttt{std::vector<std::string>}} \rangle$.
 
 \subsection{Implementation Extensions ($\mathcal{X}$)}
-To support languages like Rust and C++ (separation between
-declaration and definition), during extraction we introduce the
-temporary construct \textbf{ImplBlock} or \textbf{Implementation Extension}:
+To support languages that allow separating the declaration of a type
+from the definition of its methods (such as Rust's \texttt{impl}
+blocks and C++ out-of-line method definitions), during extraction we
+introduce the temporary construct \textbf{ImplBlock} or
+\textbf{Implementation Extension}:
 $$\mathcal{X} = \langle \pi, \tau_{target}, \tau_{trait}^?,
 \vec{\mathcal{F}}, \vec{\mathcal{S}}_{nest}, \vec{\mathcal{A}} \rangle$$
 where $\pi$ is the name of the extension (usually derived from the
@@ -201,31 +237,47 @@ target), $\tau_{target}$ is the type to which the implementation
 applies, $\tau_{trait}^?$ is an optional reference to the implemented
 trait or interface, and the other fields represent functions, nested
 types, and aliases associated with the extension.
-As processed in the Resolution Phase (Phase 1 and 2), extensions act
-as "syntactic sugar": their methods, nested types, and traits are
-\textit{flattened} into the reference structured type, effectively
-disappearing from the final unified architectural model.
+
+For example, the following Rust code:
+\begin{verbatim}
+impl Display for Car {
+    fn fmt(&self, f: &mut Formatter) -> Result { ... }
+}
+\end{verbatim}
+is modeled as $\mathcal{X} = \langle \langle\texttt{Car}\rangle,
+\tau_{\texttt{Car}}, \tau_{\texttt{Display}},
+[\texttt{fmt}], [\ ], [\ ] \rangle$.
+
+As detailed in Chapter \ref{ch:name_resolution}, implementation
+extensions act as ``syntactic sugar'': their methods, nested types,
+and traits are \textit{flattened} into the target structured type's
+scope, effectively disappearing from the final architectural model.
 
 \section{Component Architecture}
-Once analyzed, the entire software system is represented as an
-instance of the \textbf{Module} type ($\mathcal{M}$), which serves as
-the root of the \textit{Component Tree}. Every element $T \in
-\mathcal{M}$ represents a hierarchical forest of components,
-recursively aggregating the entire software structure (nested
-modules, structured types, and functions). This structure constitutes
-the domain of our intermediate representation.
+The entire software system is represented as a hierarchy of
+\textbf{Module} instances ($\mathcal{M}$). A module recursively
+aggregates structured types, functions, sub-modules, type aliases,
+free variables, and implementation extensions. This hierarchical
+structure constitutes the domain $\mathcal{D}_{IR}$ of the
+Intermediate Representation.
 
 \subsection{Component ($\mathcal{C}$)}
 We define a \textbf{Component} ($\mathcal{C}$) as the disjoint union
 (sum type) of the definitive structural constructs of the system.
 Each component represents the logical unit that can appear as a
 vertex in the dependency graph:
-$$\mathcal{C} ::= \text{Mod}(\mathcal{M}) \mid
-\text{StructuredType}(\mathcal{S}) \mid \text{TypeAlias}(\mathcal{A})
-\mid \text{Function}(\mathcal{F}) \mid \text{Field}(\pi, \tau) \mid
-\text{Primitive}(str) \mid \text{External}(\pi)$$
+\begin{align*}
+  \mathcal{C} ::=&\ \text{Mod}(\mathcal{M}) \\
+  &\mid \text{StructuredType}(\mathcal{S}) \\
+  &\mid \text{TypeAlias}(\mathcal{A}) \\
+  &\mid \text{Function}(\mathcal{F}) \\
+  &\mid \text{Field}(\pi, \tau) \\
+  &\mid \text{Primitive}(str) \\
+  &\mid \text{External}(\pi)
+\end{align*}
 
 \subsection{Module ($\mathcal{M}$)}
+\label{sec:module_def}
 The entire program structure is captured by the \textbf{Module} type
 ($\mathcal{M}$), defined recursively to reflect the hierarchy of the
 file system or namespaces:
@@ -233,11 +285,34 @@ $$\mathcal{M} = \langle \pi, str_{lang}^?, str_{path}^?,
 \vec{\delta}_{imp}, \vec{\mathcal{M}}_{nest}, \vec{\mathcal{S}},
 \vec{\mathcal{A}}, \vec{\mathcal{F}}, \vec{f}_{free},
 \vec{\mathcal{X}} \rangle$$
-where $\vec{\delta}_{imp}$ is the set of explicit dependencies
-(import/use/include) defined in the module. Each element
-$\delta_{imp}$ contains the base path, an optional alias, and a flag
-indicating a \textit{wildcard} inclusion. Every software element is
-therefore a node in a component tree $T \in \mathcal{D}_{IR}$.
+where:
+\begin{itemize}
+  \item $\pi$: the qualified name of the module.
+  \item $str_{lang}^?$: an optional string indicating the source
+    language (e.g., \texttt{"rust"}, \texttt{"java"}).
+  \item $str_{path}^?$: an optional string representing the file
+    system path of the source file.
+  \item $\vec{\delta}_{imp}$: the vector of \textbf{Import}
+    declarations. Each import $\delta_{imp}$ is a product type:
+    $$\delta_{imp} = \langle \pi_{path}, \iota_{alias}^?,
+    \mathbb{B}_{wildcard} \rangle$$
+    where $\pi_{path}$ is the import path,
+    $\iota_{alias}^?$ is an optional alias name (e.g.,
+    \texttt{import numpy as np} $\to$ $\iota_{alias} = \texttt{np}$),
+    and $\mathbb{B}_{wildcard}$ is a boolean flag indicating whether
+    the import is a wildcard inclusion (e.g., \texttt{from module
+    import *}).
+  \item $\vec{\mathcal{M}}_{nest}$: the vector of nested sub-modules.
+  \item $\vec{\mathcal{S}}$: the vector of structured types defined
+    in this module.
+  \item $\vec{\mathcal{A}}$: the vector of type aliases.
+  \item $\vec{\mathcal{F}}$: the vector of free functions (not
+    belonging to any structured type).
+  \item $\vec{f}_{free}$: the vector of free variables (global
+    constants, static items).
+  \item $\vec{\mathcal{X}}$: the vector of implementation extensions
+    (to be flattened during name resolution).
+\end{itemize}
 
 A complete overview of the entities described so far, their
 composition, and their semantic references is illustrated in Figure
@@ -245,7 +320,7 @@ composition, and their semantic references is illustrated in Figure
 
 \begin{figure}[htpb]
   \centering
-  \includegraphics[width=\textwidth]{images/IR_model.png}
+  \includegraphics[width=\textwidth]{images/formal_ir/IR_model.png}
   \caption{UML class diagram representing the complete Intermediate
     Representation (IR) domain model, highlighting hierarchical
   composition and semantic references via \texttt{TypeRef}.}
@@ -253,34 +328,84 @@ composition, and their semantic references is illustrated in Figure
 \end{figure}
 
 \section{Analyzer Configuration ($\mathcal{K}_{cfg}$)}
-To guarantee flexibility in adapting to different linguistic
-ecosystems and the diverse precisions required, the analyzer supports
-a parametric configuration model:
+\label{sec:analyzer_config}
+
+A fundamental challenge in building a language-agnostic analyzer is
+reconciling the semantic differences between languages without
+introducing language-specific code branches. The approach adopted in
+this work draws from the concept of \textbf{Language Product Lines}
+\cite{TODO:cazzola_language_product_lines}: rather than treating each
+language as a monolithic entity, the analyzer decomposes languages
+into a set of orthogonal \textbf{language features}. Each feature
+represents a specific semantic capability (e.g., ``supports implicit
+self parameter'', ``uses transitive imports'', ``allows detached
+implementation blocks'') that may or may not be present in any given
+language. The analyzer's behavior is then parameterized by these
+features, selecting the appropriate processing strategies at each
+pipeline phase.
+
+This decomposition transforms the problem of supporting $M$ languages
+from implementing $M$ independent code paths into selecting a
+combination from a finite set of $k$ boolean features, where $k \ll
+M$. Adding a new language reduces to identifying which features it
+exhibits and setting the corresponding flags, provided that no novel
+feature is required (as discussed in Section 1.3.2).
+
+Formally, the configuration is modeled as a product type:
 $$\mathcal{K}_{cfg} = \langle \text{ModuleConfig},
-\text{TransitiveImports}, \text{SupportImplBlocks}, \text{SelfKeyword} \rangle$$
-where:
+\text{TransitiveImports}, \text{SupportImplBlocks},
+\text{ForwardDeclarations}, \text{SelfKeyword},
+\text{SelfTypeKeyword}, \text{ImplicitFirstParamAsSelf},
+\text{ExtractDynamicFields}, \text{DerefCoercionTargetName} \rangle$$
+
+The parameters are grouped into two categories:
+
+\subsubsection{Module Organization Features}
+
+The \textbf{ModuleConfig} sub-configuration models the module
+grouping strategy as a tuple of orthogonal boolean flags:
+$$\text{ModuleConfig} = \langle \text{FileBased},
+\text{DirectoryBased}, \text{PackageDeclBased},
+\text{NamespaceBased}, \text{InlineModBased} \rangle$$
+Each flag controls whether a specific module grouping strategy is
+active during extraction. If all flags are false (as in C), the
+language does not feature a module system and all components are
+placed in a flat root module.
+
+\subsubsection{Semantic Behavior Features}
+
 \begin{itemize}
-  \item \textbf{ModuleStrategies} models logical grouping rules and
-    is composed of a tuple of orthogonal boolean flags: $\langle
-    \text{FileBased}, \text{DirectoryBased}, \text{PackageDeclBased},
-    \text{NamespaceBased}, \text{InlineModBased} \rangle$. If all
-    flags are false, the language (e.g., C) does not feature a module system.
-  \item \textbf{TransitiveImports} indicates whether imports
-    transitively export their own members (e.g., Python).
-  \item \textbf{SupportImplBlocks} determines if the language
-    supports extracting implementation blocks detached from the
-    structured type declaration.
-  \item \textbf{SelfKeyword} defines the convention used by the
-    language to reference the current instance (\texttt{this} or
-    \texttt{self}), useful if \textbf{ImplicitFirstParamAsSelf} is
-    not applicable.
-  \item \textbf{ImplicitFirstParamAsSelf} indicates whether the
-    language (like Python) uses the first parameter of instance
-    methods to refer to the current object.
-  \item \textbf{ForwardDeclarations} indicates whether the language
-    allows separating the method declaration (in the class
-    definition) from its implementation (e.g., C++ out-of-line methods).
+  \item \textbf{TransitiveImports} (\texttt{bool}): Whether imports
+    transitively export their own members. Enabled for Python, where
+    re-exports through \texttt{\_\_init\_\_.py} are idiomatic.
+  \item \textbf{SupportImplBlocks} (\texttt{bool}): Whether the
+    language supports detached implementation blocks (Rust
+    \texttt{impl}, C++ out-of-line definitions).
+  \item \textbf{ForwardDeclarations} (\texttt{bool}): Whether method
+    declarations can be separated from their definitions across files
+    (C/C++ headers).
+  \item \textbf{SelfKeyword} (\texttt{Option<String>}): The keyword
+    used to reference the current instance (\texttt{self},
+    \texttt{this}, or none).
+  \item \textbf{SelfTypeKeyword} (\texttt{Option<String>}): The
+    keyword used to reference the current type within an
+    implementation block (Rust's \texttt{Self}).
+  \item \textbf{ImplicitFirstParamAsSelf} (\texttt{bool}): Whether
+    the first parameter of instance methods implicitly refers to the
+    current object (Python).
+  \item \textbf{ExtractDynamicFields} (\texttt{bool}): Whether to
+    extract dynamically assigned instance fields from method bodies
+    (Python's \texttt{self.field = value} pattern).
+  \item \textbf{DerefCoercionTargetName} (\texttt{Option<String>}):
+    The name of the type alias used for deref coercion targets
+    (Rust's \texttt{Target} in \texttt{impl Deref}).
 \end{itemize}
+
+This feature-based configuration model is the mechanism that makes
+the resolution engine and graph construction phases truly
+language-agnostic: they do not contain conditional branches on the
+source language, but instead query the configuration flags to
+determine the appropriate behavior.
 
 For illustrative purposes, Table \ref{tab:lang_config_general} and
 Table \ref{tab:lang_config_modules} summarize the configuration
@@ -360,9 +485,10 @@ respective target components:
 
 \begin{figure}[htpb]
   \centering
-  \includegraphics[width=\textwidth]{images/graph_flattening_process.png}
+  \includegraphics[width=\textwidth]{images/formal_ir/graph_flattening_process.png}
   \caption{Visual representation of the Component Tree flattening
     process, where nested elements are promoted to top-level graph
   nodes and hierarchical containment is converted to \textit{NestedIn} edges.}
   \label{fig:graph_flattening}
 \end{figure}
+
