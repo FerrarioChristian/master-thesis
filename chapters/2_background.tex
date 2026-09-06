@@ -182,7 +182,12 @@ automatically detect specific Architectural Smells, often referred
 to as \textbf{Dependency Smells}. The presence of these
 configurations in the graph usually indicates a violation of core
 design principles (such as SOLID, high cohesion, or loose coupling).
-Notable dependency smells include \cite{noauthor_arcan_nodate}:
+Empirical research has demonstrated that architectural smells are largely
+independent of code-level smells, thus requiring dedicated structural
+analysis \cite{arcelli_fontana_independent_2019}.
+Notable architectural dependency smells identified in the
+literature \cite{garcia_identifying_2009} and detected through graph-based
+analysis tools \cite{fontana_arcan_2017} include:
 
 \begin{itemize}
   \item \textbf{Cyclic Dependency:} The most notorious anomaly occurs

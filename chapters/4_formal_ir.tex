@@ -6,35 +6,35 @@ The analysis pipeline described in Chapter \ref{ch:analysis_pipeline}
 is structured as a composition of typed transformations. Given a
 source file $S$ belonging to a language $L \in \mathcal{L}$,
 Tree-sitter produces a Concrete Syntax Tree (CST), which is then
-transformed by the extraction function $E$ (detailed in Chapter
+transformed by the extraction function $\varepsilon$ (detailed in Chapter
 \ref{ch:extraction}) into a forest of Module hierarchies:
-$$E : \mathcal{L} \times \mathcal{S}_{code} \to \vec{\mathcal{M}}$$
+$$\varepsilon : \mathcal{L} \times \mathcal{S}_{code} \to \vec{\mathcal{M}}$$
 The goal of this chapter is to formally define the domain
-$\mathcal{D}_{IR}$ of the Intermediate Representation, i.e., the
+$\mathcal{D}$ of the Intermediate Representation, i.e., the
 set of all valid Module hierarchies $\vec{\mathcal{M}}$ that can be
 produced by the extraction function. The IR is designed as a
-\textit{conservative extension} \cite{TODO:conservative_extension}
+\textit{conservative extension} \cite{aho_compilers_2007}
 of the high-level syntactic constructs shared across languages: it
 preserves the essential architectural semantics (types, functions,
 fields, inheritance, modules) while abstracting away
 language-specific syntactic details.
 
-The subsequent phases of the pipeline, Name Resolution ($R$,
+The subsequent phases of the pipeline, Name Resolution ($\rho$,
 Chapter \ref{ch:name_resolution}) and Graph Construction ($\gamma$,
 Chapter \ref{ch:graph_construction}), operate exclusively on
-$\mathcal{D}_{IR}$, which guarantees that their logic is completely
+$\mathcal{D}$, which guarantees that their logic is completely
 language-independent.
 
-\section{The Type System $\mathcal{T}$}
+\section{The Type System}
 To ensure language agnosticism, we define the type system as an
-algebra of sum and product types \cite{TODO:algebraic_data_types}.
+algebra of sum and product types \cite{pierce_types_2002}.
 
 \subsection{Identifiers and Paths ($\pi$)}
 Let $\mathcal{I}$ be the set of valid strings as identifiers. We
-define the type \textbf{Qualified Name} ($\pi$) as the set of finite
-non-empty sequences of identifiers:
-$$\pi = \{ \langle \iota_1, \iota_2, \dots, \iota_n \rangle \mid
-\iota_j \in \mathcal{I}, n \geq 1 \}$$
+define the path domain $\Pi$ and the type \textbf{Qualified Name} ($\pi$)
+as the set of finite non-empty sequences of identifiers:
+$$\Pi = \mathcal{I}^+ = \{ \langle \iota_1, \iota_2, \dots, \iota_n \rangle \mid
+\iota_j \in \mathcal{I}, n \geq 1 \}, \qquad \pi \in \Pi$$
 This type uniquely maps namespaces, Java packages, Rust modules, and
 resolved scopes in C++.
 
@@ -44,7 +44,7 @@ discovery and resolution. To guarantee \textit{Type Safety} between
 the extraction phases and the graph generation, we define $\tau$ as
 an eight-state sum type:
 \begin{align*}
-  \tau ::=&\ \text{Prim}(\mathcal{T}_{p}) \\
+  \tau ::=&\ \text{Prim}(\iota_p) \quad (\iota_p \in \mathcal{P}) \\
   &\mid \text{Unresolved}(\pi_{raw}) \\
   &\mid \text{ResolutionQuery}(\mathcal{Q}) \\
   &\mid \text{Resolved}(\pi_{abs}) \\
@@ -56,8 +56,8 @@ an eight-state sum type:
 Where:
 \begin{itemize}
   \item \textbf{Prim}: Represents fundamental primitive types
-    ($\mathcal{T}_{p}$). Since primitive keywords vary drastically
-    across languages, the set $\mathcal{T}_{p}$ is not static but
+    ($\iota_p \in \mathcal{P}$). Since primitive keywords vary drastically
+    across languages, the set $\mathcal{P}$ is not static but
     provided by a Data-Driven architectural \textit{Primitive
     Registry} populated at load time. Being defined at the language
     level, they do not require resolution.
@@ -160,22 +160,27 @@ Method or a Free Function) is not encoded in its type, but is
 determined exclusively by the structural context in which it is
 placed (within a structured type or a module).
 
-Overloading is naturally handled by the cardinality of the set of
-functions within a structured type or module: an entity can contain
-multiple functions with the same $\iota$ but different
-signatures $\sigma$.
+Overloading is naturally handled within the Intermediate Representation
+by the set of functions of an entity: a structured type or module can contain
+multiple functions sharing the same base identifier $\iota$ (or qualified name
+$\pi$) but distinguished by distinct signatures $\sigma$. When the IR is
+projected into the architectural dependency graph (Chapter
+\ref{ch:graph_construction}),
+overloaded variants sharing the same qualified path $\pi$ coalesce into a
+single graph vertex, prioritizing component-level coupling and architectural
+dependencies over fine-grained signature differentiation.
 
 \subsection{Structured Types ($\mathcal{S}$)}
-Let $\mathcal{K} = \{ \text{Class, Struct, Interface, Trait, Enum,
+Let $\text{Kind} = \{ \text{Class, Struct, Interface, Trait, Enum,
 EnumVariant} \}$ be the domain of structured type categories. A
 structured type is defined by the tuple:
-$$\mathcal{S} = \langle \pi, k \in \mathcal{K}, \vec{f},
+$$\mathcal{S} = \langle \pi, k \in \text{Kind}, \vec{f},
 \vec{\mathcal{F}}, \vec{\tau}_{sup}, \vec{\mathcal{S}}_{nest},
 \vec{\tau}_{ann}, \vec{\delta}_{imp} \rangle$$
 where:
 \begin{itemize}
   \item $\pi$: the qualified name identifying the entity within the system.
-  \item $k$: the structural category (defined in $\mathcal{K}$) that
+  \item $k$: the structural category (defined in $\text{Kind}$) that
     preserves the original semantics of the construct.
   \item $\vec{f}$: the vector of fields that compose the state of the entity.
   \item $\vec{\mathcal{F}}$: the vector of functions (assuming the role
@@ -258,7 +263,7 @@ The entire software system is represented as a hierarchy of
 \textbf{Module} instances ($\mathcal{M}$). A module recursively
 aggregates structured types, functions, sub-modules, type aliases,
 free variables, and implementation extensions. This hierarchical
-structure constitutes the domain $\mathcal{D}_{IR}$ of the
+structure constitutes the domain $\mathcal{D}$ of the
 Intermediate Representation.
 
 \subsection{Component ($\mathcal{C}$)}
@@ -327,79 +332,42 @@ composition, and their semantic references is illustrated in Figure
   \label{fig:ir_model}
 \end{figure}
 
-\section{Analyzer Configuration ($\mathcal{K}_{cfg}$)}
+\section{Analyzer Configuration ($\mathcal{K}$)}
 \label{sec:analyzer_config}
 
 A fundamental challenge in building a language-agnostic analyzer is
 reconciling the semantic differences between languages without
 introducing language-specific code branches. The approach adopted in
 this work draws from the concept of \textbf{Language Product Lines}
-\cite{TODO:cazzola_language_product_lines}: rather than treating each
+\cite{vacchi_neverlang_2015}: rather than treating each
 language as a monolithic entity, the analyzer decomposes languages
 into a set of orthogonal \textbf{language features}. Each feature
 represents a specific semantic capability (e.g., ``supports implicit
-self parameter'', ``uses transitive imports'', ``allows detached
+  self parameter'', ``uses transitive imports'', ``allows detached
 implementation blocks'') that may or may not be present in any given
 language. The analyzer's behavior is then parameterized by these
 features, selecting the appropriate processing strategies at each
 pipeline phase.
 
-This decomposition transforms the problem of supporting $M$ languages
-from implementing $M$ independent code paths into selecting a
-combination from a finite set of $k$ boolean features, where $k \ll
-M$. Adding a new language reduces to identifying which features it
-exhibits and setting the corresponding flags, provided that no novel
-feature is required (as discussed in Section 1.3.2).
+By modeling semantic capabilities as orthogonal configuration flags,
+the analyzer decouples the core analysis logic from language-specific
+syntactic and semantic details. Rather than implementing $M$ independent,
+hard-coded analysis pipelines, supporting a new language becomes a declarative
+task: identifying which semantic features the language exhibits and specifying
+its configuration profile.
 
-Formally, the configuration is modeled as a product type:
-$$\mathcal{K}_{cfg} = \langle \text{ModuleConfig},
-\text{TransitiveImports}, \text{SupportImplBlocks},
-\text{ForwardDeclarations}, \text{SelfKeyword},
-\text{SelfTypeKeyword}, \text{ImplicitFirstParamAsSelf},
-\text{ExtractDynamicFields}, \text{DerefCoercionTargetName} \rangle$$
-
-The parameters are grouped into two categories:
-
-\subsubsection{Module Organization Features}
-
-The \textbf{ModuleConfig} sub-configuration models the module
-grouping strategy as a tuple of orthogonal boolean flags:
-$$\text{ModuleConfig} = \langle \text{FileBased},
-\text{DirectoryBased}, \text{PackageDeclBased},
-\text{NamespaceBased}, \text{InlineModBased} \rangle$$
-Each flag controls whether a specific module grouping strategy is
-active during extraction. If all flags are false (as in C), the
-language does not feature a module system and all components are
-placed in a flat root module.
-
-\subsubsection{Semantic Behavior Features}
-
-\begin{itemize}
-  \item \textbf{TransitiveImports} (\texttt{bool}): Whether imports
-    transitively export their own members. Enabled for Python, where
-    re-exports through \texttt{\_\_init\_\_.py} are idiomatic.
-  \item \textbf{SupportImplBlocks} (\texttt{bool}): Whether the
-    language supports detached implementation blocks (Rust
-    \texttt{impl}, C++ out-of-line definitions).
-  \item \textbf{ForwardDeclarations} (\texttt{bool}): Whether method
-    declarations can be separated from their definitions across files
-    (C/C++ headers).
-  \item \textbf{SelfKeyword} (\texttt{Option<String>}): The keyword
-    used to reference the current instance (\texttt{self},
-    \texttt{this}, or none).
-  \item \textbf{SelfTypeKeyword} (\texttt{Option<String>}): The
-    keyword used to reference the current type within an
-    implementation block (Rust's \texttt{Self}).
-  \item \textbf{ImplicitFirstParamAsSelf} (\texttt{bool}): Whether
-    the first parameter of instance methods implicitly refers to the
-    current object (Python).
-  \item \textbf{ExtractDynamicFields} (\texttt{bool}): Whether to
-    extract dynamically assigned instance fields from method bodies
-    (Python's \texttt{self.field = value} pattern).
-  \item \textbf{DerefCoercionTargetName} (\texttt{Option<String>}):
-    The name of the type alias used for deref coercion targets
-    (Rust's \texttt{Target} in \texttt{impl Deref}).
-\end{itemize}
+Formally, the analyzer configuration is modeled as a product type:
+\begin{align*}
+  \mathcal{K} = \langle&\ \text{ModuleConfig}, \\
+  &\ \text{TransitiveImports}, \\
+  &\ \text{SupportImplBlocks}, \\
+  &\ \text{ForwardDeclarations}, \\
+  &\ \text{SelfKeyword}, \\
+  &\ \text{SelfTypeKeyword}, \\
+  &\ \text{ImplicitFirstParamAsSelf}, \\
+  &\ \text{ExtractDynamicFields}, \\
+  &\ \text{DerefCoercionTargetName} \rangle
+\end{align*}
 
 This feature-based configuration model is the mechanism that makes
 the resolution engine and graph construction phases truly
@@ -407,88 +375,212 @@ language-agnostic: they do not contain conditional branches on the
 source language, but instead query the configuration flags to
 determine the appropriate behavior.
 
-For illustrative purposes, Table \ref{tab:lang_config_general} and
-Table \ref{tab:lang_config_modules} summarize the configuration
-profiles for the main supported languages:
+The parameters are organized into three orthogonal dimensions:
+module topology, declaration linking, and instance semantics.
 
-\begin{table}[h]
-  \centering
-  \begin{tabular}{|l|c|c|c|}
-    \hline
-    \textbf{Language} & \textbf{TransitiveImports} &
-    \textbf{ImplBlocks} & \textbf{SelfKeyword} \\ \hline
-    \textbf{Java} & False & False & \texttt{this} \\ \hline
-    \textbf{Rust} & False & True & \texttt{self} \\ \hline
-    \textbf{Python} & True & False & \texttt{self} \\ \hline
-    \textbf{C++} & False & True & \texttt{this} \\ \hline
-    \textbf{C} & False & False & \texttt{this} \\ \hline
-  \end{tabular}
-  \caption{General configuration profiles of the implemented languages}
-  \label{tab:lang_config_general}
-\end{table}
+\subsection{Module Organization Strategies}
 
-\begin{table}[h]
+The sub-configuration \textbf{ModuleConfig} models how source files
+and directories are grouped into hierarchical module namespaces:
+\begin{align*}
+  \text{ModuleConfig} = \langle&\ \text{FileBased}, \\
+  &\ \text{DirectoryBased}, \\
+  &\ \text{PackageDeclBased}, \\
+  &\ \text{NamespaceBased}, \\
+  &\ \text{InlineModBased} \rangle
+\end{align*}
+Each flag controls whether a specific grouping strategy is active
+during extraction. Java defines module namespaces via package
+declarations (\texttt{PackageDeclBased}); Rust and Python infer
+hierarchies from the filesystem (\texttt{FileBased}, \texttt{DirectoryBased}),
+with Rust additionally supporting explicit inline modules
+(\texttt{InlineModBased});
+C++ relies primarily on explicit namespace blocks (\texttt{NamespaceBased});
+and C exhibits no module system, placing all extracted components in a flat
+root module when all flags are false. Table \ref{tab:lang_config_modules}
+summarizes these strategies.
+
+\begin{table}[htbp]
   \centering
   \begin{tabular}{|l|c|c|c|c|c|}
     \hline
     \textbf{Language} & \textbf{FileBased} & \textbf{DirBased} &
     \textbf{PkgDecl} & \textbf{Namespace} & \textbf{InlineMod} \\ \hline
-    \textbf{Java} & False & False & True & False & False \\ \hline
-    \textbf{Rust} & True & True & False & False & True \\ \hline
-    \textbf{Python} & True & True & False & False & False \\ \hline
-    \textbf{C++} & False & False & False & True & False \\ \hline
-    \textbf{C} & False & False & False & False & False \\ \hline
+    \textbf{Java}     & False & False & True  & False & False \\ \hline
+    \textbf{Rust}     & True  & True  & False & False & True  \\ \hline
+    \textbf{Python}   & True  & True  & False & False & False \\ \hline
+    \textbf{C++}      & False & False & False & True  & False \\ \hline
+    \textbf{C}        & False & False & False & False & False \\ \hline
   \end{tabular}
-  \caption{Detail of ModuleStrategies for the supported languages}
+  \caption{Module organization strategies across supported languages.}
   \label{tab:lang_config_modules}
 \end{table}
 
-\section{Graph Construction and Trait Bounds}
-The final process of constructing the dependency graph $\mathcal{G} =
-(V, E)$ occurs through a \textit{flattening} operation of the
-hierarchical module tree $T$.
+\subsection{Declaration Linking and Visibility}
+
+Languages differ fundamentally in how definitions are exposed across
+boundaries and linked across compilation units:
+
+\paragraph{Transitive Imports (\texttt{TransitiveImports})} In languages
+such as Python, packages idiomatically re-export members of sub-modules
+through \texttt{\_\_init\_\_.py} files, allowing consumers to access them
+transitively. Conversely, in Java and Rust, imports are file-local by
+default and require explicit re-export declarations (e.g., \texttt{pub use}).
+
+\paragraph{Detached Implementation Blocks (\texttt{SupportImplBlocks})}
+Languages like Rust separate the definition of data structures (\texttt{struct})
+from their behavior (\texttt{impl} blocks), allowing multiple blocks to extend
+the same type across different modules. Similarly, C++ supports out-of-line
+method definitions. The analyzer extracts these as temporary implementation
+extensions $\mathcal{X}$, later flattened into the target type during
+resolution.
+
+\paragraph{Forward Declarations (\texttt{ForwardDeclarations})} The classical
+C and C++ translation unit model separates declarations in header files
+(\texttt{.h}/\texttt{.hpp}) from definitions in source files
+(\texttt{.c}/\texttt{.cpp}).
+Enabling this flag activates an out-of-line method linking step that pairs
+orphan method implementations with their enclosing class declarations.
+
+Table \ref{tab:lang_config_decl} summarizes the declaration and
+linking profiles.
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|l|c|c|c|}
+    \hline
+    \textbf{Language} & \textbf{TransitiveImports} &
+    \textbf{SupportImplBlocks} & \textbf{ForwardDeclarations} \\ \hline
+    \textbf{Java}     & False & False & False \\ \hline
+    \textbf{Rust}     & False & True  & False \\ \hline
+    \textbf{Python}   & True  & False & False \\ \hline
+    \textbf{C++}      & False & True  & True  \\ \hline
+    \textbf{C}        & False & False & True  \\ \hline
+  \end{tabular}
+  \caption{Declaration linking and visibility configuration profiles.}
+  \label{tab:lang_config_decl}
+\end{table}
+
+\subsection{Instance Semantics and Receiver Resolution}
+
+Resolving member accesses and invocations requires understanding how an
+instance is referenced and how its members are declared within local scopes:
+
+\paragraph{Receiver Binding (\texttt{SelfKeyword},
+\texttt{ImplicitFirstParamAsSelf})}
+In Java and C++, \texttt{this} is a language-level keyword providing an
+implicit reference to the calling instance. In Rust, instance methods
+explicitly declare \texttt{self} as their first parameter. In Python,
+\texttt{self} is not a keyword, but a naming convention; Python instance
+methods implicitly bind the calling instance to their first formal parameter
+(\texttt{ImplicitFirstParamAsSelf} = \text{True}).
+
+\paragraph{Dynamic Attribute Discovery (\texttt{ExtractDynamicFields})}
+Unlike statically typed languages where fields are declared explicitly in the
+type body, dynamic languages like Python frequently introduce instance fields
+dynamically within constructor bodies via assignments of the form
+\texttt{self.field = value}. Enabling this flag instructs the extractor to
+inspect constructor ASTs and harvest these dynamic attributes.
+
+\paragraph{Type Self-Reference and Deref Coercion
+(\texttt{SelfTypeKeyword}, \texttt{DerefCoercionTargetName})}
+Rust introduces the \texttt{Self} keyword to reference the implementing type
+within an \texttt{impl} block. Furthermore, Rust's \texttt{Deref} trait
+mechanism enables smart pointers to implicitly delegate method lookups to an
+inner target type (\texttt{DerefCoercionTargetName} = \texttt{"Target"}),
+a pattern traversed by the resolution engine during scope climbing.
+
+Table \ref{tab:lang_config_inst} outlines the instance semantics and
+receiver resolution features.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{|l|c|c|c|c|c|}
+    \hline
+    \textbf{Language} & \textbf{SelfKeyword} & \textbf{ImplicitSelf}
+    & \textbf{DynamicFields} & \textbf{SelfType} &
+    \textbf{DerefTarget} \\ \hline
+    \textbf{Java}     & \texttt{this}        & False
+    & False                  & ---               & ---
+    \\ \hline
+    \textbf{Rust}     & \texttt{self}        & False
+    & False                  & \texttt{Self}     & \texttt{Target}
+    \\ \hline
+    \textbf{Python}   & ---                  & True
+    & True                   & ---               & ---
+    \\ \hline
+    \textbf{C++}      & \texttt{this}        & False
+    & False                  & ---               & ---
+    \\ \hline
+    \textbf{C}        & ---                  & False
+    & False                  & ---               & ---
+    \\ \hline
+  \end{tabular}
+  \caption{Instance model, receiver resolution, and type anchor features.}
+  \label{tab:lang_config_inst}
+\end{table}
+
+\section{Graph Construction and Component Flattening}
+The final phase of the analysis pipeline, Graph Construction ($\gamma$,
+detailed in Chapter \ref{ch:graph_construction}), transforms the
+resolved module forest $\vec{\mathcal{M}}$ into the directed dependency
+graph $\mathcal{G} = (V, E)$ through a structural flattening process.
 
 \subsection{Flattening and Nodes}
-The module tree $\mathcal{M}$ is inspected recursively. Every
-extracted structured type $\mathcal{S}$ and function $\mathcal{F}$ is
-promoted to a vertex in $V$. Nested structured types
-$\vec{\mathcal{S}}_{nest}$ (including internal enum fields, i.e.,
-\textit{enum variants}) are flattened into independent vertices and
-equipped with their own qualified namespace inherited from the parent.
+The module forest $\vec{\mathcal{M}}$ is inspected recursively. Every
+module $\mathcal{M}$, structured type $\mathcal{S}$, function $\mathcal{F}$,
+field $f$, and type alias $\mathcal{A}$ is promoted to an independent vertex
+in $V$. Nested structured types $\vec{\mathcal{S}}_{nest}$ (including internal
+enum variants) are similarly promoted to top-level graph vertices and assigned
+a globally unique qualified name $\pi$ derived from their enclosing
+parent scope.
 
-\subsection{Edges and Trait Bounds}
-As visually summarized in Figure \ref{fig:graph_flattening}, the
-directed edges $E \subseteq V \times V \times \text{Kind}$ are
-extracted by mapping the resolved relationships $\tau$ to their
-respective target components:
+\subsection{Edges and Dependency Mapping}
+As visually summarized in Figure \ref{fig:graph_flattening}, the directed edges
+$E \subseteq V \times V \times \text{Kind}$ connect vertices to represent
+architectural relationships:
 \begin{itemize}
-  \item \textbf{ModuleContainment and NestedIn}: Structurally derived
-    from the hierarchical position, linking children to their
-    respective containers or parent types.
-  \item \textbf{Trait Bounds and Implementations}: \textit{Trait}
-    constructs and \textit{Trait Bounds} on generic parameters are
-    converted into structural dependencies. Temporary implementation
-    blocks $\mathcal{X}$ generate \textit{Implements} edges from the
-    \textit{target} type $\tau$ to the implemented interfaces or
-    traits, before collapsing and transferring their functions as
-    methods of the \textit{target}.
-  \item \textbf{Imports}: Explicate direct declarations of usage for
-    other components or external modules.
-  \item \textbf{Behavioral Relationships}: Generated by internal
-    blocks $\mathcal{B}$, these include \textit{AccessesField},
-    \textit{Instantiates}, \textit{Calls}, and \textit{CastsTo},
-    accurately modeling invocation flows, instance creation, memory
-    access, and type conversions.
-  \item \textbf{Aliases}: Expands the notion of reference by
-    capturing the semantic link from a TypeAlias to its original target.
+  \item \textbf{Structural Containment (\texttt{ModuleContainment},
+    \texttt{NestedIn})}:
+    Directed from containers to their enclosed children.
+    \texttt{ModuleContainment} connects a module to each of its direct children
+    (sub-modules, structured types, free functions, fields, and aliases).
+    \texttt{NestedIn} connects a structured type to its internal members
+    (fields, methods, and nested types).
+  \item \textbf{Inheritance and Implementation (\texttt{IsA},
+    \texttt{Implements})}:
+    Directed from a structured type to each of its resolved
+    super-types ($\vec{\tau}_{sup}$)
+    or implemented interfaces. Implementation blocks $\mathcal{X}$ generate
+    \texttt{Implements} edges from the target type to the corresponding trait
+    before collapsing their methods into the target type $\mathcal{S}$.
+  \item \textbf{Type-Level Dependencies (\texttt{UsesFieldType},
+        \texttt{UsesLocalType}, \texttt{UsesParamType},
+    \texttt{UsesReturnType}, \texttt{Aliases})}:
+    Directed from declaring entities (types, functions, aliases) to the resolved
+    types of their fields, local variables, parameters, return types,
+    and aliased targets.
+  \item \textbf{Behavioral Relationships (\texttt{Calls},
+    \texttt{Instantiates}, \texttt{AccessesField}, \texttt{CastsTo})}:
+    Extracted from function execution blocks $\mathcal{B}$, these edges model
+    call flows, object instantiations, member accesses, and explicit type casts.
+  \item \textbf{Auxiliary Relationships (\texttt{Imports},
+    \texttt{AnnotatedWith})}:
+    Directed from modules or types to imported components, and from annotated
+    entities to their resolved annotation types.
 \end{itemize}
+
+A comprehensive treatment of the two-pass flattening algorithm, the complete
+taxonomy of all 15 edge kinds, and deduplication rules is provided in
+Chapter \ref{ch:graph_construction}.
 
 \begin{figure}[htpb]
   \centering
   \includegraphics[width=\textwidth]{images/formal_ir/graph_flattening_process.png}
   \caption{Visual representation of the Component Tree flattening
     process, where nested elements are promoted to top-level graph
-  nodes and hierarchical containment is converted to \textit{NestedIn} edges.}
+    nodes and hierarchical containment is converted to directed structural edges
+  (\texttt{ModuleContainment} and \texttt{NestedIn}).}
   \label{fig:graph_flattening}
 \end{figure}
-
