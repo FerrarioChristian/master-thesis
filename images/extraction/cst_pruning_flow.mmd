@@ -1,0 +1,24 @@
+flowchart TD
+    Start(["Visit CST Node"]) --> Dispatch["dispatch_node(node)"]
+    Dispatch --> Match{Recognized?}
+
+    Match -->|StructuredType| AddST["Extract members internally<br/>& add to structured_types"]
+    AddST --> Prune(["Prune & Return<br/>(prevents method duplication)"])
+
+    Match -->|Module| Mod["Recurse on children & attach to sub_modules"]
+    Mod --> Ret(["Return"])
+
+    Match -->|Function| Func["Add to free_functions & recurse on body blocks"]
+    Func --> Ret
+
+    Match -->|Import / Alias / Field| Other["Add to module & attach attributes"]
+    Other --> Ret
+
+    Match -->|None| Fallback["Recurse on all children"]
+
+    style Prune fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#7f1d1d
+    style Dispatch fill:#e1f5fe,stroke:#0288d1,stroke-width:1.5px,color:#0f172a
+    style Match fill:#fff9c4,stroke:#fbc02d,stroke-width:1.5px,color:#0f172a
+    style Start fill:#f5f5f5,stroke:#757575,stroke-width:1.5px,color:#0f172a
+    style Ret fill:#e8f5e9,stroke:#388e3c,stroke-width:1.5px,color:#0f172a
+    style Fallback fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px,color:#0f172a

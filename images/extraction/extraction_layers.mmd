@@ -1,0 +1,15 @@
+flowchart LR
+    L1["<b>Layer 1: Orchestration</b> (analyzer.rs)<br/>Tree-sitter invocation, CST traversal (walk_cst), workspace grouping"]
+    L2["<b>Layer 2: Heuristic Dispatching</b> (heuristics/mod.rs)<br/>Priority-based node routing (dispatch_node)"]
+    L3["<b>Layer 3: Classification & Parsers</b> (classifiers.rs, parsers.rs)<br/>Heuristic predicates (is_*) and component builders (try_parse_*)"]
+    L4["<b>Layer 4: Atomic Extractors</b> (*_extraction.rs, text_parsing.rs)<br/>Type references, signatures, bodies, annotations, and qualified names"]
+
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+
+    style L1 fill:#e3f2fd,stroke:#1565c0,stroke-width:1.5px,color:#0f172a
+    style L2 fill:#fff3e0,stroke:#ef6c00,stroke-width:1.5px,color:#0f172a
+    style L3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:1.5px,color:#0f172a
+    style L4 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px,color:#0f172a
+
