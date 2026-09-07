@@ -15,6 +15,8 @@ classDiagram
         TypeAlias
         Function
         Field
+        Primitive
+        External
     }
     class TypeRef:::enumDef {
         <<enumeration>>
@@ -37,6 +39,7 @@ classDiagram
         +Function[] free_functions
         +ImplBlock[] impl_blocks
         +Field[] free_variables
+        +Import[] imports
     }
 
     class StructuredType:::coreEntity {
@@ -46,13 +49,17 @@ classDiagram
         +Function[] methods
         +StructuredType[] nested_types
         +TypeRef[] super_types
+        +TypeRef[] annotations
+        +Import[] imports
     }
 
     class ImplBlock:::coreEntity {
         +QualifiedName name
         +TypeRef impl_for
+        +TypeRef implements_trait
         +Function[] methods
         +StructuredType[] nested_types
+        +TypeAlias[] type_aliases
     }
 
     class TypeAlias:::coreEntity {
@@ -62,13 +69,19 @@ classDiagram
 
     %% Behavior Entities
     class Function:::behavior {
+        +QualifiedName name
         +bool is_constructor
+        +TypeRef[] annotations
     }
     class Signature:::behavior {
         +TypeRef return_type
     }
     class Block:::behavior {
         +Field[] declarations
+        +TypeRef[] calls
+        +TypeRef[] instantiates
+        +TypeRef[] accesses
+        +TypeRef[] type_casts
         +Block[] sub_blocks
     }
 
@@ -76,10 +89,17 @@ classDiagram
     class Field:::util {
         +Identifier name
         +TypeRef ty
+        +TypeRef[] annotations
     }
     class Parameter:::util {
         +Identifier name
         +TypeRef ty
+        +bool is_variadic
+    }
+    class Import:::util {
+        +QualifiedName path
+        +Identifier alias
+        +bool is_wildcard
     }
 
     %% Apply Styles (inline using ::: syntax)
@@ -89,14 +109,17 @@ classDiagram
     Component <|-- StructuredType
     Component <|-- Function
     Component <|-- TypeAlias
+    Component <|-- Field
 
     %% Core Aggregations (Kept minimal to avoid long loops)
     Module *-- Module : sub_modules
     Module *-- StructuredType : contains
     Module *-- ImplBlock : contains
+    Module *-- Import : imports
     
     StructuredType *-- StructuredType : nested
     StructuredType *-- Function : methods
+    StructuredType *-- Import : imports
     ImplBlock *-- Function : methods
 
     %% Function composition
@@ -113,3 +136,4 @@ classDiagram
     Signature ..> TypeRef : return
     TypeAlias ..> TypeRef : aliases
     ImplBlock ..> TypeRef : impl_for
+    Block ..> TypeRef : references

@@ -1,0 +1,31 @@
+%%{init: {
+    'flowchart': {
+    'nodeSpacing': 110, 
+    'rankSpacing': 80,
+    'padding': 8
+  },
+  'themeVariables': {'fontSize': '28px'}
+  }}%%
+stateDiagram-v2
+    direction LR
+
+    [*] --> Unresolved: Extraction Phase (Phase 1)
+    note right of Unresolved: In a Union disjunction,each member is an Unresolved reference
+
+    state "Semantic Resolution (Phase 2)" as ResPhase {
+        Unresolved --> ResolutionQuery: Query Building (ρ_build via Δ)
+        
+        ResolutionQuery --> Resolved: Match (Workspace Component)
+        ResolutionQuery --> External: Match (External Library)
+        ResolutionQuery --> Prim: Match (Primitive Registry P)
+        ResolutionQuery --> EvaluatedAccess: Member / Call Chain
+        ResolutionQuery --> Failed: No Scope Match
+    }
+
+    Resolved --> GraphGeneration: Phase 3 (Direct Edge)
+    External --> GraphGeneration: Phase 3 (External Edge + Node)
+    Prim --> GraphGeneration: Phase 3 (Primitive Edge + Node)
+    EvaluatedAccess --> GraphGeneration: Phase 3 (Receiver + Type Edges)
+
+    Failed --> [*]: Preserved for Recall / Diagnostics
+    GraphGeneration --> [*]: Closed Dependency Graph G = (V, E)
