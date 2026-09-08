@@ -1,0 +1,60 @@
+flowchart LR
+    %% Left Side: Flat Graph with Containment Edges
+    subgraph FlatGraph ["Raw Flat Dependency Graph &Gscr;"]
+        direction TB
+        M_auth(["Module: auth"])
+        S_user(["Struct: User"])
+        F_email["Field: email"]
+        Fn_login["Function: login"]
+        Ext_hash["External: crypto::hash"]
+        Prim_str["Primitive: String"]
+
+        %% Explicit Containment Edges (cluttering)
+        M_auth -. "ModuleContainment" .-> S_user
+        S_user -. "NestedIn" .-> F_email
+        S_user -. "NestedIn" .-> Fn_login
+
+        %% Architectural Dependencies
+        Fn_login == "Calls" ==> Ext_hash
+        F_email == "UsesFieldType" ==> Prim_str
+    end
+
+    %% Transition
+    FlatGraph ==> |"Export Transformation:<br/>1. Assign parent IDs<br/>2. Filter containment edges"| CytoGraph
+
+    %% Right Side: Compound Graph
+    subgraph CytoGraph ["Cytoscape.js Compound Representation"]
+        direction TB
+        subgraph C_M_auth ["Module: auth (parent = null)"]
+            direction TB
+            subgraph C_S_user ["Struct: User (parent = 'auth')"]
+                direction TB
+                C_F_email["Field: email<br/><i>(parent = 'auth::User')</i>"]
+                C_Fn_login["Function: login<br/><i>(parent = 'auth::User')</i>"]
+            end
+        end
+        C_Ext_hash["External: crypto::hash"]
+        C_Prim_str["Primitive: String"]
+
+        %% Only Pure Architectural Edges Remain Visible!
+        C_Fn_login == "Calls" ==> C_Ext_hash
+        C_F_email == "UsesFieldType" ==> C_Prim_str
+    end
+
+    %% Styling
+    style FlatGraph fill:#fafafa,stroke:#777777,stroke-width:1.5px,stroke-dasharray: 4 4
+    style CytoGraph fill:#fafafa,stroke:#777777,stroke-width:1.5px,stroke-dasharray: 4 4
+
+    style M_auth fill:#ffe0b2,stroke:#f57c00,stroke-width:1.5px
+    style S_user fill:#bbdefb,stroke:#1976d2,stroke-width:1.5px
+    style F_email fill:#b2dfdb,stroke:#00796b,stroke-width:1px
+    style Fn_login fill:#e1bee7,stroke:#7b1fa2,stroke-width:1px
+    style Ext_hash fill:#cfd8dc,stroke:#455a64,stroke-width:1px
+    style Prim_str fill:#b2ebf2,stroke:#0097a7,stroke-width:1px
+
+    style C_M_auth fill:#fff3e0,stroke:#f57c00,stroke-width:2px,stroke-dasharray: 4 4
+    style C_S_user fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style C_F_email fill:#b2dfdb,stroke:#00796b,stroke-width:1.5px
+    style C_Fn_login fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style C_Ext_hash fill:#cfd8dc,stroke:#455a64,stroke-width:1.5px
+    style C_Prim_str fill:#b2ebf2,stroke:#0097a7,stroke-width:1.5px

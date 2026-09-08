@@ -9,11 +9,13 @@ transforms source code files into the language-agnostic Intermediate
 Representation defined in Chapter \ref{ch:ir_formalization}.
 Formally, the extraction phase is defined as:
 $$\varepsilon : \mathcal{W} \to \mathcal{D}$$
-where the workspace $\mathcal{W}$ represents the collection of source files across
+where the workspace $\mathcal{W}$ represents the collection of source
+files across
 the repository, and $\mathcal{D}$ denotes the domain of valid module hierarchies
 $\vec{\mathcal{M}}$.
 For each individual source file $w \in \mathcal{W}$, extraction parses the file
-using the corresponding language grammar $L \in \mathcal{L}$ and produces a local
+using the corresponding language grammar $L \in \mathcal{L}$ and
+produces a local
 module hierarchy $\vec{\mathcal{M}} \in \mathcal{D}$.
 This is the \textbf{only phase that depends on the source language}
 $L \in \mathcal{L}$. Since Tree-sitter CST nodes contain only
@@ -22,12 +24,13 @@ extraction function accesses the underlying source buffer of $w$
 to retrieve textual identifiers and expressions.
 
 The extraction subsystem is organized into four logical layers, each
-depending only on the layers below it (depicted in Figure \ref{fig:extraction_layers}
+depending only on the layers below it (depicted in Figure
+  \ref{fig:extraction_layers}
 and summarized in Table \ref{tab:extraction_layers}):
 
 \begin{figure}[htpb]
   \centering
-  \includegraphics[width=0.85\textwidth]{images/extraction/extraction_layers.png}
+  \includegraphics[width=\textwidth]{images/extraction/extraction_layers.png}
   \caption{Layered architecture of the syntactic extraction subsystem.}
   \label{fig:extraction_layers}
 \end{figure}
@@ -38,10 +41,15 @@ and summarized in Table \ref{tab:extraction_layers}):
   \begin{tabularx}{\textwidth}{|c|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}X|}
     \hline
     \textbf{Layer} & \textbf{Module} & \textbf{Responsibility} \\ \hline
-    1 (Top) & \texttt{analyzer.rs} & Orchestration: Tree-sitter parsing, CST traversal, workspace grouping \\ \hline
-    2 & \texttt{heuristics/mod.rs} & Dispatcher (\texttt{dispatch\_node}), priority routing \\ \hline
-    3 & \texttt{heuristics/classifiers.rs}, \texttt{parsers.rs} & Classification predicates and IR component parsers \\ \hline
-    4 (Bottom) & \texttt{heuristics/*\_extraction.rs}, \texttt{text\_parsing.rs} & Low-level data extraction from CST nodes \\ \hline
+    1 (Top) & \texttt{analyzer.rs} & Orchestration: Tree-sitter
+    parsing, CST traversal, workspace grouping \\ \hline
+    2 & \texttt{heuristics/mod.rs} & Dispatcher
+    (\texttt{dispatch\_node}), priority routing \\ \hline
+    3 & \texttt{heuristics/classifiers.rs}, \texttt{parsers.rs} &
+    Classification predicates and IR component parsers \\ \hline
+    4 (Bottom) & \texttt{heuristics/*\_extraction.rs},
+    \texttt{text\_parsing.rs} & Low-level data extraction from CST
+    nodes \\ \hline
   \end{tabularx}
   \caption{Logical layer architecture of the extraction subsystem.}
   \label{tab:extraction_layers}
@@ -105,12 +113,15 @@ classification to the dispatcher. Its traversal logic follows four rules:
     recursively traverse all children of the current node.
 \end{enumerate}
 
-Figure \ref{fig:cst_pruning_flow} summarizes this traversal workflow, highlighting the pruning branch that prevents redundant extraction of internal methods as free functions.
+Figure \ref{fig:cst_pruning_flow} summarizes this traversal workflow,
+highlighting the pruning branch that prevents redundant extraction of
+internal methods as free functions.
 
 \begin{figure}[htpb]
   \centering
-  \includegraphics[width=0.85\textwidth]{images/extraction/cst_pruning_flow.png}
-  \caption{Flowchart of the \texttt{walk\_cst} traversal logic and subtree pruning mechanism.}
+  \includegraphics[width=\textwidth]{images/extraction/cst_pruning_flow.png}
+  \caption{Flowchart of the \texttt{walk\_cst} traversal logic and
+  subtree pruning mechanism.}
   \label{fig:cst_pruning_flow}
 \end{figure}
 
@@ -186,12 +197,14 @@ language agnosticism: rather than maintaining separate grammar rules
 per language, the analyzer exploits the fact that Tree-sitter
 grammars across different languages use similar naming conventions
 for equivalent constructs \cite{brunsfeld_treesitter_2018}.
-In contrast to universal syntax tree frameworks such as Babelfish UAST \cite{babelfish_uast},
-which attempt to map diverse languages into a single unified taxonomy, OmniDeps relies
+In contrast to universal syntax tree frameworks such as Babelfish
+UAST \cite{babelfish_uast},
+which attempt to map diverse languages into a single unified
+taxonomy, OmniDeps relies
 on lightweight nominal heuristics directly over native CST nodes.
 
 Each classifier follows a pattern of \textbf{positive conditions} (the
-node kind must match or contain expected substrings, or satisfy structural
+  node kind must match or contain expected substrings, or satisfy structural
 sub-tree patterns) combined with \textbf{negative exclusions} (the node kind
 or syntactic context must \textit{not} indicate a different semantic role).
 
@@ -218,15 +231,19 @@ or syntactic context must \textit{not} indicate a different semantic role).
     \texttt{fn\_item}, \texttt{func}, \texttt{constructor},
     \texttt{decorated\_definition}; or \texttt{declaration} with nested
     \texttt{function\_declarator} & \texttt{class} \\ \hline
-    \texttt{is\_import} & \texttt{use\_declaration}, \texttt{import\_declaration},
+    \texttt{is\_import} & \texttt{use\_declaration},
+    \texttt{import\_declaration},
     \texttt{import\_statement}, \texttt{import\_from\_statement},
     \texttt{preproc\_include} & None (exact match) \\ \hline
-    \texttt{is\_impl\_block} & \texttt{impl\_item}, \texttt{impl\_block} & None \\ \hline
+    \texttt{is\_impl\_block} & \texttt{impl\_item},
+    \texttt{impl\_block} & None \\ \hline
     \texttt{is\_free\_variable} & \texttt{static\_item}, \texttt{const\_item},
     \texttt{global\_variable\_declaration}; or top-level \texttt{declaration},
-    \texttt{variable\_declaration} & Ancestor is function, method, body, or block scope;
+    \texttt{variable\_declaration} & Ancestor is function, method,
+    body, or block scope;
     or contains nested \texttt{function\_declarator} \\ \hline
-    \texttt{is\_type\_alias} & \texttt{type\_alias\_declaration}, \texttt{alias\_declaration},
+    \texttt{is\_type\_alias} & \texttt{type\_alias\_declaration},
+    \texttt{alias\_declaration},
     \texttt{type\_item}, \texttt{type\_alias\_statement}; or non-struct
     \texttt{type\_definition} & Excludes structured types \\ \hline
   \end{tabularx}
@@ -517,13 +534,19 @@ into three categories:
         \texttt{Query::Call} to resolve the callable's return type.
     \end{itemize}
 
-    This mechanism highlights the modular decoupling between extraction ($\varepsilon$)
-    and resolution ($\rho$): because per-file extraction operates strictly on local
-    syntax without global symbol visibility, \texttt{infer\_variable\_type} does not
+    This mechanism highlights the modular decoupling between
+    extraction ($\varepsilon$)
+    and resolution ($\rho$): because per-file extraction operates
+    strictly on local
+    syntax without global symbol visibility,
+    \texttt{infer\_variable\_type} does not
     attempt to evaluate return types eagerly. Instead, it synthesizes a deferred
-    expression $q \in \mathcal{Q}$ within the Query Algebra (Chapter \ref{ch:ir_formalization}),
-    delegating its semantic evaluation to the name resolution engine $\rho_{\text{exec}}$
-    (Chapter \ref{ch:name_resolution}) once the global workspace scope tree is constructed.
+    expression $q \in \mathcal{Q}$ within the Query Algebra (Chapter
+    \ref{ch:ir_formalization}),
+    delegating its semantic evaluation to the name resolution engine
+    $\rho_{\text{exec}}$
+    (Chapter \ref{ch:name_resolution}) once the global workspace
+    scope tree is constructed.
 
   \item \textbf{Nested Blocks}: Children whose kind contains ``body''
     or ``block'', or equals \texttt{compound\_statement}, are
@@ -539,15 +562,24 @@ into three categories:
     semantic categories:
     \begin{itemize}
       \item \textbf{Instantiations}: Constructor invocations (e.g., \texttt{new}
-        expressions in Java and C++) and struct literal expressions (e.g., Rust struct initializations).
-      \item \textbf{Function and Method Calls}: Invocations across three structural forms:
+        expressions in Java and C++) and struct literal expressions
+        (e.g., Rust struct initializations).
+      \item \textbf{Function and Method Calls}: Invocations across
+        three structural forms:
         \begin{itemize}
-          \item \textit{Scoped calls} (\texttt{Module::func()}) $\to$ the scope qualifier is captured to resolve namespaced or static calls.
-          \item \textit{Method invocations} (\texttt{obj.method()}) $\to$ the receiver object expression is captured to track member dereferencing.
-          \item \textit{Simple calls} (\texttt{func()}) $\to$ the bare callable identifier is captured.
+          \item \textit{Scoped calls} (\texttt{Module::func()}) $\to$
+            the scope qualifier is captured to resolve namespaced or
+            static calls.
+          \item \textit{Method invocations} (\texttt{obj.method()})
+            $\to$ the receiver object expression is captured to track
+            member dereferencing.
+          \item \textit{Simple calls} (\texttt{func()}) $\to$ the
+            bare callable identifier is captured.
         \end{itemize}
-      \item \textbf{Field and Member Accesses}: Explicit property accesses, attribute dereferences, and qualified symbol paths.
-      \item \textbf{Type Casts}: Explicit type conversions and cast expressions, ensuring dependency tracking on target coercion types.
+      \item \textbf{Field and Member Accesses}: Explicit property
+        accesses, attribute dereferences, and qualified symbol paths.
+      \item \textbf{Type Casts}: Explicit type conversions and cast
+        expressions, ensuring dependency tracking on target coercion types.
     \end{itemize}
 \end{enumerate}
 
@@ -566,28 +598,41 @@ reconstruct qualified paths and extract dependencies from macro invocations.
 \label{sec:annotation_extraction}
 
 Metadata annotations, decorators, and compiler attributes represent declarative
-dependencies that alter runtime behavior or generate code. The extractor captures
+dependencies that alter runtime behavior or generate code. The
+extractor captures
 these dependencies across the diverse syntactic conventions of each language:
 
 \begin{itemize}
   \item \textbf{Python}: Decorators attached to function or class definitions
-    are extracted to capture meta-programming wrappers. The extractor handles bare
-    decorators (\texttt{@decorator}), qualified module paths (\texttt{@module.decorator}),
+    are extracted to capture meta-programming wrappers. The extractor
+    handles bare
+    decorators (\texttt{@decorator}), qualified module paths
+    (\texttt{@module.decorator}),
     and parameterized factory calls (\texttt{@decorator(args)}).
-  \item \textbf{Rust}: Outer and inner attributes associated with items are captured.
-    In particular, derive macros (e.g., \texttt{\#[derive(Debug, Clone)]}) are expanded
-    into individual type references, creating explicit dependencies on each derived trait.
-  \item \textbf{Java}: Class-, method-, and field-level annotations (both marker and
-    value-carrying annotations) are extracted, normalizing the annotation identifier by
+  \item \textbf{Rust}: Outer and inner attributes associated with
+    items are captured.
+    In particular, derive macros (e.g., \texttt{\#[derive(Debug,
+    Clone)]}) are expanded
+    into individual type references, creating explicit dependencies
+    on each derived trait.
+  \item \textbf{Java}: Class-, method-, and field-level annotations
+    (both marker and
+    value-carrying annotations) are extracted, normalizing the
+    annotation identifier by
     stripping leading syntactical delimiters.
-  \item \textbf{C/C++}: Standard and compiler-specific attribute specifiers (such as
-    standard \texttt{[[...]]} attributes or compiler pragmas) are captured when attached
+  \item \textbf{C/C++}: Standard and compiler-specific attribute
+    specifiers (such as
+    standard \texttt{[[...]]} attributes or compiler pragmas) are
+    captured when attached
     to declarations.
 \end{itemize}
 
-As described in Section \ref{sec:walk_cst}, because annotations frequently appear syntactically
-before their target construct rather than inside its subtree, extracted annotations are
-buffered during CST traversal and attached to the subsequent recognized component.
+As described in Section \ref{sec:walk_cst}, because annotations
+frequently appear syntactically
+before their target construct rather than inside its subtree,
+extracted annotations are
+buffered during CST traversal and attached to the subsequent
+recognized component.
 
 \section{Dynamic Field Extraction}
 \label{sec:dynamic_fields}
@@ -700,7 +745,8 @@ for each supported language.
   \small
   \begin{tabular}{|l|c|c|c|c|c|}
     \hline
-    \textbf{Grouping Strategy} & \textbf{Python} & \textbf{Rust} & \textbf{Java} & \textbf{C++} & \textbf{C} \\ \hline
+    \textbf{Grouping Strategy} & \textbf{Python} & \textbf{Rust} &
+    \textbf{Java} & \textbf{C++} & \textbf{C} \\ \hline
     File-Based & \checkmark & \checkmark & & & \\ \hline
     Directory-Based & \checkmark & \checkmark & & & \\ \hline
     Package-Declaration & & & \checkmark & & \\ \hline

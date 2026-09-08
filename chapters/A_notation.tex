@@ -7,143 +7,144 @@ functional semantics. This chapter serves as a quick reference for
 the symbology and formal concepts introduced in the formalization of the system.
 
 \section{Notational Conventions}
-The model uses the following standard conventions to describe the
-data structures and functions of the system:
+To ensure formal rigor, consistency, and clarity of exposition across chapters, the formal model adheres to a strict typographic taxonomy comprising five homogeneous symbol families, summarized in Table \ref{tab:notational_styles}.
 
+\begin{table}[htpb]
+  \centering
+  \small
+  \begin{tabular}{|l|l|l|p{5.5cm}|}
+    \hline
+    \textbf{Conceptual Family} & \textbf{Typographic Style} & \textbf{Primary Symbols} & \textbf{Semantics and Scope} \\ \hline
+    \textbf{Analysis Pipeline} & Lowercase Greek & $\phi, \varepsilon, \rho, \gamma$ & Operational transformations and pipeline composition ($\phi = \gamma \circ \rho \circ \varepsilon$). \\ \hline
+    \textbf{IR Architecture} & Uppercase Calligraphic & $\mathcal{M}, \mathcal{S}, \mathcal{F}, \mathcal{A}, \mathcal{X}, \mathcal{B}, \mathcal{C}, \mathcal{Q}$ & Structural data model components, containers, and query algebra domain. \\ \hline
+    \textbf{Resolution Contexts} & Uppercase Greek \& Calligraphic & $\Gamma, \Delta, \Sigma$ \newline $\mathcal{E}, \mathcal{P}, \mathcal{K}$ & Scoping environments ($\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$), symbol stack ($\Delta$), and lexical scopes ($\Sigma$). \\ \hline
+    \textbf{Semantic Types} & Lowercase Greek & $\iota, \pi, \tau, \sigma, \delta$ & Atomic type references ($\tau$), identifiers ($\iota$), qualified paths ($\pi$), signatures ($\sigma$), and imports ($\delta$). \\ \hline
+    \textbf{Structural Members} & Lowercase Latin & $f, p, v, q, k$ & Concrete member instances: fields ($f$), parameters ($p$), variables ($v$), queries ($q$), and type kinds ($k$). \\ \hline
+  \end{tabular}
+  \caption{Typographic and notational taxonomy adopted across the formal model.}
+  \label{tab:notational_styles}
+\end{table}
+
+The model relies on the following standard algebraic and set-theoretic conventions:
 \begin{itemize}
   \item \textbf{Tuples (Cartesian Product)} $\langle x_1, x_2, \dots,
-    x_n \rangle$: Represent composite types (corresponding to
+    x_n \rangle$: Represent composite structures (corresponding to
     \texttt{structs} in the source code). Each element of the tuple
     defines an essential property of the entity.
   \item \textbf{Disjoint Union (Sum Type)} $A \mid B \mid C$:
-    Indicates that a value can belong to one and only one type among
-    those listed (corresponding to \texttt{enums} in the code). It is
-    used to model polymorphism or uncertainty.
-  \item \textbf{Vectors and Sequences} $\vec{X}$: Indicates a finite,
-    ordered sequence of elements of type $X$ (corresponding to lists,
-    arrays, or \texttt{Vec} in memory).
+    Indicates that a value belongs to exactly one variant among those
+    listed (corresponding to tagged unions or \texttt{enums} in the code).
+  \item \textbf{Vectors and Sequences} $\vec{X}$: Denotes a finite,
+    ordered sequence of elements of type $X$ (corresponding to \texttt{Vec<X>}).
   \item \textbf{Optionality} $X^?$: Indicates a value that may be
-    present (of type $X$) or absent (corresponding to \texttt{Option<T>}).
+    present (of type $X$) or absent (corresponding to \texttt{Option<X>}).
   \item \textbf{Function Signatures} $f : A \to B$: Denotes a
-    function $f$ that takes an input from domain $A$ and returns an
-    output in codomain $B$. If the input consists of multiple
-    arguments, the Cartesian product is used (e.g., $A \times B \to C$).
+    mapping from domain $A$ to codomain $B$. Multi-argument functions
+    use Cartesian products ($A \times B \to C$).
+  \item \textbf{Boolean Domain} $\mathbb{B}$: The set of truth values
+    $\{ \text{true}, \text{false} \}$.
 \end{itemize}
 
 \section{Glossary of Types and Domains}
-The following defines the principal symbols that constitute the
-alphabet of our Intermediate Representation (IR) and the analysis pipeline.
+The following definitions catalog the symbols that constitute the formal Intermediate Representation (IR) and the analysis pipeline.
 
-\subsection{Base Types and Identifiers}
+\subsection{Base Types, Paths, and Identifiers}
 \begin{itemize}
-  \item $\mathcal{I}$ (\textbf{Identifier}): The set of all valid
-    alphanumeric strings used to name variables, functions, or classes.
-  \item $\pi$ (\textbf{Qualified Name}): A hierarchical sequence of
-    identifiers ($\langle \iota_1, \dots, \iota_n \rangle \in
-    \mathcal{I}^*$) that represents the absolute and unique path of
-    an entity (e.g., a namespace or a module path).
-  \item $\tau$ (\textbf{Type Reference}): An abstract reference to a
-    type. It is represented by a seven-state sum type that models its
-    lifecycle during the analysis: \texttt{Prim} (base primitive),
-    \texttt{Unresolved} (raw name just extracted),
-    \texttt{ResolutionQuery} (algebraic expression of intent),
-    \texttt{Resolved} (verified absolute path in the codebase),
-    \texttt{External} (path resolved via import but not analyzed in
-    the codebase), \texttt{Failed} (unsuccessful resolution attempt),
-    or \texttt{EvaluatedAccess} (a wrapper that preserves both the
-      originally queried path and the final structural type, ensuring
-    the generation of multiple edges for intermediate access chains).
+  \item $\mathcal{I}$ (\textbf{Identifier}): The set of valid strings
+    used as names for variables, functions, types, and modules.
+  \item $\Pi$ (\textbf{Path Domain}) and $\pi$ (\textbf{Qualified Name}):
+    The domain of non-empty sequences of identifiers $\Pi = \mathcal{I}^+ =
+    \{ \langle \iota_1, \dots, \iota_n \rangle \mid \iota_j \in \mathcal{I}, n \ge 1 \}$,
+    where each $\pi \in \Pi$ uniquely identifies a component's absolute path.
+  \item $\tau$ (\textbf{Type Reference}): An abstract reference to a type,
+    represented by an eight-state sum type modeling its discovery lifecycle:
+    \texttt{Prim}($\iota_p$) with $\iota_p \in \mathcal{P}$ (primitive keyword),
+    \texttt{Unresolved}($\pi$) (raw path extracted from source),
+    \texttt{ResolutionQuery}($q$) (algebraic navigation intent),
+    \texttt{Resolved}($\pi$) (verified absolute path in the codebase),
+    \texttt{External}($\pi$) (path resolved via external dependency),
+    \texttt{Union}($\vec{\tau}$) (type disjunction or generic type arguments),
+    \texttt{EvaluatedAccess}($\tau_{path}, \tau_{type}$) (preserves queried path and resolved target), or
+    \texttt{Failed}($\pi$) (unresolved reference).
+  \item $\delta$ (\textbf{Import Directive}): A dependency declaration
+    $\langle \pi_{path}, \iota_{alias}^?, \mathbb{B}_{wildcard} \rangle$
+    specifying an imported path, an optional local alias, and a wildcard flag.
 \end{itemize}
 
 \subsection{Structural Members and Signatures}
 \begin{itemize}
-  \item $v$ (\textbf{Variable}): A local variable declared within a
-    block, defined by its identifier and type ($\langle \iota, \tau \rangle$).
-  \item $f$ (\textbf{Field}): A data field belonging to a structure,
-    defined by the identifier and type pair ($\langle \iota, \tau \rangle$).
-  \item $p$ (\textbf{Parameter}): An input parameter to a function,
-    comprising an optional name, a type, and a variadicity indicator
-    ($\langle \iota^?, \tau, \mathbb{B} \rangle$).
-  \item $\sigma$ (\textbf{Signature}): The architectural signature of
-    a function, composed of the tuple $\langle \vec{p}, \tau_{ret}
-    \rangle$. It abstracts the input and output types, isolating them
-    from the implementing component.
-  \item $\mathcal{B}$ (\textbf{Block}): A lexical block (e.g.,
-    delimited by \texttt{\{\}}) that models an internal scope. It
-    tracks declared local variables, calls, instantiations, and
-    recursively nests any sub-blocks.
-  \item $\mathcal{F}$ (\textbf{Function}): A universal functional
-    component defined by the tuple $\langle \iota, \sigma,
-    \mathcal{B} \rangle$. Its architectural role (method or free
-    function) is determined solely by the construct in which it is nested.
+  \item $v$ (\textbf{Variable}): A local variable declaration within a block,
+    structurally equivalent to a field ($v \equiv f$).
+  \item $f$ (\textbf{Field}): A member data field defined by the tuple
+    $\langle \iota, \tau, \vec{\tau}_{ann} \rangle$.
+  \item $p$ (\textbf{Parameter}): A formal parameter defined by
+    $\langle \iota^?, \tau, \mathbb{B} \rangle$, comprising an optional
+    name, a type reference, and a variadicity indicator.
+  \item $\sigma$ (\textbf{Signature}): The functional signature tuple
+    $\langle \vec{p}, \tau_{ret} \rangle$, decoupling inputs and output
+    from the implementing body.
+  \item $\mathcal{B}$ (\textbf{Block}): A lexical execution block
+    $\langle \vec{f}_{local}, \vec{\tau}_{calls}, \vec{\tau}_{inst},
+    \vec{\tau}_{accesses}, \vec{\tau}_{casts}, \vec{\mathcal{B}}_{sub} \rangle$.
+  \item $\mathcal{F}$ (\textbf{Function}): A universal functional component
+    $\langle \pi, \sigma, \mathcal{B}^?, \mathbb{B}_{ctor}, \vec{\tau}_{ann} \rangle$,
+    binding a qualified name to a signature, an optional body block, a
+    constructor flag, and annotations.
 \end{itemize}
 
 \subsection{Architectural Entities}
 \begin{itemize}
-  \item $\mathcal{S}$ (\textbf{Structured Type}): The abstraction of
-    classes, structs, interfaces, and traits. It aggregates fields,
-    functions, inheritance hierarchies, and nested types.
-  \item $\mathcal{A}$ (\textbf{Alias}): A type alias mapping a new
-    identifier to an existing type reference ($\langle \iota, \tau
-    \rangle$), such as a \texttt{typedef} in C or a \texttt{type} alias in Rust.
-  \item $\mathcal{X}$ (\textbf{Implementation Extension}): A
-    temporary syntactic extraction construct typical of languages
-    like Rust or C++ (the so-called \textit{Impl Blocks}). It
-    associates a set of functions and aliases to a target type. It is
-    flattened into $\mathcal{S}$ during the Resolution Phase,
-    disappearing from the final model.
-  \item $\mathcal{C}$ (\textbf{Component}): The universal sum type
-    that embraces the definitive analyzable entities of the system
-    (Modules, Structured Types, Functions, and Aliases).
-  \item $\mathcal{M}$ (\textbf{Module}): The fundamental hierarchical
-    unit. The root module acts as the domain of the Intermediate
-    Representation ($\mathcal{D}_{IR}$) and recursively aggregates
-    all analyzed source code.
+  \item $\mathcal{S}$ (\textbf{Structured Type}): The abstraction for classes,
+    structs, interfaces, traits, and enums, defined by
+    $\langle \pi, k, \vec{f}, \vec{\mathcal{F}}, \vec{\tau}_{sup}, \vec{\mathcal{S}}_{nest}, \vec{\tau}_{ann}, \vec{\delta}_{imp} \rangle$
+    where $k \in \{ \text{Class}, \text{Struct}, \text{Interface}, \text{Trait}, \text{Enum}, \text{EnumVariant} \}$.
+  \item $\mathcal{A}$ (\textbf{Alias}): A type alias mapping a qualified
+    name to an existing target type reference: $\langle \pi, \tau_{target} \rangle$.
+  \item $\mathcal{X}$ (\textbf{Implementation Extension}): An implementation block
+    aggregating methods and aliases for a target type $\tau_{target}$, flattened
+    into $\mathcal{S}$ during Name Resolution.
+  \item $\mathcal{C}$ (\textbf{Component}): The universal sum type of entities
+    promoted to graph vertices: Modules ($\mathcal{M}$), Structured Types
+    ($\mathcal{S}$), Type Aliases ($\mathcal{A}$), Functions ($\mathcal{F}$),
+    Fields ($f$), Primitives, and External symbols.
+  \item $\mathcal{M}$ (\textbf{Module}): The primary hierarchical namespace unit.
+  \item $\mathcal{D}$ (\textbf{Intermediate Representation Domain}): The universe
+    of valid module hierarchies $\vec{\mathcal{M}}$.
 \end{itemize}
 
-\subsection{Resolution Model and Graph}
+\subsection{Resolution Model and Scoping Contexts}
 \begin{itemize}
-  \item $\mathcal{Q}$ (\textbf{Query Algebra}): The set of constant
-    algebraic expressions (\text{Find}, \text{Extract}, \text{Call})
-    that model the logical intent of resolving a type, deferring its
-    execution (lazy evaluation).
-  \item $\Sigma$ (\textbf{Scope}): A single environment of lexical
-    visibility, containing a map of symbols associated with
-    identifiers $\iota$, and references to the base types
-    (supertypes) from which it inherits.
-  \item $\mathcal{T}$ (\textbf{Scope Tree}): The global tree of
-    $\Sigma$ scopes. It constitutes the central Name Resolution
-    architecture of the system. It replaces classic flat registries,
-    allowing hierarchical resolution (lexical climbing) and
-    inheritance in logarithmic time with respect to the height of the tree.
-  \item $\Gamma$ (\textbf{Execution Context}): The immutable context
-    composed of the tree $\mathcal{T}$, the ecosystem of primitive
-    types, and the current base path, used by the evaluator to
-    execute the queries $\mathcal{Q}$.
-  \item $\mathcal{G}$ (\textbf{Dependency Graph}): The final directed
-    graph $G = (V, E)$. The vertices $V$ are the components extracted
-    from the code and the edges $E$ are the semantic dependency
-    relationships (inheritance, composition, usage).
+  \item $\mathcal{Q}$ (\textbf{Query Algebra}): The domain of resolution expressions
+    composed of primitives $\texttt{Find}(s)$, $\texttt{Extract}(q, s)$, and $\texttt{Call}(q)$, with $q \in \mathcal{Q}$.
+  \item $\Sigma$ (\textbf{Scope}): A single environment of lexical visibility
+    containing a symbol table, supertype inheritance links, and imports.
+  \item $\mathcal{E}$ (\textbf{Scope Tree}): The workspace-wide hierarchical
+    tree of $\Sigma$ scopes, enabling lexical scope climbing.
+  \item $\Delta$ (\textbf{Symbol Stack}): The ephemeral stack of lexical frames
+    $\Delta = [s_1, \dots, s_n]$ where each frame $s_i : \mathcal{I} \to \mathcal{Q}$
+    maps local identifiers to queries during Query Building.
+  \item $\mathcal{P}$ (\textbf{Primitive Registry}): The language-specific table
+    of built-in primitive type keywords.
+  \item $\mathcal{K}$ (\textbf{Language Configuration}): The configuration tuple
+    governing language-specific semantic features (receiver keywords, impl blocks, forward declarations).
+  \item $\Gamma$ (\textbf{Execution Context}): The immutable evaluation context
+    $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$ used to resolve queries.
+  \item $\mathcal{G}$ (\textbf{Dependency Graph}): The directed graph $\mathcal{G} = (V, E)$
+    composed of component vertices $V$ and typed dependency edges $E$.
 \end{itemize}
 
-\subsection{Analysis Phases}
+\subsection{Analysis Pipeline Phases}
 \begin{itemize}
-  \item $\Phi$ (\textbf{Full Analysis}): The overall mathematical
-    function that defines the architectural pipeline ($\Phi = \gamma
-    \circ \rho_2 \circ \rho_1 \circ \alpha \circ \varepsilon$).
-  \item $\varepsilon$ (\textbf{Extraction}): The language-dependent
-    phase that translates the CST of a single file into modules $\mathcal{M}$.
-  \item $\alpha$ (\textbf{Aggregation}): The function that merges the
-    modules extracted from individual files into a single global ecosystem.
-  \item $\rho_1$ (\textbf{Symbol Definition}): Phase 1 of resolution,
-    which traverses the unified IR to build the static scope tree
-    $\mathcal{T}$, registering all symbols (types, modules, aliases)
-    and base inheritance relationships (e.g., Rust's \texttt{Deref} trait).
-  \item $\rho_2$ (\textbf{Name Resolution}): Phase 2 of resolution,
-    which leverages the context $\Gamma$ (based on $\mathcal{T}$) to
-    algebraically evaluate each query $\mathcal{Q}$ and resolve the
-    type references $\tau$, producing validated absolute paths.
-  \item $\gamma$ (\textbf{Graphing}): The final phase that converts
-    the unified and resolved object model into the dependency graph
-    $\mathcal{G}$.
+  \item $\phi$ (\textbf{Full Analysis Pipeline}): The end-to-end transformation
+    $\phi : \mathcal{W} \to \mathcal{G}$, defined as $\phi = \gamma \circ \rho \circ \varepsilon$.
+  \item $\varepsilon$ (\textbf{Workspace Extraction}): The language-dependent
+    phase $\varepsilon : \mathcal{W} \to \vec{\mathcal{M}}$ translating source code into unresolved IR modules.
+  \item $\rho$ (\textbf{Name Resolution}): The language-independent phase
+    $\rho : \vec{\mathcal{M}} \to \vec{\mathcal{M}}$ that resolves symbolic type references into semantic pointers ($\rho = \rho_{\text{exec}} \circ \rho_{\text{build}}$).
+    \begin{itemize}
+      \item $\rho_{\text{build}}$ (\textbf{Query Building}): Traverses the IR with the Symbol Stack $\Delta$, transforming unresolved paths into algebraic queries $q \in \mathcal{Q}$.
+      \item $\rho_{\text{exec}}$ (\textbf{Query Execution}): Evaluates queries $q$ against the Execution Context $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$.
+    \end{itemize}
+  \item $\gamma$ (\textbf{Graph Construction}): The final phase $\gamma : \vec{\mathcal{M}} \to \mathcal{G}$
+    flattening the resolved IR into vertices $V$ and typed edges $E$.
 \end{itemize}

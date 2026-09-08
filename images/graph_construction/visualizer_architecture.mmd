@@ -1,0 +1,50 @@
+%%{init: {
+    'flowchart': {
+    'nodeSpacing': 70,
+    'rankSpacing': 40,
+    'padding': 5
+  },
+  'themeVariables': {'fontSize': '22px'}
+  }}%%
+flowchart LR
+    %% 1. Backend Module
+    subgraph Backend ["1. Rust Backend"]
+        CLI["<b>Omnideps CLI</b><br/>"]
+        Exporter["<b>Cytoscape Exporter</b><br/>"]
+        CLI --> Exporter
+    end
+
+    %% 2. SvelteKit Frontend Application
+    subgraph Frontend ["2. SvelteKit Web Application (Svelte 5)"]
+        StateRunes["<b>Reactive State (Runes)</b><br/><i>$state, $derived</i><br/>Active filters &amp; search query"]
+        UI["<b>Interactive UI Controls</b><br/>Filter toggles, search bar &amp; inspector"]
+        UI <--> StateRunes
+    end
+
+    %% 3. Cytoscape Visualization Engine
+    subgraph Visualization ["3. Visualization Engine"]
+        CytoCore["<b>Cytoscape.js Core</b><br/>Compound graph model &amp; styling"]
+        FCOSE["<b>fCoSE Layout Extension</b><br/>Force-directed physics simulation"]
+        Canvas["<b>Interactive Canvas</b><br/>Pan, zoom, drag &amp; node click"]
+        CytoCore <--> FCOSE
+        CytoCore --> Canvas
+    end
+
+    %% Main Data Flow (Left to Right)
+    Exporter ==> |"JSON<br/>Payload"| StateRunes
+    StateRunes ==> |"Filtered <br> Elements"| CytoCore
+    Canvas -.-> |"Node<br>Selection"| UI
+
+    %% Styling
+    style Backend fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style CLI fill:#ffffff,stroke:#e65100,stroke-width:1px
+    style Exporter fill:#ffffff,stroke:#e65100,stroke-width:1px
+
+    style Frontend fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style StateRunes fill:#ffffff,stroke:#7b1fa2,stroke-width:1.5px
+    style UI fill:#ffffff,stroke:#7b1fa2,stroke-width:1px
+
+    style Visualization fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style CytoCore fill:#ffffff,stroke:#1565c0,stroke-width:1.5px
+    style FCOSE fill:#ffffff,stroke:#1565c0,stroke-width:1px
+    style Canvas fill:#e0f2f1,stroke:#00695c,stroke-width:1.5px

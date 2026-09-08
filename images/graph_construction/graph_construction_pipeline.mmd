@@ -1,0 +1,63 @@
+%%{init: {
+  'themeVariables': {'fontSize': '22px'}
+  }}%%
+flowchart LR
+    %% Input Domain
+    IR[/"<b>Resolved Module Tree</b>"/]
+
+    %% Main Sub-phases
+    subgraph Pipeline ["Graph Construction Pipeline (&gamma;)"]
+
+        subgraph Pass1 ["Pass 1: Node Extraction"]
+            P1_Trav["Recursive Tree Traversal"]
+            P1_QName["Qualified Name Computation<br/><i>&pi; = &lang;m<sub>1</sub>, ..., m<sub>k</sub>&rang;</i>"]
+            P1_Nodes["Workspace Vertices Extraction<br/><i>Modules, Types, Functions, Fields, Aliases</i>"]
+            
+            P1_Trav --> P1_QName --> P1_Nodes
+        end
+
+        subgraph Pass2 ["Pass 2: Edge Generation"]
+            P2_Trav["Second Tree Traversal<br/><i>Inspection of signatures & code blocks</i>"]
+            P2_Filter["Reference Filtering<br/><i>Skip Failed & Unresolved &tau;</i>"]
+            P2_Emit["Dependency Edge Emission<br/><i>e = &lang;&pi;<sub>src</sub>, &pi;<sub>tgt</sub>, k&rang;</i>"]
+            
+            P2_Trav --> P2_Filter --> P2_Emit
+        end
+
+        subgraph PostProc ["Post-Processing Phase"]
+            PP_Close["Referential Closure (Synthesis)<br/><i>Add missing Primitive & External endpoints to V</i>"]
+            PP_Dedup["Edge Deduplication<br/><i>Prune identical &lang;&pi;<sub>src</sub>, &pi;<sub>tgt</sub>, k&rang; duplicates</i>"]
+            
+            PP_Close --> PP_Dedup
+        end
+
+        Pass1 --> Pass2
+        Pass2 --> PostProc
+    end
+
+    %% Output Domain
+    G[("<b>Dependency Graph</b> &Gscr; = (V, E)<br/><i>Flat directed multigraph</i>")]
+
+    %% Connections
+    IR --> Pass1
+    PostProc --> G
+
+    %% Styling
+    style IR fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    style G fill:#ede7f6,stroke:#512da8,stroke-width:2px
+
+    style Pipeline fill:#fafafa,stroke:#333333,stroke-width:2px,stroke-dasharray: 5 5
+    style Pass1 fill:#e3f2fd,stroke:#1976d2,stroke-width:1.5px
+    style Pass2 fill:#e8f5e9,stroke:#388e3c,stroke-width:1.5px
+    style PostProc fill:#fff3e0,stroke:#f57c00,stroke-width:1.5px
+
+    style P1_Trav fill:#ffffff,stroke:#1976d2,stroke-width:1px
+    style P1_QName fill:#ffffff,stroke:#1976d2,stroke-width:1px
+    style P1_Nodes fill:#ffffff,stroke:#1976d2,stroke-width:1px
+
+    style P2_Trav fill:#ffffff,stroke:#388e3c,stroke-width:1px
+    style P2_Filter fill:#ffffff,stroke:#388e3c,stroke-width:1px
+    style P2_Emit fill:#ffffff,stroke:#388e3c,stroke-width:1px
+
+    style PP_Close fill:#ffffff,stroke:#f57c00,stroke-width:1px
+    style PP_Dedup fill:#ffffff,stroke:#f57c00,stroke-width:1px

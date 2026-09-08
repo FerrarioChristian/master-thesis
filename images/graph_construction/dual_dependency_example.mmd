@@ -1,0 +1,38 @@
+%%{init: {
+  'themeVariables': {'fontSize': '20px'}
+}}%%
+flowchart LR
+    subgraph CarComponent ["Car Component Hierarchy"]
+        V_Car(["Struct: Car"])
+        V_Field["Field: Car::engine"]
+        V_Drive["Method: Car::drive"]
+        
+        V_Car -. "NestedIn" .-> V_Field
+        V_Car -. "NestedIn" .-> V_Drive
+    end
+
+    subgraph EngineComponent ["Engine Component Hierarchy"]
+        V_Engine(["Struct: Engine"])
+        V_Start["Method: Engine::start"]
+        
+        V_Engine -. "NestedIn" .-> V_Start
+    end
+
+    %% Type-Level Dependency (Source is Field!)
+    V_Field ==> |"UsesFieldType"| V_Engine
+    V_Drive -. "UsesParamType (&amp;self)" .-> V_Car
+
+    %% Behavioral Dependencies
+    V_Drive ==> |"AccessesField"| V_Field
+    V_Drive ==> |"Calls"| V_Start
+
+    %% Styling
+    style CarComponent fill:#fafafa,stroke:#1976d2,stroke-width:1.5px,stroke-dasharray: 4 4
+    style EngineComponent fill:#fafafa,stroke:#388e3c,stroke-width:1.5px,stroke-dasharray: 4 4
+
+    style V_Car fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style V_Engine fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+
+    style V_Field fill:#b2dfdb,stroke:#00796b,stroke-width:1.5px
+    style V_Drive fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
+    style V_Start fill:#e1bee7,stroke:#7b1fa2,stroke-width:1.5px
