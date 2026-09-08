@@ -336,6 +336,16 @@ lexical scoping rules of the source code. Each scope represents a
 named lexical environment (a module, a class, a function, or a block)
 and contains a symbol table mapping identifiers to their semantic roles.
 
+Unlike the generalized, unguided graph traversal algorithms employed by
+Stack Graphs \cite{creager_stack_2023}, which can experience severe
+combinatorial path-explosion during whole-program dependency extraction
+(as discussed in Chapter \ref{ch:related_work}), the Scope Tree $\mathcal{E}$
+models the workspace as a deterministic, single-parent lexical hierarchy.
+Lexical climbing for $\texttt{Find}$ ascends deterministically toward the root,
+while member descent for $\texttt{Extract}$ follows unambiguous nominal
+containment. By restricting name navigation to this deterministic tree
+topology, OmniDeps completely avoids non-deterministic path exploration.
+
 \subsubsection{Arena Allocator Implementation}
 
 The Scope Tree is implemented using an \textbf{Arena Allocator}
@@ -833,6 +843,52 @@ instantiations and explicit behavioral constructor calls, emitting
 constructor method is
 invoked.
 
+\subsection{Resolution of Disjunctive Types: \texttt{Union}}
+\label{sec:union_resolution}
+
+In heterogeneous, multi-language codebases, type references frequently
+exhibit disjunctive or polymorphic characteristics. To faithfully capture
+these constructs without premature approximation, the intermediate
+representation introduces the compound type reference:
+$$\text{Union}(\vec{\tau}) = \text{Union}(\langle \tau_1, \tau_2, \ldots, \tau_k \rangle)$$
+Such variants originate during syntactic extraction (Phase 1) in three
+primary scenarios:
+\begin{enumerate}
+  \item \textbf{Explicit Union Annotations}: In dynamically typed languages
+    with gradual typing features (such as Python's \texttt{int | str} or
+    \texttt{Union[User, Guest]}), an identifier can evaluate to
+    multiple distinct types at runtime.
+  \item \textbf{Generic Type Arguments}: For parameterized data types
+    (e.g., \texttt{Result<T, E>} or \texttt{Map<K, V>}), the type extraction
+    heuristics package multiple type parameters into a union reference so that
+    every associated domain entity participates in architectural dependency
+    analysis.
+  \item \textbf{Multi-Branch Return Type Inference}: When inferring the return
+    type of unannotated functions exhibiting multiple return statements with
+    differing types.
+\end{enumerate}
+
+During Phase 2a (Query Building), the substitution function
+\texttt{substitute\_type} applies intra-procedural lexical substitutions
+recursively across each constituent member of the union.
+
+During Phase 2b (Query Execution), query evaluation distributes homomorphically
+over the union variants in \texttt{evaluate\_typeref}:
+$$\rho_{\text{exec}}(\text{Union}(\{ \tau_1, \tau_2, \ldots, \tau_k \})) =
+\text{Union}(\{ \rho_{\text{exec}}(\tau_1), \rho_{\text{exec}}(\tau_2), \ldots, \rho_{\text{exec}}(\tau_k) \})$$
+Each inner reference $\tau_i$ is evaluated independently against the Scope Tree
+$\mathcal{E}$ and may resolve to any valid post-resolution state (such as
+$\texttt{Resolved}$, $\texttt{Primitive}$, or $\texttt{External}$).
+
+Finally, during Phase 3 (Graph Construction, Chapter \ref{ch:graph_construction}),
+the dependency projector processes \texttt{TypeRef::Union} by flattening its
+underlying targets (\texttt{flat\_map}). Rather than heuristically selecting a
+single candidate or dropping ambiguous alternatives, OmniDeps emits dependency
+edges toward all resolved targets present within the union. This conservative
+strategy ensures that all potential behavioral and structural couplings induced
+by polymorphic or generic usage are faithfully represented in the architectural
+dependency graph.
+
 \section{Implementation Block Flattening}
 \label{sec:impl_flattening}
 
@@ -951,7 +1007,7 @@ their effects.
     import chains through intermediate modules (Python). \\ \hline
     \texttt{support\_impl\_blocks} & \texttt{bool} & Activates
     flattening of \texttt{ImplBlock} methods into target type scopes
-    (Rust, C++). \\ \hline
+    (Rust). \\ \hline
     \texttt{forward\_declarations} & \texttt{bool} & Enables
     out-of-line method linking before resolution (C++). \\ \hline
     \texttt{self\_keyword} & \texttt{Option<String>} & Injects a
@@ -982,7 +1038,7 @@ values for each supported language.
     \textbf{Parameter} & \textbf{Python} & \textbf{Rust} &
     \textbf{Java} & \textbf{C++} & \textbf{C} \\ \hline
     \texttt{transitive\_imports} & \checkmark & & & & \\ \hline
-    \texttt{support\_impl\_blocks} & & \checkmark & & \checkmark & \\ \hline
+    \texttt{support\_impl\_blocks} & & \checkmark & & & \\ \hline
     \texttt{forward\_declarations} & & & & \checkmark & \checkmark \\ \hline
     \texttt{self\_keyword} & --- & \texttt{self} & \texttt{this} &
     \texttt{this} & --- \\ \hline

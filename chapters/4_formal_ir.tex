@@ -230,15 +230,15 @@ $\mathcal{A} = \langle \langle\texttt{StringList}\rangle,
 \tau_{\texttt{std::vector<std::string>}} \rangle$.
 
 \subsection{Implementation Extensions ($\mathcal{X}$)}
-To support languages that allow separating the declaration of a type
-from the definition of its methods (such as Rust's \texttt{impl}
-blocks and C++ out-of-line method definitions), during extraction we
+To support languages that decouple the schema definition of a structured
+type from the definition of its behavior and trait implementations (most
+notably Rust via detached \texttt{impl} blocks), during extraction we
 introduce the temporary construct \textbf{ImplBlock} or
 \textbf{Implementation Extension}:
 $$\mathcal{X} = \langle \pi, \tau_{target}, \tau_{trait}^?,
 \vec{\mathcal{F}}, \vec{\mathcal{S}}_{nest}, \vec{\mathcal{A}} \rangle$$
-where $\pi$ is the name of the extension (usually derived from the
-target), $\tau_{target}$ is the type to which the implementation
+where $\pi$ is the name of the extension (typically derived from the
+target type), $\tau_{target}$ is the type to which the implementation
 applies, $\tau_{trait}^?$ is an optional reference to the implemented
 trait or interface, and the other fields represent functions, nested
 types, and aliases associated with the extension.
@@ -389,16 +389,16 @@ and directories are grouped into hierarchical module namespaces:
   &\ \text{NamespaceBased}, \\
   &\ \text{InlineModBased} \rangle
 \end{align*}
-Each flag controls whether a specific grouping strategy is active
-during extraction. Java defines module namespaces via package
-declarations (\texttt{PackageDeclBased}); Rust and Python infer
-hierarchies from the filesystem (\texttt{FileBased}, \texttt{DirectoryBased}),
-with Rust additionally supporting explicit inline modules
-(\texttt{InlineModBased});
-C++ relies primarily on explicit namespace blocks (\texttt{NamespaceBased});
-and C exhibits no module system, placing all extracted components in a flat
-root module when all flags are false. Table \ref{tab:lang_config_modules}
-summarizes these strategies.
+Each boolean flag controls whether a specific grouping mechanism is active during extraction:
+\begin{itemize}
+  \item \textbf{File-Level Package Declarations (\texttt{PackageDeclBased})}: In languages such as Java, the compilation unit declares its enclosing namespace through a single statement at the top of the file (e.g., \texttt{package com.example.service;}). This statement assigns the entire file to the designated logical package without wrapping declarations in syntactic braces.
+  \item \textbf{Filesystem-Inferred Hierarchies (\texttt{FileBased}, \texttt{DirectoryBased})}: Languages like Python and Rust infer module namespaces directly from the filesystem layout. Directories represent parent packages or modules, while individual source files correspond to leaf modules.
+  \item \textbf{Open Namespace Blocks (\texttt{NamespaceBased})}: In C++, namespaces are explicit structural containers delimited by braces (e.g., \texttt{namespace core \{ ... \}}). Crucially, C++ namespaces are open and reopenable across distinct files and header units, bearing no intrinsic relationship to the directory layout.
+  \item \textbf{Encapsulated Inline Modules (\texttt{InlineModBased})}: In Rust, the module system exhibits a dual nature. The keyword \texttt{mod} can appear as a file-level declaration without a body (\texttt{mod foo;}), which delegates to an external file or directory, or as an inline structural block (\texttt{mod foo \{ ... \}}). Unlike C++ namespaces, Rust inline modules are closed and non-reopenable scopes that nest within the enclosing filesystem module.
+  \item \textbf{Absence of Modularization (Flat Root Module)}: The C language features neither package statements nor namespace containers. When all configuration flags evaluate to false, all extracted components are collected into a single, flat root module, matching the global symbol model of the C linker.
+\end{itemize}
+
+Table \ref{tab:lang_config_modules} summarizes these strategies across the supported languages.
 
 \begin{table}[htbp]
   \centering
@@ -428,19 +428,24 @@ transitively. Conversely, in Java and Rust, imports are file-local by
 default and require explicit re-export declarations (e.g., \texttt{pub use}).
 
 \paragraph{Detached Implementation Blocks (\texttt{SupportImplBlocks})}
-Languages like Rust separate the definition of data structures (\texttt{struct})
-from their behavior (\texttt{impl} blocks), allowing multiple blocks to extend
-the same type across different modules. Similarly, C++ supports out-of-line
-method definitions. The analyzer extracts these as temporary implementation
-extensions $\mathcal{X}$, later flattened into the target type during
-resolution.
+Languages like Rust separate the declaration of data structures
+(\texttt{struct}, \texttt{enum}) from their behavior and trait implementations
+(\texttt{impl} blocks), allowing multiple detached blocks to extend the same
+type across different modules or files. This flag activates the extraction
+of implementation extensions $\mathcal{X}$, which are later flattened into
+the target structured type during resolution.
 
-\paragraph{Forward Declarations (\texttt{ForwardDeclarations})} The classical
-C and C++ translation unit model separates declarations in header files
-(\texttt{.h}/\texttt{.hpp}) from definitions in source files
-(\texttt{.c}/\texttt{.cpp}).
-Enabling this flag activates an out-of-line method linking step that pairs
-orphan method implementations with their enclosing class declarations.
+\paragraph{Forward Declarations (\texttt{ForwardDeclarations})}
+The compilation model of languages such as C and C++ separates declarations
+in header files (\texttt{.h}/\texttt{.hpp}) from definitions in source files
+(\texttt{.c}/\texttt{.cpp}), admitting forward declarations of types and
+functions across compilation units. In C++, member functions can be declared
+inside a class body and defined out-of-line in separate translation units
+using qualified identifiers (e.g., \texttt{ClassName::method}). Enabling this
+flag activates an out-of-line method linking step that pairs detached method
+implementations with their parent class declarations. This treats forward
+declarations and out-of-line definitions as orthogonal to Rust-style
+implementation blocks.
 
 Table \ref{tab:lang_config_decl} summarizes the declaration and
 linking profiles.
@@ -454,7 +459,7 @@ linking profiles.
     \textbf{Java}     & False & False & False \\ \hline
     \textbf{Rust}     & False & True  & False \\ \hline
     \textbf{Python}   & True  & False & False \\ \hline
-    \textbf{C++}      & False & True  & True  \\ \hline
+    \textbf{C++}      & False & False & True  \\ \hline
     \textbf{C}        & False & False & True  \\ \hline
   \end{tabular}
   \caption{Declaration linking and visibility configuration profiles.}
