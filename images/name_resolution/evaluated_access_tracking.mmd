@@ -1,0 +1,51 @@
+%%{init: {
+    'flowchart': {
+    'nodeSpacing': 30, 
+    'rankSpacing': 40
+  },
+  'themeVariables': {'fontSize': '14px'}
+}}%%
+flowchart LR
+    Expr["<b>Source Expression</b><br/><code>user.address.zip</code>"]
+
+    subgraph DualTrack["Dual-Tracking Evaluation Mechanism"]
+
+        subgraph TypeTrack["1. Navigational Type Track (&tau;_type) — Guides Scope Lookup"]
+            T1["<b>T1: Receiver Type</b><br/><code>User</code>"]
+            T2["<b>T2: Member Type</b><br/><code>Address</code>"]
+            T3["<b>T3: Terminal Type</b><br/><code>Primitive(int)</code>"]
+            T1 -->|next receiver| T2
+            T2 -->|next receiver| T3
+        end
+
+        subgraph PathTrack["2. Architectural Path Track (&tau;_path) — Preserves Component Identity"]
+            P1["<b>P1: Base Reference</b><br/><code>user</code> (local)"]
+            P2["<b>P2: Field Member</b><br/><code>User::address</code>"]
+            P3["<b>P3: Target Component</b><br/><code>Address::zip</code>"]
+            P1 -->|accumulate| P2
+            P2 -->|accumulate| P3
+        end
+
+        %% Interazione tra i due binari
+        T1 -.->|opens scope for| P2
+        T2 -.->|opens scope for| P3
+    end
+
+    Res["<b>EvaluatedAccess Result</b><br/>&bull; <code>&tau;_path = Resolved(Address::zip)</code> &rarr; <i>Accesses edge</i><br/>&bull; <code>&tau;_type = Primitive(int)</code> &rarr; <i>TypedAs edge</i>"]
+
+    Expr --> T1
+    Expr --> P1
+    T3 --> Res
+    P3 --> Res
+
+    style Expr fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#0f172a
+    style DualTrack fill:#ffffff,stroke:#64748b,stroke-width:1.5px,stroke-dasharray: 4 4,color:#0f172a
+    style TypeTrack fill:#eff6ff,stroke:#3b82f6,stroke-width:1px,color:#0f172a
+    style PathTrack fill:#f0fdf4,stroke:#22c55e,stroke-width:1px,color:#0f172a
+    style T1 fill:#ffffff,stroke:#3b82f6,stroke-width:1px,color:#0f172a
+    style T2 fill:#ffffff,stroke:#3b82f6,stroke-width:1px,color:#0f172a
+    style T3 fill:#ffffff,stroke:#3b82f6,stroke-width:1px,color:#0f172a
+    style P1 fill:#ffffff,stroke:#16a34a,stroke-width:1px,color:#0f172a
+    style P2 fill:#ffffff,stroke:#16a34a,stroke-width:1px,color:#0f172a
+    style P3 fill:#ffffff,stroke:#16a34a,stroke-width:1px,color:#0f172a
+    style Res fill:#fae8ff,stroke:#a21caf,stroke-width:2px,color:#0f172a

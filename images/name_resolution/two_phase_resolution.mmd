@@ -1,0 +1,36 @@
+flowchart TD
+    subgraph Phase1["Input: Extraction (Phase 1)"]
+        IR_Unres["<b>Extracted IR Modules</b><br/>Syntactic entities with unresolved string references"]
+    end
+
+    subgraph Phase2a["Phase 2a: Query Building (ρ_build — Local & Lexical)"]
+        Stack["<b>Symbol Stack (Δ)</b><br/>Ephemeral frames tracking local variables & parameters"]
+        Subst["<b>Lexical Substitution (substitute_type)</b><br/>Resolves local names & encodes paths as navigation queries"]
+        IR_Queries["<b>Intermediate IR</b><br/>Body references lowered to Query Algebra (Find, Extract, Call)"]
+        
+        IR_Unres --> Subst
+        Stack --> Subst
+        Subst --> IR_Queries
+    end
+
+    subgraph Phase2b["Phase 2b: Query Execution (ρ_exec — Global & Topological)"]
+        Tree["<b>Scope Tree Construction (ScopeTree::build)</b><br/>Registers global workspace hierarchy, types & flattens ImplBlocks"]
+        Exec["<b>Query Executor (evaluate_query)</b><br/>Evaluates queries via lexical climbing, inheritance & imports"]
+        IR_Res["<b>Resolved IR Modules (D_res)</b><br/>Fully resolved semantic pointers ready for Graph Construction"]
+
+        Tree -->|Scope Tree E| Exec
+        Exec --> IR_Res
+    end
+
+    IR_Queries --> Tree
+    IR_Queries --> Exec
+
+    style Phase1 fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#0f172a
+    style Phase2a fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px,color:#0f172a
+    style Phase2b fill:#f0fdf4,stroke:#22c55e,stroke-width:1.5px,color:#0f172a
+    style Stack fill:#dbeafe,stroke:#1d4ed8,stroke-width:1px,color:#0f172a
+    style Subst fill:#ffffff,stroke:#3b82f6,stroke-width:1px,color:#0f172a
+    style IR_Queries fill:#ffffff,stroke:#3b82f6,stroke-width:1.5px,stroke-dasharray: 4 4,color:#0f172a
+    style Tree fill:#dcfce7,stroke:#15803d,stroke-width:1px,color:#0f172a
+    style Exec fill:#ffffff,stroke:#16a34a,stroke-width:1px,color:#0f172a
+    style IR_Res fill:#fae8ff,stroke:#a21caf,stroke-width:2px,color:#0f172a

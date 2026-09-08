@@ -1,0 +1,45 @@
+flowchart LR
+    subgraph Logical["1. Logical View: Hierarchical Tree"]
+        L0["<b>Root Scope</b>"]
+        L1["<b>Module 'app'</b>"]
+        L2["<b>Struct 'Order'</b>"]
+        L3["<b>Method 'pay'</b>"]
+        L4["<b>Method 'cancel'</b>"]
+
+        L0 --> L1
+        L1 --> L2
+        L2 --> L3
+        L2 --> L4
+    end
+
+    subgraph Physical["2. Physical Storage: Vec&lt;Scope&gt; (Contiguous Arena)"]
+        A0["<b>Arena[0]: Root</b><br/>parent: None"]
+        A1["<b>Arena[1]: 'app'</b><br/>parent: Some(0)"]
+        A2["<b>Arena[2]: 'Order'</b><br/>parent: Some(1)"]
+        A3["<b>Arena[3]: 'pay'</b><br/>parent: Some(2)"]
+        A4["<b>Arena[4]: 'cancel'</b><br/>parent: Some(2)"]
+
+        A4 --> A2
+        A3 --> A2
+        A2 --> A1
+        A1 --> A0
+    end
+
+    L0 -.->|"ScopeId = 0"| A0
+    L1 -.->|"ScopeId = 1"| A1
+    L2 -.->|"ScopeId = 2"| A2
+    L3 -.->|"ScopeId = 3"| A3
+    L4 -.->|"ScopeId = 4"| A4
+
+    style Logical fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#0f172a
+    style Physical fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#0f172a
+    style L0 fill:#ffffff,stroke:#64748b,stroke-width:1px,color:#0f172a
+    style L1 fill:#ffffff,stroke:#3b82f6,stroke-width:1px,color:#0f172a
+    style L2 fill:#ffffff,stroke:#16a34a,stroke-width:1px,color:#0f172a
+    style L3 fill:#ffffff,stroke:#d97706,stroke-width:1px,color:#0f172a
+    style L4 fill:#ffffff,stroke:#d97706,stroke-width:1px,color:#0f172a
+    style A0 fill:#f1f5f9,stroke:#475569,stroke-width:1px,color:#0f172a
+    style A1 fill:#eff6ff,stroke:#3b82f6,stroke-width:1px,color:#0f172a
+    style A2 fill:#dcfce7,stroke:#15803d,stroke-width:1px,color:#0f172a
+    style A3 fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#0f172a
+    style A4 fill:#fef3c7,stroke:#b45309,stroke-width:1px,color:#0f172a

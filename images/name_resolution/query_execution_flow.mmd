@@ -1,0 +1,57 @@
+%%{init: {
+    'flowchart': {
+    'nodeSpacing':45, 
+    'rankSpacing': 5
+  },
+  'themeVariables': {'fontSize': '21px'}
+}}%%
+flowchart LR
+    Q["<b>Query q</b>"]
+
+    %% Corsia Find
+    subgraph FindTrack["1. Find(ι) — Lexical Climbing & Fallbacks"]
+        direction LR
+        F_Start["Current Scope Σ"] --> F_Loc["1. Local Symbols<br/>&amp; Super-types"]
+        F_Loc -->|not found| F_Imp["2. Scope Imports<br/>(Direct / Wildcard)"]
+        F_Imp -->|not found| F_Climb["3. Climb to Parent<br/>Σ &larr; parent(Σ)"]
+        F_Climb -.->|repeat 1-2| F_Loc
+        F_Climb -->|at root: fallback| F_Root["4. Root Scope &amp;<br/>Primitive Registry"]
+        
+        F_Loc -->|found| F_Out(["<b>Resolved Symbol</b><br/>(Type / Value / Module)"])
+        F_Imp -->|found| F_Out
+        F_Root -->|found| F_Out
+        F_Root -->|not found| F_Fail(["<b>Failed / External</b>"])
+    end
+
+    %% Corsia Extract
+    subgraph ExtractTrack["2. Extract(q_base, ι) — Member Descent"]
+        direction LR
+        E_Base["Evaluate q_base<br/>&rarr; target scope"] --> E_Mem["Lookup member ι in<br/>Scope &amp; Super-types"]
+        E_Mem -->|not found| E_Trans["Fallback:<br/>Transitive Imports"]
+        E_Mem -->|found| E_Wrap["Construct Pair:<br/>(path, resolved_type)"]
+        E_Trans -->|found| E_Wrap
+        E_Trans -->|not found| E_Ext(["<b>External Member</b>"])
+        E_Wrap --> E_Out(["<b>EvaluatedAccess</b><br/>(path, type)"])
+    end
+
+    %% Corsia Call
+    subgraph CallTrack["3. Call(q_sub) — Return Type Extraction"]
+        direction LR
+        C_Eval["Evaluate q_sub with<br/><code>resolve_type = true</code>"] --> C_Lookup["Locate Callable Symbol<br/><code>Symbol::Value(&tau;_ret)</code>"]
+        C_Lookup --> C_Unpack["Extract / Recursively<br/>Evaluate Return Type"]
+        C_Unpack --> C_Out(["<b>Return Type &tau;_ret</b>"])
+    end
+
+    Q -->|Find| F_Start
+    Q -->|Extract| E_Base
+    Q -->|Call| C_Eval
+
+    style FindTrack fill:#eff6ff,stroke:#3b82f6,stroke-width:1.5px,color:#0f172a
+    style ExtractTrack fill:#f0fdf4,stroke:#22c55e,stroke-width:1.5px,color:#0f172a
+    style CallTrack fill:#fae8ff,stroke:#a21caf,stroke-width:1.5px,color:#0f172a
+    style Q fill:#f8fafc,stroke:#64748b,stroke-width:1.5px,color:#0f172a
+    style F_Out fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#0f172a
+    style F_Fail fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#7f1d1d
+    style E_Out fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#0f172a
+    style E_Ext fill:#e0e7ff,stroke:#4338ca,stroke-width:1.5px,color:#0f172a
+    style C_Out fill:#f3e8ff,stroke:#7e22ce,stroke-width:1.5px,color:#0f172a
