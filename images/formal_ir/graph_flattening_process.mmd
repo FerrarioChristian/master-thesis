@@ -1,6 +1,12 @@
+%%{init: {
+    'flowchart': {
+    'nodeSpacing': 30, 
+    'rankSpacing': 20
+  }
+  }}%%
 flowchart LR
     %% Left Side: Hierarchical IR
-    subgraph IR [Phase 1: Hierarchical Component Tree]
+    subgraph IR [Resolved Hierarchical IR]
         direction TB
         subgraph M1 [Module: Core]
             direction TB
@@ -20,21 +26,21 @@ flowchart LR
     IR ==> |Flattening & Edge Generation| DG
 
     %% Right Side: Flat Dependency Graph
-    subgraph DG [Phase 2: Flat Dependency Graph]
+    subgraph DG [Phase 3: Flat Dependency Graph]
         direction TB
-        N_M1((Module: Core))
-        N_S1((Class: Server))
-        N_S2((Class: Config))
-        N_F1((Method: start))
-        N_F2((Method: stop))
-        N_F3((Method: load))
+        N_M1([Module: Core])
+        N_S1([Class: Server])
+        N_S2([Class: Config])
+        N_F1([Method: start])
+        N_F2([Method: stop])
+        N_F3([Method: load])
         
-        %% Structural Edges (Containment)
-        N_S1 -. NestedIn .-> N_M1
-        N_S2 -. NestedIn .-> N_M1
-        N_F1 -. NestedIn .-> N_S1
-        N_F2 -. NestedIn .-> N_S1
-        N_F3 -. NestedIn .-> N_S2
+        %% Structural Edges (Containment & Nesting)
+        N_M1 -.-> N_S1
+        N_M1 -.-> N_S2
+        N_S1 -.-> N_F1
+        N_S1 -.-> N_F2
+        N_S2 -.-> N_F3
         
         %% Behavioral/Semantic Edges
         N_F1 == Instantiates ==> N_S2
