@@ -290,10 +290,16 @@ function pointer syntax.
 \section{Structural Parsers}
 \label{sec:parsers}
 
-Once a node has been classified, a \texttt{try\_parse\_*} function
-invokes the appropriate extractors to populate the IR component. Each
-parser first calls the corresponding classifier; if it returns false,
-the parser returns \texttt{None}.
+Rather than processing nodes in a rigid sequential pipeline, the extraction
+subsystem adopts a coordinator pattern. The heuristic dispatcher
+delegates candidate nodes to the structural parsers (\texttt{try\_parse\_*}).
+Each parser coordinates the extraction of a specific component kind: it first
+invokes the corresponding classifier predicate as a boolean guard to verify
+whether the CST node matches the target role. If the check succeeds, the parser
+coordinates the lower-level atomic extractors to retrieve identifiers, fields,
+signatures, and method bodies, assembling and returning the populated IR
+component. If the classifier returns false, the parser immediately returns
+\texttt{None}, prompting the dispatcher to evaluate the next candidate.
 
 \subsection{Structured Type Parsing}
 
