@@ -3,8 +3,9 @@
 
 This chapter introduces the fundamental concepts and technologies
 that form the basis of the architectural analysis process developed
-in this thesis. It begins by defining \textbf{software dependencies}
-and their representation through \textbf{graphs}, then examines
+in this thesis. It begins by defining \textbf{software dependencies},
+the accumulation of \textbf{technical debt} and \textbf{architectural smells},
+and their formal representation through \textbf{graphs}. It then examines
 traditional \textbf{static analysis} approaches, and finally details
 the parsing mechanisms and the \textbf{Tree-sitter} framework
 utilized in this work.
@@ -88,42 +89,64 @@ reliably predict the runtime state, it focuses exclusively on the
 declared, compile-time architecture. This thesis is strictly scoped
 to the extraction and modeling of \textit{static} dependencies.
 
-\section{Software Quality and Code Smells}
+\section{Technical Debt and Architectural Smells}
+\label{sec:architectural_smells}
 \label{sec:smells}
 
-The concept of a "smell" was popularized by Martin Fowler in the
-context of software engineering \cite{fowler_refactoring_2013} to
-indicate a symptom of possible deterioration in software quality. A
-smell is not necessarily a bug; rather, it is a surface indication
-that usually corresponds to a deeper problem in the system's design
-or maintainability. Left unaddressed, smells accumulate and manifest
-as Technical Debt \cite{cunningham_wycash_1992}, a metaphor
-describing the implied cost of additional rework caused by choosing
-an easy (often flawed) solution now instead of using a better
-approach that would take longer.
+As software systems grow in size and complexity, continuous evolution,
+tight deadlines, and expedient engineering decisions inevitably introduce
+structural compromises. In software engineering, this accumulation of
+suboptimal design choices is formalized through the metaphor of
+\textbf{Technical Debt} \cite{cunningham_wycash_1992, kruchten_technical_2012}.
+Much like financial debt, technical debt incurs ongoing ``interest'' in the
+form of increased maintenance overhead, decreased productivity, and a higher
+propensity for regressions during change operations. If left unmanaged, it
+leads to progressive \textit{architectural decay} (or architectural erosion),
+wherein the actual implementation of the system significantly diverges from
+its intended architecture.
 
-Smells are generally categorized by their scope and impact:
+To identify symptoms of quality degradation, Martin Fowler popularized the
+concept of a ``smell'' \cite{fowler_refactoring_2013}. A smell is not an
+explicit functional error or bug; rather, it represents an observable,
+surface indication of an underlying weakness in the system's design or
+maintainability. In the literature, smells are broadly differentiated by their
+scope and architectural granularity:
+
 \begin{itemize}
-  \item \textbf{Code Smells:} These are localized indicators of poor
-    programming practices, usually confined to a single method or
-    class. Examples include \textit{Long Method}, \textit{Large
-    Class}, or \textit{Long Parameter List}. Because they are local,
-    they can often be detected through simple syntactic analysis and
-    resolved through standard refactoring techniques without
-    affecting the rest of the system.
-  \item \textbf{Architectural Smells:} Unlike code smells,
-    architectural smells \cite{garcia_identifying_2009} are
-    global issues that affect the high-level structure of the
-    software, such as the organization of modules, the interactions
-    between packages, and the overall dependency graph. They are
-    significantly more difficult to identify and correct because they
-    require a holistic understanding of the entire system's
-    architecture. Correcting an architectural smell often involves
-    deep, cross-cutting modifications that can impact multiple
-    components simultaneously.
+  \item \textbf{Code Smells:} These are localized anomalies confined to
+    fine-grained programming constructs, such as an individual method,
+    variable, or class. Typical examples include \textit{Long Method},
+    \textit{Large Class}, or \textit{Long Parameter List}. Because their
+    scope is purely local, code smells can usually be detected through
+    direct syntactic analysis (or Abstract Syntax Tree inspection) and can be
+    remedied via standard, localized refactorings without impacting the
+    overall architecture of the system.
+  \item \textbf{Architectural Smells:} Unlike code smells, architectural
+    smells \cite{garcia_identifying_2009, arcelli_fontana_automatic_2012}
+    represent macroscopic design flaws that affect the global structure of the
+    software. They arise from poorly managed dependencies, suboptimal module
+    organization, or cross-cutting violations of architectural boundaries.
+    Empirical investigations have demonstrated that architectural smells are
+    largely independent of code-level smells
+    \cite{arcelli_fontana_independent_2019}:
+    a codebase may feature pristine, well-formatted classes while simultaneously
+    suffering from severe architectural entanglement. Correcting an
+    architectural smell requires a holistic understanding of the system and
+    demands multi-component refactoring operations.
 \end{itemize}
 
-\section{Dependency Graphs and Architectural Representation}
+Among architectural smells, the most prominent and impactful subset consists of
+\textbf{Dependency Smells}. These flaws originate specifically from improper,
+excessive, or circular dependency patterns between software components (such as
+cyclic couplings or architectural bottlenecks). Because dependency smells
+reside in the relationships and interaction patterns between components rather
+than inside localized source code blocks, they cannot be discovered through
+simple line-by-line or syntactic analysis. Systematically identifying,
+tracking, and mitigating these smells requires modeling the entire codebase as
+a comprehensive, interconnected structure, which is achieved through
+graph-based representations.
+
+\section{Graph-Based Architectural Representation}
 \label{sec:dependency_graphs}
 
 To systematically analyze, navigate, and reason about software
@@ -178,8 +201,9 @@ demonstrating how components interlock.
 \subsection{Dependency Smells}
 Mapping source code to a graph structure provides a powerful
 mathematical foundation to evaluate the system's health and
-automatically detect specific Architectural Smells, often referred
-to as \textbf{Dependency Smells}. The presence of these
+automatically detect specific Architectural Smells introduced in
+Section \ref{sec:architectural_smells}, commonly designated as
+\textbf{Dependency Smells} \cite{fontana_arcan_2017}. The presence of these
 configurations in the graph usually indicates a violation of core
 design principles (such as SOLID, high cohesion, or loose coupling).
 Empirical research has demonstrated that architectural smells are largely
@@ -257,6 +281,14 @@ public class ServiceC {
 \section{Traditional Static Analysis and Tooling}
 \label{sec:traditional_static_analysis}
 
+Static analysis tools extract architectural and semantic information from
+source code without executing it. This section reviews traditional
+compiler-based approaches, their inherent coupling to individual languages,
+and how intermediate representations mitigate this complexity.
+
+\subsection{Compiler Front-Ends and Language Coupling}
+\label{sec:compiler_frontends}
+
 Extracting structural information from source code requires robust
 static analysis tools. Traditionally, this process relies heavily on
 \textbf{compiler front-ends}, such as Clang for C/C++ or Roslyn for
@@ -275,7 +307,8 @@ semantics. However, this deep integration is also their primary
 \textit{limitation}: they are inherently \textbf{coupled to a single
 programming language}, its specific version, and its build ecosystem.
 
-\subsection{Intermediate Representations (IR) and the $M \times N$ Problem}
+\subsection{Intermediate Representations and Decoupling}
+\label{sec:ir_background}
 Developing a cross-language analysis system using language-specific
 tools forces engineers to integrate disparate compiler
 front-ends, each with its own output format, terminology,
@@ -348,6 +381,14 @@ full-scale architectural extraction.
 
 \section{Parsing Technologies and Tree-sitter}
 \label{sec:parsing_and_treesitter}
+
+A static analyzer relies fundamentally on parsing techniques to transform
+raw source text into structured representations. This section examines
+syntax tree paradigms and details the Tree-sitter framework that enables
+uniform parsing in our pipeline.
+
+\subsection{Syntax Trees: AST versus CST}
+\label{sec:ast_vs_cst}
 
 The foundation of any static analysis tool is the \textbf{parser},
 which translates raw source text into a structured tree
@@ -537,6 +578,14 @@ architectural reasons:
 
 \section{Name Resolution and Lexical Scoping}
 \label{sec:name_resolution}
+
+Constructing an accurate architectural dependency graph requires bridging
+the gap between raw syntactic identifiers and their concrete semantic
+declarations. This section examines the mechanisms of lexical scoping and
+the role of programming language type systems in static name resolution.
+
+\subsection{Lexical Scoping and Scope Climbing}
+\label{sec:lexical_scoping}
 
 Extracting the syntax tree is only the first step in constructing a
 dependency graph. The subsequent, and often significantly more

@@ -11,11 +11,11 @@ baseline approaches is essential for positioning the framework
 proposed in this thesis, highlighting how it overcomes existing
 bottlenecks in building language-agnostic dependency graphs.
 
-The chapter is divided into four main sections: approaches based on
-intermediate syntactic representations, formal models for symbol and
-name resolution, static analysis frameworks and architectural tooling,
-and finally, a critical review of the direct precursors to this work
-developed within our research group.
+The chapter is structured into five main sections: approaches based on
+language-agnostic syntactic representations, formal models for symbol and
+name resolution, graph-based code representation and analysis frameworks,
+a critical review of the precursor prototypes developed within our research
+laboratory, and finally, the architectural positioning of this thesis.
 
 \section{Language-Agnostic Abstract Syntax Trees}
 
@@ -99,8 +99,8 @@ was \textbf{Babelfish} \cite{babelfish_uast}, an open-source framework that
 introduced the concept of the \textit{Universal Abstract Syntax Tree (UAST)}.
 Babelfish aimed to parse any programming language into a standardized syntax
 tree annotated with language-independent semantic roles. In a similar vein,
-recent research by Curtis (2022) \cite{curtis_language-agnostic_2022} and
-Schiewe et al. (2022) \cite{schiewe_advancing_2022} focuses on generating
+recent research by Curtis \cite{curtis_language-agnostic_2022} and
+Schiewe et al. \cite{schiewe_advancing_2022} focuses on generating
 language-agnostic ASTs to analyze heterogeneous, cloud-native microservices. In
 distributed systems, microservices frequently employ different programming
 languages, making traditional single-language analyzers insufficient for
@@ -111,7 +111,7 @@ invoking a Java endpoint).
 introduce an explicit multi-stage translation pipeline. Language-specific
 parsers or drivers (often wrapping Tree-sitter or native compiler frontends)
 first produce language-dependent ASTs. Next, dedicated transformation drivers
-map syntax nodes into a serialized, language-agnostic representation---either an
+map syntax nodes into a serialized, language-agnostic representation, either an
 annotated UAST with normalized node types or a standardized intermediate format
 (frequently serialized in JSON or protocol buffers). Finally, generic component
 analyzers traverse this normalized tree to extract architectural abstractions
@@ -147,10 +147,16 @@ dependency resolution, enabling straightforward extension to new languages
 without building custom AST transformers.
 
 \section{Models for Name Resolution}
+\label{sec:models_for_name_resolution}
 
 Once the structural components of a codebase are identified, the
 subsequent challenge is resolving identifiers (e.g., variable usages,
 method calls) to their concrete definitions across complex, nested scopes.
+This section evaluates declarative and automaton-based graph models
+developed in the literature for multi-language name resolution.
+
+\subsection{Path-Based Declarative Resolution: Scope Graphs}
+\label{sec:scope_graphs}
 
 \textbf{Scope Graphs} \cite{zwaan_scope_2023}, developed by
 researchers at TU Delft, provide a foundational, language-parametric
@@ -170,6 +176,9 @@ requires a whole-program analysis, meaning the entire project must be
 parsed and translated into a single, massive graph in memory before
 resolution can begin. They struggle with incremental updates, making
 them computationally prohibitive for very large codebases.
+
+\subsection{Incremental Pushdown Navigation: Stack Graphs}
+\label{sec:stack_graphs}
 
 \textbf{Stack Graphs} \cite{creager_stack_2023} are the direct
 successor to Scope Graphs, developed and heavily utilized by GitHub
@@ -201,19 +210,28 @@ bottlenecks. Conversely, our approach avoids this combinatorial
 explosion by replacing unguided graph traversal with deterministic
 algebraic lookups on a Scope Tree.
 
-\section{Static Analysis Frameworks and Architectural Tooling}
+\section{Graph-Based Code Analysis and Representation Frameworks}
+\label{sec:graph_based_analysis_frameworks}
 
-While the aforementioned tools focus on specific phases of analysis
-(parsing or name resolution), other solutions attempt to provide
-end-to-end multi-language analysis frameworks or dedicated architectural
-assessment.
+While the aforementioned approaches address isolated phases of analysis
+(syntactic parsing or name resolution), broader research has explored
+transforming entire codebases into queryable graph representations to enable
+global static analysis. These methodologies diverge significantly in their
+abstraction granularity and analytical objectives: fine-grained semantic
+graphs capture instruction-level control and data flows for vulnerability
+discovery, whereas coarse-grained dependency graphs model architectural
+components to evaluate structural health and technical debt. Importantly,
+despite their different scopes, both paradigms traditionally share a
+fundamental operational bottleneck: their heavy reliance on language-specific,
+compiler-bound front-ends.
 
-\subsection{Code Property Graphs: Joern}
+\subsection{Fine-Grained Semantic Graphs: Code Property Graphs}
+\label{sec:code_property_graphs}
 
 \textbf{Joern} \cite{joern_docs} is a prominent, open-source
 platform originally developed by Yamaguchi et al. for robust,
 multi-language static analysis, primarily targeting vulnerability
-discovery\cite{yamaguchi_modeling_2014}.
+discovery \cite{yamaguchi_modeling_2014}.
 
 \textit{How it works:} Joern generates a \textit{Code Property Graph
 (CPG)}, a highly complex data structure that unifies the AST, the
@@ -233,12 +251,17 @@ CDT for C/C++) to generate the CPG for different languages. This
 violates the goal of maintaining a lightweight, truly
 language-agnostic extraction pipeline.
 
-\subsection{Architectural Smell Detection: Arcan}
+\subsection{Coarse-Grained Architectural Dependency Analyzers}
+\label{sec:architectural_dependency_analyzers}
 
 \textbf{Arcan} \cite{fontana_arcan_2017} is a state-of-the-art static analysis
 tool developed by Fontana et al. dedicated to the automatic detection of
 architectural smells and the monitoring of architectural decay across software
-releases \cite{sas_investigating_2019}.
+releases \cite{sas_investigating_2019}. Similar coarse-grained component and
+dependency graphs are leveraged in industrial architectural suites (such as
+SonarQube or Structure101) to monitor modularity, but Arcan uniquely formalizes
+the automated detection of architectural smells and architectural
+technical debt.
 
 \textit{How it works:} Arcan analyzes software projects (primarily Java and
 C/C++) by extracting multi-layered dependency graphs that capture structural
@@ -264,15 +287,19 @@ producing faithful dependency graphs across heterogeneous languages, serving as
 an effective frontend for architectural analysis tools like Arcan.
 
 \section{Direct Precursors: Skullian and Entangle}
+\label{sec:precursors}
 
 This thesis represents the culmination and third iteration of a
 continuous research effort initiated by Francesco Refolli and later
 advanced by Luca Teruzzi, building upon two previous prototypes
 which laid the critical foundation for the current solution.
 
-\textbf{Skullian} (Refolli, 2023) \cite{refolli_2023} was the initial
-prototype of this research line, developed by Dr. Francesco Refolli
-(who currently serves as co-advisor for this thesis). It attempted purely
+\subsection{Skullian: Stack-Graph-Based Extraction}
+\label{sec:skullian}
+
+\textbf{Skullian} \cite{refolli_2023} was the initial prototype of
+this research line, developed by Dr. Francesco Refolli (who currently
+serves as co-advisor for this thesis). It attempted purely
 language-agnostic dependency extraction by combining Tree-sitter for
 parsing with Stack Graphs for name resolution.
 
@@ -309,10 +336,13 @@ architectural-level dependency extraction.
     impractical for complex architectural analysis
 \end{itemize}
 
-\textbf{Entangle} (Teruzzi, 2024) \cite{teruzzi_2024} represents the
-second iteration of this research line, developed by Luca Teruzzi
-with the explicit goal of overcoming the critical performance and
-memory scalability barriers encountered by Skullian.
+\subsection{Entangle: Dispatch-Table Component Extraction}
+\label{sec:entangle}
+
+\textbf{Entangle} \cite{teruzzi_2024} represents the second iteration
+of this research line, developed by Luca Teruzzi with the explicit
+goal of overcoming the critical performance and memory scalability
+barriers encountered by Skullian.
 
 \textit{How it works:} To achieve this, Entangle completely abandoned
 Stack Graphs, introducing a custom, highly efficient two-phase name
