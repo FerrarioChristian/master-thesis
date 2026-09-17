@@ -42,13 +42,15 @@ resolved scopes in C++.
 A type reference $\tau$ in the IR models the lifecycle of symbol
 discovery and resolution. To guarantee \textit{Type Safety} between
 the extraction phases and the graph generation, we define $\tau$ as
-an eight-state sum type:
+a ten-state sum type:
 \begin{align*}
   \tau ::=&\ \text{Prim}(\iota_p) \quad (\iota_p \in \mathcal{P}) \\
   &\mid \text{Unresolved}(\pi_{raw}) \\
   &\mid \text{ResolutionQuery}(\mathcal{Q}) \\
   &\mid \text{Resolved}(\pi_{abs}) \\
   &\mid \text{External}(\pi_{ext}) \\
+  &\mid \text{Generic}(\tau_{base}, \vec{\tau}_{args}) \\
+  &\mid \text{TypeVar}(\iota, \vec{\tau}_{bounds}) \\
   &\mid \text{Union}(\vec{\tau}) \\
   &\mid \text{EvaluatedAccess}(\tau_{path}, \tau_{type}) \\
   &\mid \text{Failed}(\pi_{raw})
@@ -76,6 +78,13 @@ Where:
     spatially localized, but belongs to a module or ecosystem outside
     the provided source code (e.g., standard libraries,
     \texttt{java.util.*}, external crates).
+  \item \textbf{Generic($\tau_{base}, \vec{\tau}_{args}$)}: Represents a
+    parameterized or template type application (such as \texttt{Vector<T>} or
+    \texttt{Map<K, V>}). It couples a base type reference $\tau_{base}$
+    with an ordered sequence of argument type references $\vec{\tau}_{args}$.
+  \item \textbf{TypeVar($\iota, \vec{\tau}_{bounds}$)}: Represents a
+    generic type parameter or placeholder variable identified by $\iota \in \mathcal{I}$,
+    constrained by an ordered sequence of upper bounds $\vec{\tau}_{bounds}$.
   \item \textbf{Union($\vec{\tau}$)}: Captures a disjunction of types
     (e.g., \texttt{Union[A, B]} in Python or \texttt{A | B} in
     TypeScript). It maintains a vector of references that must be
@@ -129,12 +138,19 @@ $$\sigma = \langle \vec{p}, \tau_{ret} \rangle$$
 where $\vec{p}$ is the ordered parameter vector and $\tau_{ret}$ is
 the return type reference.
 
+We define the \textbf{Type Parameter} construct ($\theta$) to model generic
+type variables and template parameters declared on structured types or functions:
+$$\theta = \langle \iota, \vec{\tau}_{bounds} \rangle$$
+where $\iota \in \mathcal{I}$ is the parameter identifier and $\vec{\tau}_{bounds}$
+is an ordered vector of type references specifying constraint bounds (such as interface
+implementations, trait bounds, or base class restrictions).
+
 Building on this, to model the hierarchical body of a function, we
 introduce the \textbf{Block} construct ($\mathcal{B}$). A lexical
 block (typically delimited by braces \texttt{\{\}}) isolates an
 internal scope where local variables can be declared. Leveraging the
 same structure as data fields ($f = \langle \iota, \tau, \dots \rangle$), local
-variables are elegantly formalized as a vector of $f$. The block
+variables are formalized as a vector of $f$. The block
 tracks its behavioral dependencies and can recursively nest further
 blocks (as in \texttt{if} or \texttt{while} statements):
 $$\mathcal{B} = \langle \vec{f}_{local}, \vec{\tau}_{calls},
@@ -150,9 +166,10 @@ state, and $\vec{\tau}_{casts}$ captures explicit type casts (e.g.,
 
 Finally, we define the universal \textbf{Function} type
 ($\mathcal{F}$) as a container that binds a qualified name to a
-specific signature, an optional root block modeling its body, a
-boolean flag for constructors, and a vector of annotations:
-$$\mathcal{F} = \langle \pi, \sigma, \mathcal{B}^?,
+specific signature, an ordered vector of generic type parameters,
+an optional root block modeling its body, a boolean flag for
+constructors, and a vector of annotations:
+$$\mathcal{F} = \langle \pi, \sigma, \vec{\theta}, \mathcal{B}^?,
 \mathbb{B}_{ctor}, \vec{\tau}_{ann} \rangle$$
 
 The architectural role of an $\mathcal{F}$ (whether it acts as a
@@ -174,7 +191,7 @@ dependencies over fine-grained signature differentiation.
 Let $\text{Kind} = \{ \text{Class, Struct, Interface, Trait, Enum,
 EnumVariant} \}$ be the domain of structured type categories. A
 structured type is defined by the tuple:
-$$\mathcal{S} = \langle \pi, k \in \text{Kind}, \vec{f},
+$$\mathcal{S} = \langle \pi, k \in \text{Kind}, \vec{\theta}, \vec{f},
 \vec{\mathcal{F}}, \vec{\tau}_{sup}, \vec{\mathcal{S}}_{nest},
 \vec{\tau}_{ann}, \vec{\delta}_{imp} \rangle$$
 where:
@@ -182,6 +199,7 @@ where:
   \item $\pi$: the qualified name identifying the entity within the system.
   \item $k$: the structural category (defined in $\text{Kind}$) that
     preserves the original semantics of the construct.
+  \item $\vec{\theta}$: the vector of generic type parameters declared on the entity.
   \item $\vec{f}$: the vector of fields that compose the state of the entity.
   \item $\vec{\mathcal{F}}$: the vector of functions (assuming the role
     of methods) that define the behavior of the entity.
@@ -207,12 +225,16 @@ public class Car extends Vehicle implements Serializable {
 
 This is modeled in the IR as:
 $\mathcal{S} = \langle \langle\texttt{Car}\rangle, \text{Class},
+[\ ],
 [\texttt{engine}: \tau_{\texttt{Engine}},\ \texttt{speed}: \tau_{\texttt{int}}],
 [\texttt{accelerate}],
 [\tau_{\texttt{Vehicle}},\ \tau_{\texttt{Serializable}}],
 [\ ],
 [\tau_{\texttt{Entity}}],
 [\ ] \rangle$
+
+For a parameterized entity, such as \texttt{class Repository<T, ID extends Serializable>}, the type parameters are explicitly preserved:
+$$\vec{\theta} = [ \langle \texttt{T}, [\ ] \rangle, \langle \texttt{ID}, [\tau_{\texttt{Serializable}}] \rangle ]$$
 
 \subsection{Type Alias ($\mathcal{A}$)}
 A \textbf{Type Alias} allows defining a new name for an existing
@@ -360,8 +382,7 @@ Formally, the analyzer configuration is modeled as a product type:
 \begin{align*}
   \mathcal{K} = \langle&\ \text{ModuleConfig}, \\
   &\ \text{TransitiveImports}, \\
-  &\ \text{SupportImplBlocks}, \\
-  &\ \text{ForwardDeclarations}, \\
+  &\ \text{AssignmentTypeAliases}, \\
   &\ \text{SelfKeyword}, \\
   &\ \text{SelfTypeKeyword}, \\
   &\ \text{ImplicitFirstParamAsSelf}, \\
@@ -427,40 +448,49 @@ through \texttt{\_\_init\_\_.py} files, allowing consumers to access them
 transitively. Conversely, in Java and Rust, imports are file-local by
 default and require explicit re-export declarations (e.g., \texttt{pub use}).
 
-\paragraph{Detached Implementation Blocks (\texttt{SupportImplBlocks})}
-Languages like Rust separate the declaration of data structures
-(\texttt{struct}, \texttt{enum}) from their behavior and trait implementations
-(\texttt{impl} blocks), allowing multiple detached blocks to extend the same
-type across different modules or files. This flag activates the extraction
-of implementation extensions $\mathcal{X}$, which are later flattened into
-the target structured type during resolution.
+\paragraph{Assignment Type Aliases (\texttt{AssignmentTypeAliases})}
+In dynamically typed or scripting languages such as Python, type variables and
+type aliases are introduced through assignment expressions at module or class scope
+(for instance, \texttt{T = TypeVar('T', bound=Entity)} or \texttt{Vector = list[float]}).
+Enabling this flag activates parser heuristics that recognize type variable
+instantiations and subscripted type annotations on assignment targets, promoting them
+into formal type aliases ($\mathcal{A}$) or type parameters ($\theta$) instead of
+discarding them as runtime variable assignments.
 
-\paragraph{Forward Declarations (\texttt{ForwardDeclarations})}
-The compilation model of languages such as C and C++ separates declarations
-in header files (\texttt{.h}/\texttt{.hpp}) from definitions in source files
-(\texttt{.c}/\texttt{.cpp}), admitting forward declarations of types and
-functions across compilation units. In C++, member functions can be declared
-inside a class body and defined out-of-line in separate translation units
-using qualified identifiers (e.g., \texttt{ClassName::method}). Enabling this
-flag activates an out-of-line method linking step that pairs detached method
-implementations with their parent class declarations. This treats forward
-declarations and out-of-line definitions as orthogonal to Rust-style
-implementation blocks.
+\paragraph{Universal Handling of Detached Definitions}
+Multi-language analysis frameworks frequently rely on ad-hoc configuration
+flags to gate the extraction of detached implementation blocks (such as Rust \texttt{impl} blocks)
+or out-of-line method declarations (such as C++ qualified definitions \texttt{ClassName::method}).
+In OmniDeps, these constructs are treated as universal cases within the Intermediate Representation:
+\begin{itemize}
+  \item \textbf{Implementation Blocks ($\mathcal{X}$)}: When the concrete syntax tree contains
+    detached implementation containers (\texttt{impl\_item} in Rust), the extractor emits an
+    $\mathcal{X}$ tuple. For languages where methods are strictly declared within the class body
+    (Java, Python), such syntax nodes do not exist in the grammar, naturally yielding $\vec{\mathcal{X}} = \emptyset$.
+  \item \textbf{Out-of-Line Method Linking}: Function definitions exhibiting multi-part qualified names
+    (such as \texttt{void MyClass::myMethod()} in C++) are recognized during module grouping and linked
+    to their enclosing structured type (or converted into a synthetic $\mathcal{X}$ block). Languages
+    lacking qualified top-level function declarations (C, Java, Python, Rust) naturally yield no qualified
+    free functions, rendering the grouping step a neutral no-op.
+\end{itemize}
+Because both mechanisms are syntactically self-discriminating, they operate uniformly across all
+languages without requiring dedicated flags in $\mathcal{K}$, preserving configuration parameters
+strictly for semantic behaviors that cannot be inferred from local syntax alone.
 
 Table \ref{tab:lang_config_decl} summarizes the declaration and
 linking profiles.
 
 \begin{table}[htbp]
   \centering
-  \begin{tabular}{|l|c|c|c|}
+  \small
+  \begin{tabular}{|l|c|c|}
     \hline
-    \textbf{Language} & \textbf{TransitiveImports} &
-    \textbf{SupportImplBlocks} & \textbf{ForwardDeclarations} \\ \hline
-    \textbf{Java}     & False & False & False \\ \hline
-    \textbf{Rust}     & False & True  & False \\ \hline
-    \textbf{Python}   & True  & False & False \\ \hline
-    \textbf{C++}      & False & False & True  \\ \hline
-    \textbf{C}        & False & False & True  \\ \hline
+    \textbf{Language} & \textbf{TransitiveImports} & \textbf{AssignmentAliases} \\ \hline
+    \textbf{Java}     & False & False \\ \hline
+    \textbf{Rust}     & False & False \\ \hline
+    \textbf{Python}   & True  & True  \\ \hline
+    \textbf{C++}      & False & False \\ \hline
+    \textbf{C}        & False & False \\ \hline
   \end{tabular}
   \caption{Declaration linking and visibility configuration profiles.}
   \label{tab:lang_config_decl}

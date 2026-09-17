@@ -307,17 +307,20 @@ enclosing type.
 \subsection{Output of Phase 2a}
 
 At the end of the query building phase, the Symbol Stack is
-destroyed. All type references in the IR are now either:
+destroyed. Intra-procedural type references in the IR are now:
 \begin{itemize}
   \item \texttt{TypeRef::ResolutionQuery($q$)}: An algebraic
-    expression ready for evaluation.
-  \item \texttt{TypeRef::Primitive($s$)}: Already resolved to a
-    primitive type during extraction.
-  \item \texttt{TypeRef::Failed}: Already marked as unresolvable
-    during extraction.
+    expression ready for global evaluation against the Scope Tree.
+  \item Composite type structures (\texttt{Generic}, \texttt{TypeVar},
+    \texttt{Union}, and \texttt{EvaluatedAccess}) whose constituent
+    references contain substituted queries.
 \end{itemize}
 
-No \texttt{TypeRef::Unresolved} values remain.
+No raw local identifiers remain in executable blocks.
+The classification of built-in primitive types and the identification of
+unresolvable symbols are deliberately deferred to Phase 2b, where they are
+evaluated globally against the Primitive Registry ($\mathcal{P}$) and the
+Scope Tree ($\mathcal{E}$).
 
 \section{Phase 2b: Query Execution ($\rho_{\text{exec}}$)}
 \label{sec:query_execution}
@@ -367,6 +370,10 @@ pattern: all scopes reside in a contiguous flat vector
     module (affects import resolution behavior).
   \item \texttt{language: Option<String>}: The language of the module
     (for configuration lookup).
+  \item \texttt{type\_parameters: Vec<String>}: The formal generic type parameter
+    names declared by the scope (used for type substitution).
+  \item \texttt{is\_phantom: bool}: Indicates whether this scope is a synthetic
+    phantom scope introduced for a generic type parameter.
 \end{itemize}
 
 The \texttt{Symbol} enum distinguishes four kinds of entries:
@@ -456,10 +463,24 @@ from the workspace modules:
     the module scope.
   \item \textbf{Structured Types}:
     \texttt{register\_structured\_type} creates a type scope,
-    registers fields as \texttt{Symbol::Value}, methods as
-    \texttt{Symbol::Value} (with function sub-scopes containing
-    parameters and body declarations), records super-types, and
-    recursively handles nested types.
+    registers fields as \texttt{Symbol::Value}, records super-types, and
+    recursively handles nested types. Methods are registered as callable
+    symbols in the class scope. Constructors and destructors
+    are excluded from the class's dynamic symbol lookup table to prevent
+    shadowing the nominal type of the class during base-class climbing
+    in object-oriented languages (such as C++). Instead, constructors
+    and destructors are registered as independent sub-scopes and linked
+    via structural \texttt{NestedIn} relationships, ensuring that their
+    parameters, bodies, and calls are fully analyzed without contaminating
+    type queries.
+  \item \textbf{Type Parameters and Phantom Scopes}:
+    When registering a generic structured type or function,
+    \texttt{register\_structured\_type} creates synthetic placeholder scopes,
+    termed \textit{Phantom Scopes} ($\Sigma_{\text{phantom}}$), for each generic type
+    parameter $\theta = \langle \iota, \vec{\tau}_{bounds} \rangle$. The parameter
+    identifier $\iota$ is registered as $\texttt{Symbol::Type}(\text{TypeRef::TypeVar}(\iota, \vec{\tau}_{bounds}))$
+    in the enclosing scope, and the phantom scope retains $\vec{\tau}_{bounds}$
+    as its super-types, enabling bound-based member dispatch.
   \item \textbf{Functions and Blocks}: \texttt{register\_function}
     and \texttt{register\_block} create hierarchical scopes for
     parameters, local variable declarations, and nested code blocks
@@ -475,13 +496,20 @@ from the workspace modules:
 
 \subsection{The Execution Context ($\Gamma$)}
 
-Query evaluation operates within an immutable Execution Context:
-$$\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$$
+Query evaluation operates within an Execution Context:
+$$\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K}, \mathcal{M} \rangle$$
 where $\mathcal{E}$ is the Scope Tree, $\mathcal{P}$ is the
-Primitive Registry, and $\mathcal{K}$ is the language
-configuration. The immutability of $\Gamma$ during execution
-guarantees deterministic, side-effect-free evaluation and ensures
-that results are independent of the order in which queries are processed.
+Primitive Registry, $\mathcal{K}$ is the language configuration,
+and $\mathcal{M} : \Sigma \to 2^{\Sigma}$ represents the memoization
+mapping of resolved super-scopes.
+
+Although $\mathcal{M}$ is maintained with interior mutability in the
+implementation for runtime efficiency, query evaluation remains
+referentially transparent and idempotent. Because the structure of
+$\mathcal{E}$ is fixed prior to Phase 2b, the ancestor scope set
+$\mathcal{M}(\Sigma)$ for any scope $\Sigma$ is deterministic and
+strictly independent of the order in which individual type references
+are evaluated.
 
 \subsection{Lexical Scope Climbing}
 \label{sec:lexical_climbing}
@@ -494,6 +522,15 @@ Figure \ref{fig:query_execution_flow} depicts the general evaluation pathways fo
   \caption{Evaluation pathways of resolution queries: parallel execution tracks for lexical climbing ($\texttt{Find}$), structural member descent ($\texttt{Extract}$), and return type extraction ($\texttt{Call}$).}
   \label{fig:query_execution_flow}
 \end{figure}
+
+Cycle detection in lexical climbing and symbol evaluation is tracked
+via composite keys combining the active scope identifier and the symbol name:
+$$k_{\text{query}} = \langle \Sigma, \text{base}(q) \rangle \in \Sigma \times \mathcal{I}$$
+and symbol keys:
+$$k_{\text{sym}} = \langle \Sigma, \iota \rangle \in \Sigma \times \mathcal{I}$$
+This contextual scoping prevents false cycle alarms across homonymous
+symbols in unrelated scopes, while reliably terminating self-referential
+assignments (such as Python $x = x[k]$) and cyclic re-exports.
 
 When evaluating a $\texttt{Find}(\iota)$ query starting from scope
 $\Sigma_0$, the executor implements the following algorithm:
@@ -556,27 +593,55 @@ $\iota \in \mathcal{I}$
 within that scope. If $\iota$ is not found directly, the search proceeds
 through the type's super-type hierarchy.
 
+When evaluating super-type references of a structured type with scope
+$\Sigma_C$, resolution initiates from $\Sigma_C$ itself so that formal
+type parameters (e.g., $T$) declared locally are accessible.
+To prevent combinatorial explosion in multiple inheritance hierarchies
+(such as classes implementing dozens of interfaces, where naive recursive
+exploration incurs factorial complexity $\mathcal{O}(b!)$), the resolver
+employs a memoization sentinel:
+$$\mathcal{M}(\Sigma_C) \leftarrow \emptyset$$
+Before recursively exploring the base types of $\Sigma_C$, an empty set
+is inserted as a sentinel in $\mathcal{M}(\Sigma_C)$. Any re-entrant inquiry
+for $\Sigma_C$'s super-scopes during base-type evaluation immediately
+terminates in $\mathcal{O}(1)$, allowing lexical climbing to ascend
+directly to $\text{parent}(\Sigma_C)$ to find base types without divergence.
+Once direct super-types are evaluated, $\mathcal{M}(\Sigma_C)$ is updated
+with the resolved ancestor scopes. A decoupled visitation set isolates
+super-scope exploration from the caller's query stack. This reduces
+inheritance traversal from exponential complexity to a linear depth-first
+search over ancestor scopes:
+$$\mathcal{O}(|V_{\text{supers}}| + |E_{\text{supers}}|)$$
+guaranteeing instant convergence even on complex multi-interface hierarchies.
+
 The function \texttt{find\_symbol\_in\_scope\_and\_supers} implements
 the following algorithm:
 
 \begin{enumerate}
   \item Search the target scope's symbol table for $\iota$. If found,
     return the resolved symbol.
-  \item For each super-type reference in the scope's \texttt{super\_types} list:
+  \item Retrieve or resolve the ancestor scopes via $\mathcal{M}(\Sigma)$.
+  \item For each ancestor scope in depth-first order:
     \begin{enumerate}
-      \item Evaluate the super-type reference (which may itself be a
-        \texttt{ResolutionQuery}) to obtain a resolved type.
-      \item Locate the super-type's scope in the Scope Tree.
-      \item Recursively search the super-type's scope for $\iota$,
-        including its own super-types.
+      \item Search the ancestor scope's symbol table for $\iota$.
+      \item If found, return the resolved symbol.
     \end{enumerate}
-  \item The traversal follows a \textbf{depth-first, left-to-right}
-    order, which corresponds to the Method Resolution Order (MRO) of
-    most object-oriented languages.
-  \item A \texttt{visited} set (tracking query strings) prevents
-    infinite loops in the presence of diamond inheritance or circular
-    trait dependencies.
+  \item A \texttt{visited} set prevents infinite loops in the presence
+    of diamond inheritance or circular trait dependencies.
 \end{enumerate}
+
+\paragraph{Nominal Projection Fallback for External and Dynamic Members}
+If member $\iota$ is not found within the candidate scopes, their super-type
+hierarchies, or through transitive imports, the executor avoids prematurely
+discarding the reference. When the base receiver evaluates to a known path
+($\text{Resolved}(\pi)$, $\text{External}(\pi)$, or $\text{Unresolved}(\pi)$),
+the executor synthesizes an updated reference by appending $\iota$ to the path:
+$$\pi' = \pi \cup \langle \iota \rangle$$
+producing $\text{EvaluatedAccess}(\text{Base}(\pi), \text{Base}(\pi'))$.
+This conservative fallback guarantees that references to external library members
+(such as \texttt{requests.Session.get}) or unannotated dynamic attributes are
+preserved, enabling Phase 3 to project valid architectural dependency edges toward
+external endpoints.
 
 \subsubsection{Rust Deref Coercion as Inheritance}
 
@@ -611,6 +676,13 @@ name or via a wildcard). If a matching import is found, the import
 path is resolved globally. If the path points to a known workspace
 entity, the resolution succeeds; otherwise, the reference is
 classified as \texttt{External}.
+
+Wildcard imports are handled by removing the terminal \texttt{*} token
+before appending the queried member name $\iota$. Mutual recursion between
+global path lookup and transitive import exploration is prevented by
+maintaining dedicated visitation guards: a path set $V_{\text{global}} \subseteq \Pi$
+for global navigation and a composite set $V_{\text{trans}} \subseteq \Sigma \times \mathcal{I}$
+for module-member re-exports.
 
 This mechanism is controlled per-language: it is enabled for Python
 (where re-exports are idiomatic) and disabled for languages like Java
@@ -847,22 +919,17 @@ invoked.
 \label{sec:union_resolution}
 
 In heterogeneous, multi-language codebases, type references frequently
-exhibit disjunctive or polymorphic characteristics. To faithfully capture
+exhibit disjunctive characteristics. To faithfully capture
 these constructs without premature approximation, the intermediate
 representation introduces the compound type reference:
 $$\text{Union}(\vec{\tau}) = \text{Union}(\langle \tau_1, \tau_2, \ldots, \tau_k \rangle)$$
-Such variants originate during syntactic extraction (Phase 1) in three
+Such variants originate during syntactic extraction (Phase 1) in two
 primary scenarios:
 \begin{enumerate}
   \item \textbf{Explicit Union Annotations}: In dynamically typed languages
     with gradual typing features (such as Python's \texttt{int | str} or
     \texttt{Union[User, Guest]}), an identifier can evaluate to
     multiple distinct types at runtime.
-  \item \textbf{Generic Type Arguments}: For parameterized data types
-    (e.g., \texttt{Result<T, E>} or \texttt{Map<K, V>}), the type extraction
-    heuristics package multiple type parameters into a union reference so that
-    every associated domain entity participates in architectural dependency
-    analysis.
   \item \textbf{Multi-Branch Return Type Inference}: When inferring the return
     type of unannotated functions exhibiting multiple return statements with
     differing types.
@@ -886,8 +953,105 @@ underlying targets (\texttt{flat\_map}). Rather than heuristically selecting a
 single candidate or dropping ambiguous alternatives, OmniDeps emits dependency
 edges toward all resolved targets present within the union. This conservative
 strategy ensures that all potential behavioral and structural couplings induced
-by polymorphic or generic usage are faithfully represented in the architectural
+by polymorphic type choices are faithfully represented in the architectural
 dependency graph.
+
+\subsection{Parametric Polymorphism and Generic Resolution}
+\label{sec:generics_resolution}
+
+Parametric polymorphism (generics in Java, Rust, and Python, or templates
+in C++) introduces an orthogonal dimension to static symbol resolution:
+it decouples the structural definition of an algorithmic abstraction from
+the concrete type arguments supplied at instantiation sites.
+
+To formalize parametric polymorphism without sacrificing language agnosticism,
+the Intermediate Representation distinguishes between generic application and
+type parameter declarations:
+\begin{align*}
+  \tau_{\text{app}} &= \text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}}) \\
+  \tau_{\text{var}} &= \text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})
+\end{align*}
+
+\subsubsection{Phantom Scopes in the Scope Tree}
+
+When building the Scope Tree during Phase 2a, registering a generic structured
+type or function allocates synthetic scopes termed \textit{Phantom Scopes}
+($\Sigma_{\text{phantom}}$) within the arena for each declared type parameter
+$\theta = \langle \iota, \vec{\tau}_{\text{bounds}} \rangle$. A phantom scope
+is characterized by:
+\begin{enumerate}
+  \item $\text{is\_phantom} = \text{true}$, marking it as an ephemeral lexical
+    placeholder that does not generate independent vertices during graph construction;
+  \item $\text{name} = \langle \iota \rangle$, binding the parameter identifier;
+  \item $\text{super\_types} = \vec{\tau}_{\text{bounds}}$, recording the upper
+    bound constraints (e.g., interface implementations or trait bounds).
+\end{enumerate}
+
+Within the enclosing lexical scope of the generic declaration, $\iota$ is
+defined as $\texttt{Symbol::Type}(\text{TypeRef::TypeVar}(\iota, \vec{\tau}_{\text{bounds}}))$.
+Consequently, method signatures and local variable declarations inside the
+generic entity can refer to $\iota$ as a valid type.
+
+\subsubsection{Two-Phase Bound Lifecycle}
+
+Constraint bounds undergo a two-phase evaluation lifecycle:
+\begin{enumerate}
+  \item \textbf{Lexical Binding (Phase 2a)}: The bounds $\vec{\tau}_{\text{bounds}}$
+    are recorded as raw or locally substituted type references.
+  \item \textbf{Bound Evaluation (Phase 2b)}: During query execution,
+    $\texttt{evaluate\_typeref\_inner}$ evaluates each bound $\tau \in \vec{\tau}_{\text{bounds}}$
+    against the Scope Tree. If a bound resolves to a known structured type
+    ($\text{Resolved}(\pi)$ or $\text{External}(\pi)$), the phantom scope
+    inherits the member suite of that bound.
+\end{enumerate}
+
+\subsubsection{Candidate Scopes and Multi-Bound Dispatch}
+
+When an expression accesses a member on a target whose evaluated type is
+$\text{TypeRef::TypeVar}(\iota, \vec{\tau}_{\text{bounds}})$, member lookup
+cannot be restricted to a single nominal scope. Instead, the function
+\texttt{find\_candidate\_scopes\_for\_type} computes a set of candidate scopes:
+$$\text{scopes}(\text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})) =
+\bigcup_{\tau_b \in \vec{\tau}_{\text{bounds}}} \text{scopes}(\tau_b)$$
+This multi-scope dispatch allows variables constrained by compound bounds
+(for instance, $T: \text{Display} + \text{Clone}$ in Rust) to resolve members
+originating from any of the specified traits. If any candidate scope provides
+the queried member, resolution succeeds.
+
+\subsubsection{Type Parameter Substitution ($\sigma$)}
+
+When a generic type application $\text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}})$
+is accessed (e.g., calling a method on an instance of \texttt{Repository<User>}),
+the receiver scope is determined by evaluating $\tau_{\text{base}}$ to locate
+the underlying generic definition $\mathcal{S}$ with formal parameters
+$\vec{\theta} = \langle \theta_1, \ldots, \theta_k \rangle$.
+
+Upon retrieving a member whose signature involves formal type parameters,
+the engine constructs a substitution mapping:
+$$\sigma = [ \theta_1.\iota \mapsto \tau_{\text{args}}[1], \ldots, \theta_k.\iota \mapsto \tau_{\text{args}}[k] ]$$
+The helper function \texttt{instantiate\_generic\_member\_type} applies $\sigma$
+recursively across the member's return type or field type:
+\begin{align*}
+  \sigma(\text{TypeVar}(\iota, \_)) &=
+  \begin{cases}
+    \tau_{\text{arg}} & \text{if } (\iota \mapsto \tau_{\text{arg}}) \in \sigma \\
+    \text{TypeVar}(\iota, \_) & \text{otherwise}
+  \end{cases} \\
+  \sigma(\text{Generic}(\tau_b, \vec{\tau}_a)) &= \text{Generic}(\sigma(\tau_b), \vec{\sigma}(\vec{\tau}_a)) \\
+  \sigma(\text{Union}(\vec{\tau})) &= \text{Union}(\vec{\sigma}(\vec{\tau}))
+\end{align*}
+Thus, if \texttt{Repository<T>} defines \texttt{find(id: ID) -> T}, evaluating
+\texttt{repo.find(1)} on a \texttt{Repository<User>} substitutes $T \mapsto \text{User}$,
+resolving the invocation's return type directly to \texttt{User}.
+
+\subsubsection{Chained Access Propagation}
+
+When evaluating multi-segment dot-accesses (e.g., \texttt{user.profile.settings}),
+the intermediate structural transitions are preserved using
+$\text{TypeRef::EvaluatedAccess}(\tau_{\text{path}}, \tau_{\text{type}})$.
+This composite reference retains both the evaluated path and the resolved
+structural type, enabling Phase 3 to emit dependency edges for every
+intermediate component participating in the access chain.
 
 \section{Implementation Block Flattening}
 \label{sec:impl_flattening}
@@ -1005,11 +1169,6 @@ their effects.
     \textbf{Parameter} & \textbf{Type} & \textbf{Effect on Resolution} \\ \hline
     \texttt{transitive\_imports} & \texttt{bool} & Enables following
     import chains through intermediate modules (Python). \\ \hline
-    \texttt{support\_impl\_blocks} & \texttt{bool} & Activates
-    flattening of \texttt{ImplBlock} methods into target type scopes
-    (Rust). \\ \hline
-    \texttt{forward\_declarations} & \texttt{bool} & Enables
-    out-of-line method linking before resolution (C++). \\ \hline
     \texttt{self\_keyword} & \texttt{Option<String>} & Injects a
     self/this binding pointing to the enclosing type in method scopes. \\ \hline
     \texttt{self\_type\_keyword} & \texttt{Option<String>} & Injects
@@ -1019,6 +1178,8 @@ their effects.
     (Python). \\ \hline
     \texttt{extract\_dynamic\_fields} & \texttt{bool} & Enables
     extraction of dynamically assigned instance fields (Python). \\ \hline
+    \texttt{assignment\_type\_aliases} & \texttt{bool} & Enables
+    extraction of assignment-based type definitions and TypeVar declarations (Python). \\ \hline
     \texttt{deref\_coercion\_target\_name} & \texttt{Option<String>}
     & Identifies the target alias in \texttt{Deref} trait
     implementations (Rust). \\ \hline
@@ -1038,14 +1199,13 @@ values for each supported language.
     \textbf{Parameter} & \textbf{Python} & \textbf{Rust} &
     \textbf{Java} & \textbf{C++} & \textbf{C} \\ \hline
     \texttt{transitive\_imports} & \checkmark & & & & \\ \hline
-    \texttt{support\_impl\_blocks} & & \checkmark & & & \\ \hline
-    \texttt{forward\_declarations} & & & & \checkmark & \checkmark \\ \hline
     \texttt{self\_keyword} & --- & \texttt{self} & \texttt{this} &
     \texttt{this} & --- \\ \hline
     \texttt{self\_type\_keyword} & --- & \texttt{Self} & --- & --- &
     --- \\ \hline
     \texttt{implicit\_first\_param\_as\_self} & \checkmark & & & & \\ \hline
     \texttt{extract\_dynamic\_fields} & \checkmark & & & & \\ \hline
+    \texttt{assignment\_type\_aliases} & \checkmark & & & & \\ \hline
     \texttt{deref\_coercion\_target\_name} & --- & \texttt{Target} &
     --- & --- & --- \\ \hline
   \end{tabular}
@@ -1057,3 +1217,81 @@ values for each supported language.
 Through this configuration map $\mathcal{K}: \mathcal{L} \to
 \mathcal{C}_{params}$, the resolution engine specializes its behavior
 for each language while maintaining a strictly language-agnostic core algorithm.
+
+\section{Termination and Convergence Guarantees}
+\label{sec:resolution_termination}
+
+A critical requirement for static architectural analysis on uncurated,
+large-scale codebases is guaranteed termination and convergence. Real-world
+software projects frequently exhibit cyclic patterns that risk causing infinite
+recursion or combinatorial explosion during name resolution. These patterns
+include circular or diamond inheritance hierarchies, mutual module re-exports,
+self-referential type assignments, and wildcard package imports.
+
+Because any target workspace produces a finite set of extracted modules
+$\vec{\mathcal{M}}$, the resulting Scope Tree $\mathcal{E}$ comprises a finite
+number of scopes ($|\mathcal{E}| = N < \infty$) and a finite collection of
+declared symbols ($|\text{Sym}| = S < \infty$). Under the execution operator
+$\rho_{\text{exec}}$, query evaluation $\texttt{evaluate\_query}(q, \Sigma)$
+traverses this discrete structure. To ensure that every resolution path
+terminates deterministically in a finite number of steps, the resolution engine
+enforces convergence through four structural mechanisms:
+
+\begin{enumerate}
+  \item \textbf{Monotonic Lexical Climbing}: When resolving an unqualified
+    identifier query $q = \text{Id}(\iota)$, the engine searches the current
+    lexical scope $\Sigma$. If the identifier is not found locally, resolution
+    delegates recursively to $\text{parent}(\Sigma)$. This climbing traversal
+    is strictly monotonic with respect to scope depth: each ascending step
+    decreases depth by one ($\text{depth}(\text{parent}(\Sigma)) = \text{depth}(\Sigma) - 1$).
+    Because the Scope Tree has finite depth and terminates at the unique root
+    scope $\Sigma_{\text{root}}$ (where $\text{parent}(\Sigma_{\text{root}}) = \texttt{None}$),
+    lexical climbing is bounded by at most $\text{depth}(\Sigma)$ steps, either
+    locating the target symbol or safely exhausting the ancestor chain.
+
+  \item \textbf{Inheritance Traversal and Sentinel Memoization}: Querying
+    members of structured types requires searching ancestor scopes along the
+    class inheritance graph. This traversal introduces two distinct hazards:
+    circular inheritance (such as class $A$ extending $B$ while $B$ extends $A$)
+    and exponential path re-evaluation in diamond or multiple-inheritance
+    hierarchies. OmniDeps addresses both hazards through the super-scope
+    memoization table $\mathcal{M}$ in the execution context $\Gamma$. When
+    $\texttt{resolve\_super\_scopes}$ begins inspecting a class scope $\Sigma_C$,
+    it immediately records an empty sentinel entry $\mathcal{M}(\Sigma_C) \leftarrow \emptyset$
+    prior to recursively evaluating any base types. If a recursive descent
+    re-enters $\Sigma_C$, the sentinel is encountered immediately, yielding an
+    empty set and breaking the cycle. Once all direct and transitive ancestors
+    are resolved, the complete set of scopes is committed to $\mathcal{M}(\Sigma_C)$.
+    Subsequent member queries for $\Sigma_C$ retrieve the cached set in $\mathcal{O}(1)$
+    time. Furthermore, the active traversal maintains a visited set
+    $V_{\text{scopes}} \subseteq \Sigma$, ensuring that each ancestor scope in
+    the directed acyclic graph is visited at most once.
+
+  \item \textbf{Scope-Aware Cycle Guards for Aliases and Queries}: When resolving
+    type alias chains, dynamic field assignments, or re-exports, the engine
+    follows references across intermediate definitions. To prevent infinite loops
+    caused by self-referential assignments (such as $x = x[0]$ in dynamic scripts)
+    or mutually recursive aliases, the engine maintains visited tracking sets.
+    These cycle guards are indexed by composite, scope-aware keys: $k_{\text{sym}} =
+    \langle \Sigma, \iota \rangle$ for symbol alias resolution and $k_{\text{query}} =
+    \langle \Sigma, \text{base}(q) \rangle$ for query evaluation. Because the
+    universe of valid scopes and symbol identifiers across the workspace is finite,
+    the visited set monotonically expands with each dereference step. If a key is
+    encountered that already exists in the set, the engine halts that branch
+    immediately and yields a failed resolution ($\texttt{None}$ or $\texttt{TypeRef::Failed}$).
+
+  \item \textbf{Transitive and Wildcard Import Decoupling}: In languages supporting
+    transitive imports or wildcard package re-exports, resolving a symbol across
+    modules risks oscillating indefinitely between global namespace lookups and
+    transitive module traversals. To prevent mutual recursion, the engine strips
+    terminal wildcard tokens before recursive lookup and partitions visitation
+    tracking into separate sets: $V_{\text{global}}$ for workspace-level module
+    resolution and $V_{\text{trans}}$ for transitive import chains. This separation
+    ensures that each module boundary is crossed at most once per import branch.
+\end{enumerate}
+
+Through these monotonic reductions and finite-state tracking mechanisms, every
+execution branch in $\texttt{evaluate\_query}$ either converges to a resolved
+terminal reference or terminates upon cycle detection within finite steps.
+This design guarantees both algorithmic stability and predictable execution
+times across heterogeneous codebases.

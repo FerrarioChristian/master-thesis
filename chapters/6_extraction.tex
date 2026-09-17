@@ -168,8 +168,8 @@ functions in a fixed priority order, returning the first successful match:
   \item \textbf{Functions / Methods}: Free functions, method
     declarations, constructors, and Python
     \texttt{decorated\_definition} wrappers.
-  \item \textbf{Implementation Blocks}: Rust \texttt{impl} items
-    (only if \texttt{support\_impl\_blocks} is enabled).
+  \item \textbf{Implementation Blocks}: Detached implementation blocks
+    (e.g., Rust \texttt{impl} items).
   \item \textbf{Type Aliases}: \texttt{typedef},
     \texttt{type\_alias\_declaration}, \texttt{type\_item}, and
     related node kinds.
@@ -380,7 +380,25 @@ The \texttt{try\_parse\_impl\_block} function extracts:
 
 \subsection{Type Alias and Free Variable Parsing}
 
-Type aliases are extracted with their name and target type reference.
+Type aliases are extracted with their declared name and target type reference.
+For languages supporting explicit alias syntax (such as Rust \texttt{type X = Y;}
+or C++ \texttt{using X = Y;}), the parser extracts the alias name and target
+using \texttt{extract\_type\_ref}.
+
+In dynamically typed languages such as Python, type variables and aliases
+are created via value assignments at module or class scope. When the
+\texttt{AssignmentTypeAliases} feature flag is enabled in the language
+configuration, the parser detects assignment statements where the right-hand
+side denotes a type constructor:
+\begin{itemize}
+  \item \textbf{Type Variable Factories}: Calls to \texttt{TypeVar('T', bound=...)}
+    are captured as a type alias mapping \texttt{T} to a
+    $\text{TypeRef::TypeVar}(\texttt{"T"}, \vec{\tau}_{bounds})$.
+  \item \textbf{Generic Subscriptions}: Subscript expressions such as
+    \texttt{Vector = List[float]} are parsed as a type alias whose target is a
+    $\text{TypeRef::Generic}$.
+\end{itemize}
+
 Free variables (global constants, static items) are extracted as
 \texttt{Field} entries with their name, type reference, and annotations.
 
@@ -398,11 +416,13 @@ functions that interact directly with CST nodes.
     using the node's byte range. This is the fundamental bridge
     between the positional CST and the textual content of the source code.
   \item \textbf{\texttt{split\_qualified\_name}}: Normalizes a
-    qualified name string (e.g., \texttt{std::vec::Vec},
+    qualified name string (e.g., \texttt{std::vector},
     \texttt{java.util.List}) into a \texttt{QualifiedName} vector by
     splitting on separator characters (\texttt{:}, \texttt{.}, and
     whitespace). The \texttt{->} operator is normalized to \texttt{.}
-    before splitting, and generic type arguments (\texttt{<...>}) are stripped.
+    before splitting. When called on plain type text, any trailing generic
+    parameter bracket (\texttt{<...>}) is stripped to isolate the nominal base path,
+    while structured generic decomposition is handled beforehand by \texttt{extract\_type\_ref}.
 \end{itemize}
 
 \subsection{Identifier Extraction}
@@ -411,10 +431,14 @@ functions that interact directly with CST nodes.
   \item \textbf{\texttt{extract\_identifier}}: Extracts the simple
     name of a component by trying a chain of named fields
     (\texttt{name}, \texttt{type\_identifier}, \texttt{identifier}),
-    with a fallback to the \texttt{declarator} field for C/C++
+    with a fallback to the \texttt{declarator} field for C and C++
     declarations. The declarator fallback recursively descends nested
     declarator nodes (\texttt{pointer\_declarator},
-    \texttt{function\_declarator}) to reach the base identifier.
+    \texttt{function\_declarator}, \texttt{reference\_declarator}) to
+    reach the base identifier. The declarator unwrapping accepts
+    both normal identifiers and \texttt{destructor\_name} nodes, preserving
+    the \texttt{\textasciitilde} prefix for C++ destructors (e.g., \texttt{\textasciitilde Server})
+    to distinguish them from constructors and prevent naming collisions.
   \item \textbf{\texttt{extract\_qualified\_name}}: Extracts
     multi-part names by first trying named fields and applying
     \texttt{split\_qualified\_name}, then falling back to collecting
@@ -429,27 +453,43 @@ The function \texttt{extract\_type\_ref} converts a CST node into a
 specific strategies:
 
 \begin{enumerate}
-  \item \textbf{Direct identifiers}: If the node itself is an
-    \texttt{identifier}, \texttt{type\_identifier},
-    \texttt{scoped\_identifier}, \texttt{field\_access}, or
-    \texttt{attribute}, its text is extracted directly and split into
-    a qualified name. This is the most reliable path.
+  \item \textbf{Type wrapper unwrapping}: If the node is a single-child
+    generic wrapper (such as a Python \texttt{type} node), extraction
+    recurses directly into its inner child.
   \item \textbf{Union types}: If the node represents a union type
     (\texttt{union\_type}, a binary operator with \texttt{|}, or a
     \texttt{Union[...]} annotation), it is recursively decomposed
     into \texttt{TypeRef::Union($\vec{\tau}$)} to represent type disjunctions.
+  \item \textbf{Generic and template types}: The extractor invokes
+    \texttt{try\_extract\_generic} to inspect AST nodes representing
+    parametric types across languages:
+    \begin{itemize}
+      \item Tree-sitter node kinds \texttt{template\_type} (C++),
+        \texttt{generic\_type} (Java, Rust), and \texttt{subscript} (Python \texttt{List[T]});
+      \item Textual fallback \texttt{parse\_generic\_from\_text} for bracketed
+        type expressions embedded in declarator text (such as \texttt{std::vector<int>}).
+    \end{itemize}
+    The base container is extracted recursively as $\tau_{base}$, and each
+    parameter is extracted as $\tau_i \in \vec{\tau}_{args}$, constructing
+    $\text{TypeRef::Generic}(\tau_{base}, \vec{\tau}_{args})$.
+  \item \textbf{Direct identifiers}: If the node itself is an
+    \texttt{identifier}, \texttt{type\_identifier},
+    \texttt{scoped\_identifier}, \texttt{scoped\_type\_identifier},
+    \texttt{field\_access}, \texttt{field\_expression}, or
+    \texttt{attribute}, its text is extracted directly and split into
+    a qualified name.
   \item \textbf{Named fields}: The node's children are inspected for
     named fields \texttt{type}, \texttt{return\_type},
     \texttt{field\_type}, \texttt{value\_type}, and \texttt{right}.
-    If found, the field's text is split into a qualified name.
+    If found, the field's node is recursively processed with \texttt{extract\_type\_ref}.
   \item \textbf{Child identifier search}: All children are iterated,
     looking for nodes of kind \texttt{type\_identifier},
     \texttt{primitive\_type}, \texttt{identifier}, or \texttt{type}.
     A guard rejects children whose text contains whitespace, to avoid
     capturing complex expressions.
   \item \textbf{Textual fallback}: The node text is scanned for
-    \texttt{:} or \texttt{->} characters, and everything after the
-    delimiter is taken as the type name.
+    \texttt{:} or \texttt{->} characters, and the substring after the
+    delimiter is parsed as a qualified name.
   \item \textbf{Failure}: If all strategies fail,
     \texttt{TypeRef::Failed(vec![])} is returned.
 \end{enumerate}
@@ -473,6 +513,37 @@ where the parameter has no type annotation), the extractor recognizes
 that the fallback captured the parameter name instead of a type, and
 replaces the result with \texttt{TypeRef::Failed}. This prevents
 untyped parameters from generating spurious dependencies.
+
+\subsection{Type Parameter and Constraint Extraction}
+
+Generic type parameters and template variables are extracted by
+\texttt{extract\_type\_parameters}, constructing an ordered vector of
+$\text{TypeParameter}$ tuples ($\theta = \langle \iota, \vec{\tau}_{bounds} \rangle$).
+The extraction pipeline operates in four coordinated steps:
+
+\begin{enumerate}
+  \item \textbf{Container Discovery}: The extractor searches for type parameter
+    lists under named fields (\texttt{type\_parameters}, \texttt{parameters}) or child
+    node kinds (\texttt{type\_parameter\_list}, \texttt{template\_parameter\_list}).
+    For C++, if a class or function definition is enclosed within a
+    \texttt{template\_declaration} node, the template parameters are harvested from the
+    parent container.
+  \item \textbf{Parameter and Inline Bound Extraction}: Each child parameter node
+    is decomposed by \texttt{extract\_single\_type\_parameter}. The parameter identifier
+    $\iota$ is extracted from the \texttt{name} field or inner \texttt{type\_identifier}.
+    Any immediate bounds (such as Java \texttt{T extends Serializable} or Rust
+    \texttt{T: Display + Clone}) are parsed into constraint type references
+    $\vec{\tau}_{bounds}$.
+  \item \textbf{Trailing Constraint Clauses}: For languages that separate bounds
+    from the parameter list (such as Rust \texttt{where} clauses),
+    \texttt{merge\_clause\_bounds} traverses the \texttt{where\_clause} node, matching
+    each \texttt{where\_predicate} target against the extracted parameters and appending
+    the specified trait bounds to the corresponding $\vec{\tau}_{bounds}$.
+  \item \textbf{Generic Base Class Extraction}: In Python, where type parameters
+    on classes are declared by inheriting from \texttt{Generic[T, U]},
+    \texttt{extract\_generic\_base\_parameters} inspects the superclass list to extract
+    the type variables as formal type parameters on the structured type.
+\end{enumerate}
 
 \subsection{Super-Type Extraction}
 
@@ -774,8 +845,8 @@ MyClass::myMethod() \{ ... \}}). Since extraction processes files
 independently, these definitions are initially extracted as free
 functions with multi-part qualified names.
 
-When the \texttt{forward\_declarations} flag is enabled, the function
-\texttt{link\_out\_of\_line\_methods} performs a post-extraction linking step:
+During module grouping, the function \texttt{link\_out\_of\_line\_methods}
+performs a universal post-extraction linking step:
 
 \begin{enumerate}
   \item Free functions with qualified names (names containing more

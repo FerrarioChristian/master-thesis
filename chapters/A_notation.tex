@@ -12,15 +12,17 @@ To ensure formal rigor, consistency, and clarity of exposition across chapters, 
 \begin{table}[htpb]
   \centering
   \small
+  \begin{adjustbox}{max width=\textwidth}
   \begin{tabular}{|l|l|l|p{5.5cm}|}
     \hline
     \textbf{Conceptual Family} & \textbf{Typographic Style} & \textbf{Primary Symbols} & \textbf{Semantics and Scope} \\ \hline
     \textbf{Analysis Pipeline} & Lowercase Greek & $\phi, \varepsilon, \rho, \gamma$ & Operational transformations and pipeline composition ($\phi = \gamma \circ \rho \circ \varepsilon$). \\ \hline
     \textbf{IR Architecture} & Uppercase Calligraphic & $\mathcal{M}, \mathcal{S}, \mathcal{F}, \mathcal{A}, \mathcal{X}, \mathcal{B}, \mathcal{C}, \mathcal{Q}$ & Structural data model components, containers, and query algebra domain. \\ \hline
-    \textbf{Resolution Contexts} & Uppercase Greek \& Calligraphic & $\Gamma, \Delta, \Sigma$ \newline $\mathcal{E}, \mathcal{P}, \mathcal{K}$ & Scoping environments ($\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$), symbol stack ($\Delta$), and lexical scopes ($\Sigma$). \\ \hline
-    \textbf{Semantic Types} & Lowercase Greek & $\iota, \pi, \tau, \sigma, \delta$ & Atomic type references ($\tau$), identifiers ($\iota$), qualified paths ($\pi$), signatures ($\sigma$), and imports ($\delta$). \\ \hline
+    \textbf{Resolution Contexts} & Uppercase Greek \& Calligraphic & $\Gamma, \Delta, \Sigma$ \newline $\mathcal{E}, \mathcal{P}, \mathcal{K}, \mathcal{M}$ & Scoping environments ($\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K}, \mathcal{M} \rangle$), symbol stack ($\Delta$), and lexical scopes ($\Sigma$). \\ \hline
+    \textbf{Semantic Types} & Lowercase Greek & $\iota, \pi, \tau, \sigma, \delta, \theta$ & Atomic type references ($\tau$), identifiers ($\iota$), qualified paths ($\pi$), signatures ($\sigma$), imports ($\delta$), and type parameters ($\theta$). \\ \hline
     \textbf{Structural Members} & Lowercase Latin & $f, p, v, q, k$ & Concrete member instances: fields ($f$), parameters ($p$), variables ($v$), queries ($q$), and type kinds ($k$). \\ \hline
   \end{tabular}
+  \end{adjustbox}
   \caption{Typographic and notational taxonomy adopted across the formal model.}
   \label{tab:notational_styles}
 \end{table}
@@ -57,15 +59,20 @@ The following definitions catalog the symbols that constitute the formal Interme
     \{ \langle \iota_1, \dots, \iota_n \rangle \mid \iota_j \in \mathcal{I}, n \ge 1 \}$,
     where each $\pi \in \Pi$ uniquely identifies a component's absolute path.
   \item $\tau$ (\textbf{Type Reference}): An abstract reference to a type,
-    represented by an eight-state sum type modeling its discovery lifecycle:
+    represented by a ten-state sum type modeling its discovery lifecycle:
     \texttt{Prim}($\iota_p$) with $\iota_p \in \mathcal{P}$ (primitive keyword),
     \texttt{Unresolved}($\pi$) (raw path extracted from source),
     \texttt{ResolutionQuery}($q$) (algebraic navigation intent),
     \texttt{Resolved}($\pi$) (verified absolute path in the codebase),
     \texttt{External}($\pi$) (path resolved via external dependency),
-    \texttt{Union}($\vec{\tau}$) (type disjunction or generic type arguments),
+    \texttt{Generic}($\tau_{base}, \vec{\tau}_{args}$) (parameterized type application),
+    \texttt{TypeVar}($\iota, \vec{\tau}_{bounds}$) (generic type parameter placeholder),
+    \texttt{Union}($\vec{\tau}$) (disjunctive type),
     \texttt{EvaluatedAccess}($\tau_{path}, \tau_{type}$) (preserves queried path and resolved target), or
     \texttt{Failed}($\pi$) (unresolved reference).
+  \item $\theta$ (\textbf{Type Parameter}): A formal generic parameter
+    $\langle \iota, \vec{\tau}_{bounds} \rangle$ declaring identifier $\iota$
+    and constraint bounds $\vec{\tau}_{bounds}$.
   \item $\delta$ (\textbf{Import Directive}): A dependency declaration
     $\langle \pi_{path}, \iota_{alias}^?, \mathbb{B}_{wildcard} \rangle$
     specifying an imported path, an optional local alias, and a wildcard flag.
@@ -87,16 +94,16 @@ The following definitions catalog the symbols that constitute the formal Interme
     $\langle \vec{f}_{local}, \vec{\tau}_{calls}, \vec{\tau}_{inst},
     \vec{\tau}_{accesses}, \vec{\tau}_{casts}, \vec{\mathcal{B}}_{sub} \rangle$.
   \item $\mathcal{F}$ (\textbf{Function}): A universal functional component
-    $\langle \pi, \sigma, \mathcal{B}^?, \mathbb{B}_{ctor}, \vec{\tau}_{ann} \rangle$,
-    binding a qualified name to a signature, an optional body block, a
-    constructor flag, and annotations.
+    $\langle \pi, \sigma, \vec{\theta}, \mathcal{B}^?, \mathbb{B}_{ctor}, \vec{\tau}_{ann} \rangle$,
+    binding a qualified name to a signature, an ordered vector of type parameters,
+    an optional body block, a constructor flag, and annotations.
 \end{itemize}
 
 \subsection{Architectural Entities}
 \begin{itemize}
   \item $\mathcal{S}$ (\textbf{Structured Type}): The abstraction for classes,
     structs, interfaces, traits, and enums, defined by
-    $\langle \pi, k, \vec{f}, \vec{\mathcal{F}}, \vec{\tau}_{sup}, \vec{\mathcal{S}}_{nest}, \vec{\tau}_{ann}, \vec{\delta}_{imp} \rangle$
+    $\langle \pi, k, \vec{\theta}, \vec{f}, \vec{\mathcal{F}}, \vec{\tau}_{sup}, \vec{\mathcal{S}}_{nest}, \vec{\tau}_{ann}, \vec{\delta}_{imp} \rangle$
     where $k \in \{ \text{Class}, \text{Struct}, \text{Interface}, \text{Trait}, \text{Enum}, \text{EnumVariant} \}$.
   \item $\mathcal{A}$ (\textbf{Alias}): A type alias mapping a qualified
     name to an existing target type reference: $\langle \pi, \tau_{target} \rangle$.
@@ -126,9 +133,9 @@ The following definitions catalog the symbols that constitute the formal Interme
   \item $\mathcal{P}$ (\textbf{Primitive Registry}): The language-specific table
     of built-in primitive type keywords.
   \item $\mathcal{K}$ (\textbf{Language Configuration}): The configuration tuple
-    governing language-specific semantic features (receiver keywords, impl blocks, forward declarations).
-  \item $\Gamma$ (\textbf{Execution Context}): The immutable evaluation context
-    $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$ used to resolve queries.
+    governing language-specific semantic features (receiver keywords, transitive imports, type alias conventions).
+  \item $\Gamma$ (\textbf{Execution Context}): The evaluation context
+    $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K}, \mathcal{M} \rangle$ used to resolve queries, including the super-scope memoization mapping $\mathcal{M}$.
   \item $\mathcal{G}$ (\textbf{Dependency Graph}): The directed graph $\mathcal{G} = (V, E)$
     composed of component vertices $V$ and typed dependency edges $E$.
 \end{itemize}
@@ -143,7 +150,7 @@ The following definitions catalog the symbols that constitute the formal Interme
     $\rho : \vec{\mathcal{M}} \to \vec{\mathcal{M}}$ that resolves symbolic type references into semantic pointers ($\rho = \rho_{\text{exec}} \circ \rho_{\text{build}}$).
     \begin{itemize}
       \item $\rho_{\text{build}}$ (\textbf{Query Building}): Traverses the IR with the Symbol Stack $\Delta$, transforming unresolved paths into algebraic queries $q \in \mathcal{Q}$.
-      \item $\rho_{\text{exec}}$ (\textbf{Query Execution}): Evaluates queries $q$ against the Execution Context $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$.
+      \item $\rho_{\text{exec}}$ (\textbf{Query Execution}): Evaluates queries $q$ against the Execution Context $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K}, \mathcal{M} \rangle$.
     \end{itemize}
   \item $\gamma$ (\textbf{Graph Construction}): The final phase $\gamma : \vec{\mathcal{M}} \to \mathcal{G}$
     flattening the resolved IR into vertices $V$ and typed edges $E$.

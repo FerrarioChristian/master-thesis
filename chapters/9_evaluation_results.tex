@@ -132,3 +132,122 @@ The evaluation primarily tracks two key metrics:
 These metrics provide a quantitative foundation for analyzing the
 strengths and limitations of the language-agnostic extraction
 heuristics, the results of which are discussed in the following sections.
+
+\section{Standardized Multi-Language Benchmark Results}
+\label{sec:benchmark_results}
+
+The standardized benchmark suite comprises test codebases for all five
+target languages (C, C++, Java, Rust, and Python), accompanied by
+hand-crafted YAML oracles encoding the ground truth for nodes and edges.
+The benchmark scenarios specifically assess advanced language mechanisms,
+including:
+\begin{itemize}
+  \item \textbf{C++ Templates}: Class templates, function templates, and
+    out-of-line template method definitions.
+  \item \textbf{Java Generics}: Parameterized classes, bounded type parameters
+    (e.g., \texttt{<T extends Serializable>}), and generic method calls.
+  \item \textbf{Rust Generics and Traits}: Generic structs (\texttt{Box<T>}),
+    multi-trait bounds (\texttt{T: Display + Clone}), implementation blocks
+    for generic types, and \texttt{Deref} coercion.
+  \item \textbf{Python Type Variables}: Generic subscriptions (\texttt{List[T]}),
+    \texttt{TypeVar} factory calls, and inheritance from \texttt{Generic[T]}.
+  \item \textbf{C Structural Constructs}: Header-source file coupling,
+    struct field references, and function pointer interactions.
+\end{itemize}
+
+Table \ref{tab:benchmark_suite_results} summarizes the accuracy of node
+and edge extraction achieved across all five benchmark targets.
+
+\begin{table}[htpb]
+  \centering
+  \begin{adjustbox}{max width=\textwidth}
+  \begin{tabular}{|l|c|c|c|c|c|c|}
+    \hline
+    \textbf{Language} & \textbf{Exp. Nodes} & \textbf{Ext. Nodes} &
+    \textbf{Node Acc.} & \textbf{Exp. Edges} & \textbf{Ext. Edges} &
+    \textbf{Edge Acc.} \\ \hline
+    \textbf{C}        & 49  & 49  & 100\% & 43 & 43 & 100\% \\ \hline
+    \textbf{C++}      & 50  & 50  & 100\% & 44 & 44 & 100\% \\ \hline
+    \textbf{Java}     & \multicolumn{3}{c|}{Topology-based oracle} & 46 & 46 & 100\% \\ \hline
+    \textbf{Rust}     & 56  & 56  & 100\% & 84 & 84 & 100\% \\ \hline
+    \textbf{Python}   & 57  & 57  & 100\% & 58 & 58 & 100\% \\ \hline
+  \end{tabular}
+  \end{adjustbox}
+  \caption{Extraction accuracy across the standardized multi-language benchmark suite.}
+  \label{tab:benchmark_suite_results}
+\end{table}
+
+In addition to the benchmark suite, an integration test suite comprising 17
+dedicated scenarios (\texttt{tests/generics\_test.rs}) validates corner cases,
+including empty compilation units, self-referential type assignments, mutual
+transitive star-imports, and destructor name preservation. All 17 tests pass
+without regressions.
+
+\section{Empirical Evaluation on Large-Scale Open-Source Repositories}
+\label{sec:large_scale_evaluation}
+
+To evaluate scalability, throughput, and robustness in real-world environments,
+OmniDeps was evaluated against several widely deployed open-source software
+repositories exhibiting diverse architectural styles:
+\begin{itemize}
+  \item \textbf{JUnit 5}: The standard test framework for Java, consisting of
+    over 9,600 compilation units. It exercises heavy interface inheritance,
+    including complex test extensions implementing up to 21 distinct interfaces
+    simultaneously (such as \texttt{KitchenSinkExtension}).
+  \item \textbf{Fastjson}: A high-performance Java JSON library with over
+    19,000 compilation units, featuring deeply nested classes and pervasive
+    generic type parameterizations.
+  \item \textbf{ANTLR4}: A multi-language parser generator analyzed across its
+    Java and Python runtimes, combining static object hierarchies with dynamic
+    package re-exports.
+  \item \textbf{JUnit 4}: The predecessor Java framework, analyzed as an
+    additional baseline for classic object-oriented hierarchies.
+\end{itemize}
+
+Table \ref{tab:large_scale_results} reports the quantitative extraction metrics
+and execution times measured on an Apple M-series workstation.
+
+\begin{table}[htpb]
+  \centering
+  \begin{adjustbox}{max width=\textwidth}
+  \begin{tabular}{|l|c|r|r|r|r|r|r|}
+    \hline
+    \textbf{Repository} & \textbf{Language} & \textbf{Modules} &
+    \textbf{Types} & \textbf{Functions} & \textbf{Resolved} &
+    \textbf{External} & \textbf{Time} \\ \hline
+    \textbf{JUnit 5}    & Java              & 9,622 & 4,102 & 436 & 21,967 & 42,151 & 5.79 s \\ \hline
+    \textbf{Fastjson}   & Java              & 19,188 & 6,302 & 0   & 21,179 & 44,517 & 15.20 s \\ \hline
+    \textbf{ANTLR4}     & Java / Python     & 4,237 & 1,280 & 613 & 15,834 & 11,299 & 4.80 s \\ \hline
+    \textbf{ANTLR4 Runt.} & Java / Python   & 2,053 & 709   & 601 & 2,549  & 10,348 & 2.95 s \\ \hline
+    \textbf{JUnit 4}    & Java              & 2,131 & 1,359 & 0   & 3,880  & 7,463  & 1.90 s \\ \hline
+  \end{tabular}
+  \end{adjustbox}
+  \caption{Empirical evaluation on large-scale open-source software repositories.}
+  \label{tab:large_scale_results}
+\end{table}
+
+\section{Performance and Convergence Analysis}
+\label{sec:evaluation_discussion}
+
+The experimental results demonstrate that the language-agnostic architecture
+scales effectively to large codebases while maintaining 100\% adherence on
+standardized benchmarks. Key operational insights include:
+
+\begin{enumerate}
+  \item \textbf{Memoization Impact}: Without the memoization sentinel
+    $\mathcal{M}(\Sigma)$, classes implementing extensive interface sets
+    (such as \texttt{KitchenSinkExtension} in JUnit 5) caused factorial
+    recursion loops ($\mathcal{O}(b!) \approx 2.4 \times 10^{18}$ calls),
+    preventing analysis completion. Introducing the sentinel collapsed
+    super-scope lookup to $\mathcal{O}(|V_{\text{supers}}| + |E_{\text{supers}}|)$,
+    allowing JUnit 5 to complete in 5.79 seconds.
+  \item \textbf{Generic Type Preservation}: Evaluating super-types from the
+    local scope of the derived class ensures that formal type parameters
+    remain bound during base-type resolution (e.g., \texttt{Box<T> extends Base<T>}),
+    eliminating false-negative failures.
+  \item \textbf{Scope-Aware Cycle Guards}: Scoping query visited keys by
+    $\langle \text{ScopeId}, \text{query} \rangle$ successfully prevents
+    divergence on self-referential assignments and circular re-exports
+    without producing false cycle detections on homonymous identifiers in
+    distinct scopes.
+\end{enumerate}

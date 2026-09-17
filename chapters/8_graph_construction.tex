@@ -191,14 +191,44 @@ and target endpoints in $V$). However, to prioritize high-level
 software couplings and prevent visual clutter, primitive nodes and
 their incoming edges are toggled off by default in the interactive visualizer.
 
-For composite type references such as \texttt{Union($\vec{\tau}$)}
-and \texttt{EvaluatedAccess($\tau_{path}, \tau_{type}$)}, the
-algorithm recursively unpacks all inner references and generates
-edges for each resolved target independently.
+\subsection{Decomposition of Compound and Generic Targets}
+\label{sec:type_ref_targets}
+
+When projecting resolved type references into directed dependency edges,
+the helper function \texttt{type\_ref\_targets} decomposes compound and parameterized
+variants into a sequence of concrete target endpoints $\vec{\pi}_{tgt} \subset \Pi$:
+
+\begin{itemize}
+  \item \textbf{Terminal Variants}: For $\text{Resolved}(\pi)$,
+    $\text{External}(\pi)$, and $\text{Primitive}(\iota)$, the target path
+    is emitted directly.
+  \item \textbf{Generic Applications ($\text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}})$)}:
+    Both the container type $\tau_{\text{base}}$ and all specialized type arguments
+    $\tau_i \in \vec{\tau}_{\text{args}}$ represent architectural dependencies.
+    The decomposition collects targets from both:
+    $$\text{targets}(\text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}})) =
+    \text{targets}(\tau_{\text{base}}) \cup \bigcup_{i=1}^k \text{targets}(\tau_i)$$
+    For example, a field declared as \texttt{items: std::vector<models::User>}
+    emits \texttt{UsesFieldType} edges connecting the field to both \texttt{std::vector}
+    and \texttt{models::User}.
+  \item \textbf{Type Variables ($\text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})$)}:
+    Because a type variable is an ephemeral placeholder, its architectural couplings
+    are governed by its constraint bounds:
+    $$\text{targets}(\text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})) =
+    \bigcup_{\tau_b \in \vec{\tau}_{\text{bounds}}} \text{targets}(\tau_b)$$
+    A function parameter \texttt{x: T} with $T: \text{Display}$ emits a
+    \texttt{UsesParamType} dependency toward the \texttt{Display} trait.
+  \item \textbf{Union Types ($\text{Union}(\vec{\tau})$)}: The decomposition
+    distributes over all alternative branches, emitting edges toward every
+    reachable target in $\vec{\tau}$.
+  \item \textbf{Evaluated Access Chains ($\text{EvaluatedAccess}(\tau_{\text{path}}, \tau_{\text{type}})$)}:
+    Targets are collected from both the intermediate receiver path $\tau_{\text{path}}$
+    and the resulting terminal type $\tau_{\text{type}}$, capturing the complete access lineage.
+\end{itemize}
 
 \subsection{Taxonomy of Dependency Edge Kinds}
 
-The system defines 15 distinct edge kinds, organized into five
+The system defines 16 distinct edge kinds, organized into five
 categories. Table \ref{tab:edge_taxonomy} provides a complete classification.
 
 \begin{table}[htpb]
@@ -217,12 +247,13 @@ categories. Table \ref{tab:edge_taxonomy} provides a complete classification.
     StructuredType & Super type \\ \cline{2-4}
     & \texttt{Implements} & Module / StructuredType & Type / Trait \\ \hline
 
-    \multirow{5}{*}{\textit{Type-Level}} & \texttt{UsesFieldType} &
+    \multirow{6}{*}{\textit{Type-Level}} & \texttt{UsesFieldType} &
     Field & Type of a field \\ \cline{2-4}
     & \texttt{UsesLocalType} & Function & Type of a local variable
     \\ \cline{2-4}
     & \texttt{UsesParamType} & Function & Type of a parameter \\ \cline{2-4}
     & \texttt{UsesReturnType} & Function & Return type \\ \cline{2-4}
+    & \texttt{UsesType} & StructuredType / Function & Generic constraint bound \\ \cline{2-4}
     & \texttt{Aliases} & TypeAlias & Aliased target type \\ \hline
 
     \multirow{3}{*}{\textit{Behavioral}} & \texttt{Calls} & Function
@@ -235,7 +266,7 @@ categories. Table \ref{tab:edge_taxonomy} provides a complete classification.
     & \texttt{CastsTo} & Function & Cast target type \\ \cline{2-4}
     & \texttt{AnnotatedWith} & Any component & Annotation type \\ \hline
   \end{tabular}
-  \caption{Complete taxonomy of the 15 dependency edge kinds,
+  \caption{Complete taxonomy of the 16 dependency edge kinds,
   organized by category.}
   \label{tab:edge_taxonomy}
 \end{table}
@@ -304,6 +335,11 @@ declarations:
     resolved type of each of its formal parameters.
   \item \textbf{UsesReturnType}: Generated from a function to its
     resolved return type.
+  \item \textbf{UsesType}: Generated from a structured type or function to
+    each resolved constraint bound declared in its generic type parameters
+    ($\vec{\theta}$). For instance, a generic entity \texttt{Handler<T: Service>}
+    emits a \texttt{UsesType} edge from \texttt{Handler} to \texttt{Service},
+    recording the structural dependency on the trait or interface.
   \item \textbf{Aliases}: Generated from a type alias to its resolved
     target type, capturing the semantic binding between the alias and
     its original type.

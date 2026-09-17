@@ -88,7 +88,11 @@ organizes the extracted modules into a hierarchical tree that
 reflects the project's namespace conventions. Different strategies
 are applied depending on the language: directory-based namespacing
 (Python, Rust), package declarations (Java), explicit namespace
-blocks (C++), or a flat fallback (C). For C++, an additional
+blocks (C++), or a flat fallback (C). In the presence of package
+markers or source files lacking top-level declarations (such as empty
+\texttt{\_\_init\_\_.py} files or comment-only headers), extraction
+yields $\vec{\mathcal{M}} = \emptyset$ without allocating extraneous
+nodes or triggering indexing faults. For C++, an additional
 \textbf{out-of-line method linking} step associates method
 definitions written in \texttt{.cpp} files with their class
 declarations in \texttt{.hpp} headers.
@@ -101,7 +105,9 @@ unified across all files in the workspace. Each module contains its
 structured types, free functions, imports, implementation blocks,
 type aliases, and free variables. All type references ($\tau$) at
 this stage are in their initial extraction states:
-either raw symbolic identifiers $\text{Unresolved}(\pi_{\text{raw}})$
+raw symbolic identifiers $\text{Unresolved}(\pi_{\text{raw}})$,
+parameterized type applications $\text{Generic}(\tau_{base}, \vec{\tau}_{args})$,
+type parameter variables $\text{TypeVar}(\iota, \vec{\tau}_{bounds})$,
 or composite
 disjunctions $\text{Union}(\vec{\tau})$ for dynamic typing (e.g.,
 Python type unions).
@@ -186,7 +192,7 @@ injection, and Deref coercion handling.
 The output of Phase 2 is the resolved forest of module trees
 $\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$, retaining the
 isomorphic structural topology of the codebase while transforming every
-raw identifier and deferred query expression into one of six post-resolution
+raw identifier and deferred query expression into one of eight post-resolution
 states (as formalized in Figure \ref{fig:typeref_lifecycle} of
 Chapter \ref{ch:ir_formalization}):
 
@@ -201,6 +207,13 @@ Chapter \ref{ch:ir_formalization}):
   \item $\text{Prim}(\iota_p)$: The reference denotes a fundamental built-in
     primitive type ($\iota_p \in \mathcal{P}$) registered in the
     language-specific Primitive Registry, requiring no namespace binding.
+  \item $\text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}})$: A
+    parameterized type application whose base type reference $\tau_{\text{base}}$
+    and type argument references $\vec{\tau}_{\text{args}}$ have each been
+    recursively resolved.
+  \item $\text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})$: A generic
+    type parameter or placeholder variable whose bound references
+    $\vec{\tau}_{\text{bounds}}$ have been evaluated against visible scopes.
   \item $\text{Union}(\vec{\tau})$: A composite disjunctive type
     (such as dynamic type unions \texttt{Union[A, B]} in Python), where
     each constituent type reference $\tau_i \in \vec{\tau}$ has been
@@ -266,10 +279,10 @@ The construction proceeds in two steps:
     declared in the workspace.
   \item \textbf{Edge Generation}: The module tree is traversed a
     second time, inspecting every resolved type reference to emit
-    directed edges. The system defines 15 distinct edge kinds
+    directed edges. The system defines 16 distinct edge kinds
     organized into five categories: structural (containment and
     nesting), inheritance, type-level (field types, parameter types,
-    return types), behavioral (calls, instantiations, field
+    return types, generic bounds), behavioral (calls, instantiations, field
     accesses), and auxiliary (imports, casts, annotations). After
     generation, edges are deduplicated to prevent inflated coupling metrics.
 \end{enumerate}
