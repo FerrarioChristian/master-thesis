@@ -723,13 +723,12 @@ type-level queries and behavioral call targets:
     canonical symbol path
     (e.g., $\texttt{Resolved}([\text{app}, \text{OrderService},
     \text{validate}])$) instead of collapsing
-    it to its return type (e.g., $\text{void}$ or $\text{bool}$). The
-    resolved target is subsequently
-    passed through constructor redirection (Section
-    \ref{sec:constructor_redirection}) to handle
-    class instantiations masquerading as calls, and finally emitted
-    as an edge in the Call Graph
-    during Phase 3.
+    resolved target is subsequently passed through constructor
+    redirection (Section \ref{sec:constructor_redirection}) and
+    semantic cast disambiguation (Section
+    \ref{sec:call_cast_disambiguation}) to handle class
+    instantiations or type casts masquerading as calls, and finally
+    emitted as an edge in the dependency graph during Phase 3.
 \end{enumerate}
 
 \subsection{Dual-Tracking of Access Chains: \texttt{EvaluatedAccess}}
@@ -914,6 +913,76 @@ instantiations and explicit behavioral constructor calls, emitting
 \texttt{DependencyKind::ConstructorCall} whenever a dedicated
 constructor method is
 invoked.
+
+\subsection{Disambiguating Function Invocations and Type Coercions}
+\label{sec:call_cast_disambiguation}
+
+A notorious grammatical challenge in parsing languages like C is the
+syntactic ambiguity between function calls and type casts \cite{aho_compilers_2007}.
+Consider a parenthesized expression of the form:
+\begin{equation}
+  (T)(e)
+\end{equation}
+In traditional C compiler frontends (such as GCC or Clang), this ambiguity is
+resolved during lexical analysis via the classic ``lexer hack'': the scanner
+queries the symbol table and yields distinct token types (\texttt{TYPE\_NAME}
+versus \texttt{IDENTIFIER}) depending on whether $T$ has been registered as a
+\texttt{typedef}.
+
+In contrast, Tree-sitter parses source files in isolation without lexical
+feedback from an active symbol table. Consequently, Tree-sitter's context-free
+parsing tables interpret $(T)(e)$ as a \texttt{call\_expression} whenever $T$ is
+an arbitrary typedef identifier or when the operand $e$ is itself parenthesized,
+classifying $(T)$ as a parenthesized callable function and $(e)$ as its argument list.
+
+Because OmniDeps strictly separates local syntactic extraction (Phase 1) from
+global semantic resolution (Phase 2), the framework does not attempt to resolve
+this ambiguity through ad-hoc syntactic heuristics during CST traversal. Instead,
+Phase 1 faithfully unrolls the parenthesized callee (recording $T$ in
+$\mathcal{B}.\text{calls}$), deferring disambiguation to the query execution
+phase ($\rho_{\text{exec}}$) where the global Scope Tree $\mathcal{E}$ is fully
+materialized.
+
+During Phase 2b, the resolution engine inspects every call target $c \in \mathcal{B}.\text{calls}$.
+Crucially, rather than embedding hardcoded language switches (e.g., \texttt{if is\_c}),
+OmniDeps addresses this variance through its declarative resolution configuration
+$\mathcal{K}$ (Section \ref{sec:resolution_config}):
+\begin{itemize}
+  \item In object-oriented languages like Python and C++, types are first-class
+    callable entities (\texttt{callable\_types = true}), where invoking a class
+    syntactically executes an instance constructor.
+  \item In procedural languages like C, types are fundamentally non-callable
+    entities (\texttt{callable\_types = false}): C possesses neither user-defined
+    constructors nor callable operator overloading (\texttt{operator()}).
+\end{itemize}
+
+Formally, let $\tau = \rho_{\text{exec}}(c, s)$ be the evaluated call target within
+lexical scope $s$, and let $\mathcal{K}_s = \mathcal{K}(\text{language}(\mathcal{E}, s))$
+be the active resolution configuration. The engine evaluates:
+\begin{equation}
+  \text{is\_type\_or\_alias}(\tau) = 
+  \begin{cases}
+    \text{true} & \text{if } \tau \in \mathcal{P} \\
+                & \quad \lor \ \text{lookup}(\mathcal{E}, \tau) \in \{ \text{Symbol::Type}, \text{Symbol::TypeAlias} \} \\
+    \text{false} & \text{otherwise}
+  \end{cases}
+\end{equation}
+where $\mathcal{P}$ is the Primitive Registry and $\text{lookup}(\mathcal{E}, \tau)$
+retrieves the symbol declaration from the Scope Tree. If $\neg \mathcal{K}_s.\texttt{callable\_types}$
+and $\text{is\_type\_or\_alias}(\tau)$ holds true, the reference cannot semantically
+represent an executable function call. The executor reclassifies the reference as a
+type cast:
+\begin{equation}
+  \mathcal{B}.\text{type\_casts} \gets \mathcal{B}.\text{type\_casts} \cup \{ \tau \}, \quad \mathcal{B}.\text{calls} \gets \mathcal{B}.\text{calls} \setminus \{ \tau \}
+\end{equation}
+
+This parameter-driven disambiguation guarantees that Phase 3 emits a precise
+\texttt{DependencyKind::CastsTo} edge for expressions such as \texttt{(MyInt)(val)} or
+\texttt{(int)(5.0)}, while genuine function calls enclosed in protective parentheses
+(such as \texttt{(add)(a, b)} or \texttt{(square\_func)(a)}) resolve to $\text{Symbol::Value}$
+and correctly remain in $\mathcal{B}.\text{calls}$. Furthermore, because this
+behavior is governed declaratively by $\mathcal{K}$, the core resolution engine remains
+strictly language-agnostic.
 
 \subsection{Resolution of Disjunctive Types: \texttt{Union}}
 \label{sec:union_resolution}
@@ -1183,6 +1252,8 @@ their effects.
     \texttt{deref\_coercion\_target\_name} & \texttt{Option<String>}
     & Identifies the target alias in \texttt{Deref} trait
     implementations (Rust). \\ \hline
+    \texttt{callable\_types} & \texttt{bool} & Controls whether types
+    can be invoked directly as call expressions (Python, C++), as opposed to type casts (C). \\ \hline
   \end{tabularx}
   \caption{Key resolution configuration parameters and their semantic effects.}
   \label{tab:resolution_config}
@@ -1208,6 +1279,7 @@ values for each supported language.
     \texttt{assignment\_type\_aliases} & \checkmark & & & & \\ \hline
     \texttt{deref\_coercion\_target\_name} & --- & \texttt{Target} &
     --- & --- & --- \\ \hline
+    \texttt{callable\_types} & \checkmark & & & \checkmark & \\ \hline
   \end{tabular}
   \caption{Concrete resolution configuration values for each
   supported language.}

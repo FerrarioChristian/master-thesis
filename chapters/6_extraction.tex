@@ -653,6 +653,13 @@ into three categories:
           \item \textit{Simple calls} (\texttt{func()}) $\to$ the
             bare callable identifier is captured.
         \end{itemize}
+        When callable identifiers or expressions are enclosed in protective
+        parentheses (e.g., \texttt{(func)()} or macro expansions), the
+        function \texttt{extract\_call\_path} recursively unwraps
+        \texttt{parenthesized\_expression} CST nodes. This strips literal
+        punctuation tokens and yields clean identifier sequences without
+        attempting premature, error-prone semantic disambiguation during
+        purely syntactic extraction.
       \item \textbf{Field and Member Accesses}: Explicit property
         accesses, attribute dereferences, and qualified symbol paths.
       \item \textbf{Type Casts}: Explicit type conversions and cast
