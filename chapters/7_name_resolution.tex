@@ -1249,9 +1249,6 @@ their effects.
     extraction of dynamically assigned instance fields (Python). \\ \hline
     \texttt{assignment\_type\_aliases} & \texttt{bool} & Enables
     extraction of assignment-based type definitions and TypeVar declarations (Python). \\ \hline
-    \texttt{deref\_coercion\_target\_name} & \texttt{Option<String>}
-    & Identifies the target alias in \texttt{Deref} trait
-    implementations (Rust). \\ \hline
     \texttt{callable\_types} & \texttt{bool} & Controls whether types
     can be invoked directly as call expressions (Python, C++), as opposed to type casts (C). \\ \hline
   \end{tabularx}
@@ -1277,8 +1274,6 @@ values for each supported language.
     \texttt{implicit\_first\_param\_as\_self} & \checkmark & & & & \\ \hline
     \texttt{extract\_dynamic\_fields} & \checkmark & & & & \\ \hline
     \texttt{assignment\_type\_aliases} & \checkmark & & & & \\ \hline
-    \texttt{deref\_coercion\_target\_name} & --- & \texttt{Target} &
-    --- & --- & --- \\ \hline
     \texttt{callable\_types} & \checkmark & & & \checkmark & \\ \hline
   \end{tabular}
   \caption{Concrete resolution configuration values for each

@@ -386,8 +386,7 @@ Formally, the analyzer configuration is modeled as a product type:
   &\ \text{SelfKeyword}, \\
   &\ \text{SelfTypeKeyword}, \\
   &\ \text{ImplicitFirstParamAsSelf}, \\
-  &\ \text{ExtractDynamicFields}, \\
-  &\ \text{DerefCoercionTargetName} \rangle
+  &\ \text{ExtractDynamicFields} \rangle
 \end{align*}
 
 This feature-based configuration model is the mechanism that makes
@@ -517,13 +516,18 @@ dynamically within constructor bodies via assignments of the form
 \texttt{self.field = value}. Enabling this flag instructs the extractor to
 inspect constructor ASTs and harvest these dynamic attributes.
 
-\paragraph{Type Self-Reference and Deref Coercion
-(\texttt{SelfTypeKeyword}, \texttt{DerefCoercionTargetName})}
+\paragraph{Type Self-Reference (\texttt{SelfTypeKeyword})}
 Rust introduces the \texttt{Self} keyword to reference the implementing type
-within an \texttt{impl} block. Furthermore, Rust's \texttt{Deref} trait
-mechanism enables smart pointers to implicitly delegate method lookups to an
-inner target type (\texttt{DerefCoercionTargetName} = \texttt{"Target"}),
-a pattern traversed by the resolution engine during scope climbing.
+within an \texttt{impl} block, injected as a type alias into the local scope.
+
+\paragraph{Structural Deref Delegation}
+In languages featuring smart pointer dereferencing through traits (such as Rust's
+\texttt{std::ops::Deref}), method and member accesses on a container implicitly
+delegate to an inner target type. In OmniDeps, when an implementation block
+implements a trait named \texttt{Deref} and defines an associated type alias
+\texttt{type Target = T}, the target type $T$ is appended directly to the implementing
+type's super-types in the Scope Tree. This structural rule integrates seamlessly
+with the standard Method Resolution Order without requiring an ad-hoc configuration parameter in $\mathcal{K}$.
 
 Table \ref{tab:lang_config_inst} outlines the instance semantics and
 receiver resolution features.
@@ -531,25 +535,24 @@ receiver resolution features.
 \begin{table}[htbp]
   \centering
   \small
-  \begin{tabular}{|l|c|c|c|c|c|}
+  \begin{tabular}{|l|c|c|c|c|}
     \hline
     \textbf{Language} & \textbf{SelfKeyword} & \textbf{ImplicitSelf}
-    & \textbf{DynamicFields} & \textbf{SelfType} &
-    \textbf{DerefTarget} \\ \hline
+    & \textbf{DynamicFields} & \textbf{SelfType} \\ \hline
     \textbf{Java}     & \texttt{this}        & False
-    & False                  & ---               & ---
+    & False                  & ---
     \\ \hline
     \textbf{Rust}     & \texttt{self}        & False
-    & False                  & \texttt{Self}     & \texttt{Target}
+    & False                  & \texttt{Self}
     \\ \hline
     \textbf{Python}   & ---                  & True
-    & True                   & ---               & ---
+    & True                   & ---
     \\ \hline
     \textbf{C++}      & \texttt{this}        & False
-    & False                  & ---               & ---
+    & False                  & ---
     \\ \hline
     \textbf{C}        & ---                  & False
-    & False                  & ---               & ---
+    & False                  & ---
     \\ \hline
   \end{tabular}
   \caption{Instance model, receiver resolution, and type anchor features.}
