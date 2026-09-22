@@ -41,7 +41,7 @@ and summarized in Table \ref{tab:extraction_layers}):
   \begin{tabularx}{\textwidth}{|c|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}X|}
     \hline
     \textbf{Layer} & \textbf{Module} & \textbf{Responsibility} \\ \hline
-    1 (Top) & \texttt{analyzer.rs} & Orchestration: Tree-sitter
+    1 (Top) & \texttt{extraction/mod.rs} & Orchestration: Tree-sitter
     parsing, CST traversal, workspace grouping \\ \hline
     2 & \texttt{heuristics/mod.rs} & Dispatcher
     (\texttt{dispatch\_node}), priority routing \\ \hline
@@ -55,10 +55,10 @@ and summarized in Table \ref{tab:extraction_layers}):
   \label{tab:extraction_layers}
 \end{table}
 
-\section{The Entry Point: \texttt{generic\_extract}}
-\label{sec:generic_extract}
+\section{The Entry Point: \texttt{extract\_from\_cst}}
+\label{sec:extract_from_cst}
 
-The top-level extraction function \texttt{generic\_extract} receives
+The top-level extraction function \texttt{extract\_from\_cst} receives
 a Tree-sitter \texttt{Language} grammar and a source string, and
 produces a vector of IR modules. Its workflow is:
 \begin{enumerate}

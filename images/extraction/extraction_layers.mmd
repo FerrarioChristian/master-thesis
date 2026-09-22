@@ -1,5 +1,5 @@
 flowchart LR
-    L1["<b>Layer 1: Orchestration</b> (analyzer.rs)<br/>Tree-sitter invocation, CST traversal (walk_cst)"]
+    L1["<b>Layer 1: Orchestration</b> (extraction/mod.rs)<br/>Tree-sitter invocation, CST traversal (walk_cst)"]
     L2["<b>Layer 2: Dispatcher</b> (heuristics/mod.rs)<br/>Priority routing (dispatch_node)"]
     L3P["<b>Layer 3: Component Parsers</b> (parsers.rs)<br/>Coordinators and Builders (try_parse_*)"]
     L3C["<b>Classifier Predicates</b> (classifiers.rs)<br/>Boolean guards (is_*)"]
