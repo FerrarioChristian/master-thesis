@@ -130,7 +130,7 @@ first component is encountered and the module vector is still empty,
 a module named \texttt{"root"} is inserted. This ensures that the IR
 always contains at least one module container.
 
-\subsection{Pending Attributes Mechanism}
+\subsubsection{Pending Attributes Mechanism}
 
 Annotations and decorators (e.g., Python's \texttt{@staticmethod},
 Rust's \texttt{\#[derive(Debug)]}, Java's \texttt{@Override}) are
@@ -327,6 +327,23 @@ traversal in \texttt{walk\_cst} prunes the subtree after recognizing
 a structured type: all relevant information has already been
 extracted by the parser.
 
+\subsubsection{Dynamic Field Extraction}
+\label{sec:dynamic_fields}
+
+In Python, instance fields are typically not declared at the class
+level but are dynamically assigned in methods via \texttt{self.field
+= value} patterns. When the \texttt{extract\_dynamic\_fields}
+configuration flag is enabled, the field extractor enters method
+bodies and tracks the active \texttt{self} parameter name.
+Assignments to \texttt{self.field} are detected and the field name
+and inferred type are extracted. Field types are inferred from the
+right-hand side of the assignment using \texttt{infer\_variable\_type}.
+
+To prevent duplicates when a field is assigned in multiple methods,
+the extractor deduplicates fields by name, favoring entries with more
+informative type references (resolved or inferred types over
+unresolved or failed ones).
+
 \subsection{Function Parsing}
 
 The \texttt{try\_parse\_function} function extracts:
@@ -381,7 +398,8 @@ The \texttt{try\_parse\_impl\_block} function extracts:
 \subsection{Type Alias and Free Variable Parsing}
 
 Type aliases are extracted with their declared name and target type reference.
-For languages supporting explicit alias syntax (such as Rust \texttt{type X = Y;}
+For languages supporting explicit alias syntax (such as Rust
+  \texttt{type X = Y;}
 or C++ \texttt{using X = Y;}), the parser extracts the alias name and target
 using \texttt{extract\_type\_ref}.
 
@@ -391,7 +409,8 @@ are created via value assignments at module or class scope. When the
 configuration, the parser detects assignment statements where the right-hand
 side denotes a type constructor:
 \begin{itemize}
-  \item \textbf{Type Variable Factories}: Calls to \texttt{TypeVar('T', bound=...)}
+  \item \textbf{Type Variable Factories}: Calls to
+    \texttt{TypeVar('T', bound=...)}
     are captured as a type alias mapping \texttt{T} to a
     $\text{TypeRef::TypeVar}(\texttt{"T"}, \vec{\tau}_{bounds})$.
   \item \textbf{Generic Subscriptions}: Subscript expressions such as
@@ -421,8 +440,10 @@ functions that interact directly with CST nodes.
     splitting on separator characters (\texttt{:}, \texttt{.}, and
     whitespace). The \texttt{->} operator is normalized to \texttt{.}
     before splitting. When called on plain type text, any trailing generic
-    parameter bracket (\texttt{<...>}) is stripped to isolate the nominal base path,
-    while structured generic decomposition is handled beforehand by \texttt{extract\_type\_ref}.
+    parameter bracket (\texttt{<...>}) is stripped to isolate the
+    nominal base path,
+    while structured generic decomposition is handled beforehand by
+    \texttt{extract\_type\_ref}.
 \end{itemize}
 
 \subsection{Identifier Extraction}
@@ -437,7 +458,8 @@ functions that interact directly with CST nodes.
     \texttt{function\_declarator}, \texttt{reference\_declarator}) to
     reach the base identifier. The declarator unwrapping accepts
     both normal identifiers and \texttt{destructor\_name} nodes, preserving
-    the \texttt{\textasciitilde} prefix for C++ destructors (e.g., \texttt{\textasciitilde Server})
+    the \texttt{\textasciitilde} prefix for C++ destructors (e.g.,
+    \texttt{\textasciitilde Server})
     to distinguish them from constructors and prevent naming collisions.
   \item \textbf{\texttt{extract\_qualified\_name}}: Extracts
     multi-part names by first trying named fields and applying
@@ -465,9 +487,11 @@ specific strategies:
     parametric types across languages:
     \begin{itemize}
       \item Tree-sitter node kinds \texttt{template\_type} (C++),
-        \texttt{generic\_type} (Java, Rust), and \texttt{subscript} (Python \texttt{List[T]});
+        \texttt{generic\_type} (Java, Rust), and \texttt{subscript}
+        (Python \texttt{List[T]});
       \item Textual fallback \texttt{parse\_generic\_from\_text} for bracketed
-        type expressions embedded in declarator text (such as \texttt{std::vector<int>}).
+        type expressions embedded in declarator text (such as
+        \texttt{std::vector<int>}).
     \end{itemize}
     The base container is extracted recursively as $\tau_{base}$, and each
     parameter is extracted as $\tau_i \in \vec{\tau}_{args}$, constructing
@@ -481,7 +505,8 @@ specific strategies:
   \item \textbf{Named fields}: The node's children are inspected for
     named fields \texttt{type}, \texttt{return\_type},
     \texttt{field\_type}, \texttt{value\_type}, and \texttt{right}.
-    If found, the field's node is recursively processed with \texttt{extract\_type\_ref}.
+    If found, the field's node is recursively processed with
+    \texttt{extract\_type\_ref}.
   \item \textbf{Child identifier search}: All children are iterated,
     looking for nodes of kind \texttt{type\_identifier},
     \texttt{primitive\_type}, \texttt{identifier}, or \texttt{type}.
@@ -518,30 +543,40 @@ untyped parameters from generating spurious dependencies.
 
 Generic type parameters and template variables are extracted by
 \texttt{extract\_type\_parameters}, constructing an ordered vector of
-$\text{TypeParameter}$ tuples ($\theta = \langle \iota, \vec{\tau}_{bounds} \rangle$).
+$\text{TypeParameter}$ tuples ($\theta = \langle \iota,
+\vec{\tau}_{bounds} \rangle$).
 The extraction pipeline operates in four coordinated steps:
 
 \begin{enumerate}
   \item \textbf{Container Discovery}: The extractor searches for type parameter
-    lists under named fields (\texttt{type\_parameters}, \texttt{parameters}) or child
-    node kinds (\texttt{type\_parameter\_list}, \texttt{template\_parameter\_list}).
+    lists under named fields (\texttt{type\_parameters},
+    \texttt{parameters}) or child
+    node kinds (\texttt{type\_parameter\_list},
+    \texttt{template\_parameter\_list}).
     For C++, if a class or function definition is enclosed within a
-    \texttt{template\_declaration} node, the template parameters are harvested from the
+    \texttt{template\_declaration} node, the template parameters are
+    harvested from the
     parent container.
-  \item \textbf{Parameter and Inline Bound Extraction}: Each child parameter node
-    is decomposed by \texttt{extract\_single\_type\_parameter}. The parameter identifier
-    $\iota$ is extracted from the \texttt{name} field or inner \texttt{type\_identifier}.
+  \item \textbf{Parameter and Inline Bound Extraction}: Each child
+    parameter node
+    is decomposed by \texttt{extract\_single\_type\_parameter}. The
+    parameter identifier
+    $\iota$ is extracted from the \texttt{name} field or inner
+    \texttt{type\_identifier}.
     Any immediate bounds (such as Java \texttt{T extends Serializable} or Rust
     \texttt{T: Display + Clone}) are parsed into constraint type references
     $\vec{\tau}_{bounds}$.
   \item \textbf{Trailing Constraint Clauses}: For languages that separate bounds
     from the parameter list (such as Rust \texttt{where} clauses),
-    \texttt{merge\_clause\_bounds} traverses the \texttt{where\_clause} node, matching
-    each \texttt{where\_predicate} target against the extracted parameters and appending
+    \texttt{merge\_clause\_bounds} traverses the
+    \texttt{where\_clause} node, matching
+    each \texttt{where\_predicate} target against the extracted
+    parameters and appending
     the specified trait bounds to the corresponding $\vec{\tau}_{bounds}$.
   \item \textbf{Generic Base Class Extraction}: In Python, where type parameters
     on classes are declared by inheriting from \texttt{Generic[T, U]},
-    \texttt{extract\_generic\_base\_parameters} inspects the superclass list to extract
+    \texttt{extract\_generic\_base\_parameters} inspects the
+    superclass list to extract
     the type variables as formal type parameters on the structured type.
 \end{enumerate}
 
@@ -717,23 +752,6 @@ before their target construct rather than inside its subtree,
 extracted annotations are
 buffered during CST traversal and attached to the subsequent
 recognized component.
-
-\section{Dynamic Field Extraction}
-\label{sec:dynamic_fields}
-
-In Python, instance fields are typically not declared at the class
-level but are dynamically assigned in methods via \texttt{self.field
-= value} patterns. When the \texttt{extract\_dynamic\_fields}
-configuration flag is enabled, the field extractor enters method
-bodies and tracks the active \texttt{self} parameter name.
-Assignments to \texttt{self.field} are detected and the field name
-and inferred type are extracted. Field types are inferred from the
-right-hand side of the assignment using \texttt{infer\_variable\_type}.
-
-To prevent duplicates when a field is assigned in multiple methods,
-the extractor deduplicates fields by name, favoring entries with more
-informative type references (resolved or inferred types over
-unresolved or failed ones).
 
 \section{Language-Agnostic Structural Heuristics}
 \label{sec:structural_heuristics}

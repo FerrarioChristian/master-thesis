@@ -284,7 +284,7 @@ Symbol Stack:
     shadows one in an outer block but does not outlive it.
 \end{itemize}
 
-\subsection{Implicit Self/This Injection}
+\subsubsection{Implicit Self/This Injection}
 
 For languages with an implicit receiver parameter, the builder
 injects special bindings based on the language configuration:
@@ -511,7 +511,7 @@ $\mathcal{M}(\Sigma)$ for any scope $\Sigma$ is deterministic and
 strictly independent of the order in which individual type references
 are evaluated.
 
-\subsection{Lexical Scope Climbing}
+\subsection{Lexical Scope Climbing ($\texttt{Find}$)}
 \label{sec:lexical_climbing}
 
 Figure \ref{fig:query_execution_flow} depicts the general evaluation pathways for resolution queries across lexical climbing, structural member extraction, and call unwrapping.
@@ -571,7 +571,7 @@ $\Sigma_0$, the executor implements the following algorithm:
   \item \textbf{Failure}: Return \texttt{TypeRef::Failed}.
 \end{enumerate}
 
-\subsection{Global Path Resolution}
+\subsubsection{Global Path Navigation: \texttt{find\_global}}
 
 The function \texttt{find\_global} resolves absolute qualified paths
 by navigating from the root scope downward. For a path $\pi = \langle \iota_1,
@@ -584,7 +584,7 @@ A special case handles single-segment paths: if $k = 1$ and $\iota_1$ is
 recognized by the Primitive Registry, the function returns
 \texttt{TypeRef::Primitive} directly.
 
-\subsection{Member Extraction and Inheritance Resolution}
+\subsection{Member Extraction and Inheritance ($\texttt{Extract}$)}
 \label{sec:inheritance_resolution}
 
 When evaluating an $\texttt{Extract}(q, \iota)$ query, the executor first
@@ -661,7 +661,7 @@ resolution algorithm to search through \texttt{Deref} targets,
 effectively treating \texttt{Deref} coercion as a form of structural
 inheritance.
 
-\subsection{Transitive Import Resolution}
+\subsubsection{Transitive Import Resolution in Modules}
 \label{sec:transitive_imports}
 
 When the \texttt{transitive\_imports} configuration flag is enabled
@@ -688,7 +688,7 @@ This mechanism is controlled per-language: it is enabled for Python
 (where re-exports are idiomatic) and disabled for languages like Java
 and Rust (where import semantics are strictly non-transitive).
 
-\subsection{Call Query Evaluation}
+\subsection{Call Query Evaluation ($\texttt{Call}$)}
 \label{sec:call_query_evaluation}
 
 The evaluation of invocation queries in Phase 2b mirrors the
@@ -730,6 +730,154 @@ type-level queries and behavioral call targets:
     instantiations or type casts masquerading as calls, and finally
     emitted as an edge in the dependency graph during Phase 3.
 \end{enumerate}
+
+\subsubsection{Constructor Redirection}
+\label{sec:constructor_redirection}
+
+A subtle but vital semantic discrepancy in static analysis occurs during object
+instantiation and constructor execution. In source code across major programming
+languages, object creation is syntactically expressed by invoking or referencing
+the structured type itself:
+\begin{itemize}
+  \item In Java and C++: \texttt{new Car(engine)} or direct stack initialization
+    \texttt{Car car(engine)};
+  \item In Python: \texttt{car = Car(engine)};
+  \item In JavaScript / TypeScript: \texttt{new Car(engine)}.
+\end{itemize}
+
+During syntactic extraction (Phase 1), the expressions recorded in
+\texttt{Block::instantiates}
+and \texttt{Block::calls} capture the nominal identifier of the
+target class (e.g.,
+$\text{Unresolved}(\langle \texttt{Car} \rangle)$). When Phase 2
+evaluates this query,
+standard lexical lookup initially yields the structured type itself:
+$\text{Resolved}(\langle \texttt{models}, \texttt{Car} \rangle)$.
+
+However, from an architectural and behavioral standpoint, invoking an
+object constructor
+is fundamentally an invocation of executable behavior rather than
+merely a passive
+type-level reference. If the resolution engine terminated at the
+class node, Phase 3
+(Graph Construction) would only be able to emit a generic type
+dependency, obscuring
+the direct call coupling toward the constructor method.
+
+To bridge this syntactic gap, the function
+\texttt{redirect\_to\_constructor} inspects
+all resolved references in \texttt{Block::calls} and
+\texttt{Block::instantiates}:
+
+\begin{enumerate}
+  \item If the reference evaluates to a structured type
+    ($\text{Resolved}(\pi)$), the
+    executor retrieves the corresponding type scope in the Scope Tree
+    $\mathcal{E}$ via
+    \texttt{find\_scope\_for\_type}.
+  \item It checks the scope's symbol table for known constructor
+    naming conventions
+    across the supported languages:
+    $$\mathcal{I}_{\text{ctor}} = \{ \texttt{"\_\_init\_\_"},
+    \texttt{"constructor"}, \text{last}(\pi) \}$$
+    capturing Python's \texttt{\_\_init\_\_}, TypeScript's
+    \texttt{constructor}, and
+    Java/C++ constructors that match the class name itself.
+  \item If an explicit constructor method is found, the resolved path
+    is specialized
+    by appending the constructor identifier:
+    $$\pi_{\text{ctor}} = \pi \cup \langle \iota_{\text{ctor}} \rangle$$
+    transforming $\text{Resolved}(\langle \texttt{models},
+    \texttt{Car} \rangle)$ into
+    $\text{Resolved}(\langle \texttt{models}, \texttt{Car},
+    \texttt{\_\_init\_\_} \rangle)$.
+  \item If the reference is a compound
+    $\text{EvaluatedAccess}(\tau_{\text{base}}, \tau_{\text{inner}})$,
+    the redirection recursively applies to $\tau_{\text{inner}}$,
+    preserving the base
+    access while updating the resolved method target.
+  \item If the class defines no explicit constructor (relying on
+      synthesized or default
+    language semantics), the reference remains unaltered, pointing
+    directly to the
+    structured type.
+\end{enumerate}
+
+This mechanism allows Phase 3 to cleanly differentiate between pure type-level
+instantiations and explicit behavioral constructor calls, emitting
+\texttt{DependencyKind::ConstructorCall} whenever a dedicated
+constructor method is
+invoked.
+
+\subsubsection{Disambiguating Function Invocations and Type Coercions}
+\label{sec:call_cast_disambiguation}
+
+A notorious grammatical challenge in parsing languages like C is the
+syntactic ambiguity between function calls and type casts \cite{aho_compilers_2007}.
+Consider a parenthesized expression of the form:
+\begin{equation}
+  (T)(e)
+\end{equation}
+In traditional C compiler frontends (such as GCC or Clang), this ambiguity is
+resolved during lexical analysis via the classic ``lexer hack'': the scanner
+queries the symbol table and yields distinct token types (\texttt{TYPE\_NAME}
+versus \texttt{IDENTIFIER}) depending on whether $T$ has been registered as a
+\texttt{typedef}.
+
+In contrast, Tree-sitter parses source files in isolation without lexical
+feedback from an active symbol table. Consequently, Tree-sitter's context-free
+parsing tables interpret $(T)(e)$ as a \texttt{call\_expression} whenever $T$ is
+an arbitrary typedef identifier or when the operand $e$ is itself parenthesized,
+classifying $(T)$ as a parenthesized callable function and $(e)$ as its argument list.
+
+Because OmniDeps strictly separates local syntactic extraction (Phase 1) from
+global semantic resolution (Phase 2), the framework does not attempt to resolve
+this ambiguity through ad-hoc syntactic heuristics during CST traversal. Instead,
+Phase 1 faithfully unrolls the parenthesized callee (recording $T$ in
+$\mathcal{B}.\text{calls}$), deferring disambiguation to the query execution
+phase ($\rho_{\text{exec}}$) where the global Scope Tree $\mathcal{E}$ is fully
+materialized.
+
+During Phase 2b, the resolution engine inspects every call target $c \in \mathcal{B}.\text{calls}$.
+Crucially, rather than embedding hardcoded language switches (e.g., \texttt{if is\_c}),
+OmniDeps addresses this variance through its declarative resolution configuration
+$\mathcal{K}$ (Section \ref{sec:resolution_config}):
+\begin{itemize}
+  \item In object-oriented languages like Python and C++, types are first-class
+    callable entities (\texttt{callable\_types = true}), where invoking a class
+    syntactically executes an instance constructor.
+  \item In procedural languages like C, types are fundamentally non-callable
+    entities (\texttt{callable\_types = false}): C possesses neither user-defined
+    constructors nor callable operator overloading (\texttt{operator()}).
+\end{itemize}
+
+Formally, let $\tau = \rho_{\text{exec}}(c, s)$ be the evaluated call target within
+lexical scope $s$, and let $\mathcal{K}_s = \mathcal{K}(\text{language}(\mathcal{E}, s))$
+be the active resolution configuration. The engine evaluates:
+\begin{equation}
+  \text{is\_type\_or\_alias}(\tau) = 
+  \begin{cases}
+    \text{true} & \text{if } \tau \in \mathcal{P} \\
+                & \quad \lor \ \text{lookup}(\mathcal{E}, \tau) \in \{ \text{Symbol::Type}, \text{Symbol::TypeAlias} \} \\
+    \text{false} & \text{otherwise}
+  \end{cases}
+\end{equation}
+where $\mathcal{P}$ is the Primitive Registry and $\text{lookup}(\mathcal{E}, \tau)$
+retrieves the symbol declaration from the Scope Tree. If $\neg \mathcal{K}_s.\texttt{callable\_types}$
+and $\text{is\_type\_or\_alias}(\tau)$ holds true, the reference cannot semantically
+represent an executable function call. The executor reclassifies the reference as a
+type cast:
+\begin{equation}
+  \mathcal{B}.\text{type\_casts} \gets \mathcal{B}.\text{type\_casts} \cup \{ \tau \}, \quad \mathcal{B}.\text{calls} \gets \mathcal{B}.\text{calls} \setminus \{ \tau \}
+\end{equation}
+
+This parameter-driven disambiguation guarantees that Phase 3 emits a precise
+\texttt{DependencyKind::CastsTo} edge for expressions such as \texttt{(MyInt)(val)} or
+\texttt{(int)(5.0)}, while genuine function calls enclosed in protective parentheses
+(such as \texttt{(add)(a, b)} or \texttt{(square\_func)(a)}) resolve to $\text{Symbol::Value}$
+and correctly remain in $\mathcal{B}.\text{calls}$. Furthermore, because this
+behavior is governed declaratively by $\mathcal{K}$, the core resolution engine remains
+strictly language-agnostic.
 
 \subsection{Dual-Tracking of Access Chains: \texttt{EvaluatedAccess}}
 \label{sec:evaluated_access}
@@ -836,155 +984,23 @@ behavioral information. Figure \ref{fig:evaluated_access_tracking} traces the pr
   \label{fig:evaluated_access_tracking}
 \end{figure}
 
-\subsection{Constructor Redirection}
-\label{sec:constructor_redirection}
+\subsection{Parametric Polymorphism and Generic Resolution}
+\label{sec:generics_resolution}
 
-A subtle but vital semantic discrepancy in static analysis occurs during object
-instantiation and constructor execution. In source code across major programming
-languages, object creation is syntactically expressed by invoking or referencing
-the structured type itself:
-\begin{itemize}
-  \item In Java and C++: \texttt{new Car(engine)} or direct stack initialization
-    \texttt{Car car(engine)};
-  \item In Python: \texttt{car = Car(engine)};
-  \item In JavaScript / TypeScript: \texttt{new Car(engine)}.
-\end{itemize}
+Parametric polymorphism (generics in Java, Rust, and Python, or templates
+in C++) introduces an orthogonal dimension to static symbol resolution:
+it decouples the structural definition of an algorithmic abstraction from
+the concrete type arguments supplied at instantiation sites.
 
-During syntactic extraction (Phase 1), the expressions recorded in
-\texttt{Block::instantiates}
-and \texttt{Block::calls} capture the nominal identifier of the
-target class (e.g.,
-$\text{Unresolved}(\langle \texttt{Car} \rangle)$). When Phase 2
-evaluates this query,
-standard lexical lookup initially yields the structured type itself:
-$\text{Resolved}(\langle \texttt{models}, \texttt{Car} \rangle)$.
+To formalize parametric polymorphism without sacrificing language agnosticism,
+the Intermediate Representation distinguishes between generic application and
+type parameter declarations:
+\begin{align*}
+  \tau_{\text{app}} &= \text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}}) \\
+  \tau_{\text{var}} &= \text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})
+\end{align*}
 
-However, from an architectural and behavioral standpoint, invoking an
-object constructor
-is fundamentally an invocation of executable behavior rather than
-merely a passive
-type-level reference. If the resolution engine terminated at the
-class node, Phase 3
-(Graph Construction) would only be able to emit a generic type
-dependency, obscuring
-the direct call coupling toward the constructor method.
-
-To bridge this syntactic gap, the function
-\texttt{redirect\_to\_constructor} inspects
-all resolved references in \texttt{Block::calls} and
-\texttt{Block::instantiates}:
-
-\begin{enumerate}
-  \item If the reference evaluates to a structured type
-    ($\text{Resolved}(\pi)$), the
-    executor retrieves the corresponding type scope in the Scope Tree
-    $\mathcal{E}$ via
-    \texttt{find\_scope\_for\_type}.
-  \item It checks the scope's symbol table for known constructor
-    naming conventions
-    across the supported languages:
-    $$\mathcal{I}_{\text{ctor}} = \{ \texttt{"\_\_init\_\_"},
-    \texttt{"constructor"}, \text{last}(\pi) \}$$
-    capturing Python's \texttt{\_\_init\_\_}, TypeScript's
-    \texttt{constructor}, and
-    Java/C++ constructors that match the class name itself.
-  \item If an explicit constructor method is found, the resolved path
-    is specialized
-    by appending the constructor identifier:
-    $$\pi_{\text{ctor}} = \pi \cup \langle \iota_{\text{ctor}} \rangle$$
-    transforming $\text{Resolved}(\langle \texttt{models},
-    \texttt{Car} \rangle)$ into
-    $\text{Resolved}(\langle \texttt{models}, \texttt{Car},
-    \texttt{\_\_init\_\_} \rangle)$.
-  \item If the reference is a compound
-    $\text{EvaluatedAccess}(\tau_{\text{base}}, \tau_{\text{inner}})$,
-    the redirection recursively applies to $\tau_{\text{inner}}$,
-    preserving the base
-    access while updating the resolved method target.
-  \item If the class defines no explicit constructor (relying on
-      synthesized or default
-    language semantics), the reference remains unaltered, pointing
-    directly to the
-    structured type.
-\end{enumerate}
-
-This mechanism allows Phase 3 to cleanly differentiate between pure type-level
-instantiations and explicit behavioral constructor calls, emitting
-\texttt{DependencyKind::ConstructorCall} whenever a dedicated
-constructor method is
-invoked.
-
-\subsection{Disambiguating Function Invocations and Type Coercions}
-\label{sec:call_cast_disambiguation}
-
-A notorious grammatical challenge in parsing languages like C is the
-syntactic ambiguity between function calls and type casts \cite{aho_compilers_2007}.
-Consider a parenthesized expression of the form:
-\begin{equation}
-  (T)(e)
-\end{equation}
-In traditional C compiler frontends (such as GCC or Clang), this ambiguity is
-resolved during lexical analysis via the classic ``lexer hack'': the scanner
-queries the symbol table and yields distinct token types (\texttt{TYPE\_NAME}
-versus \texttt{IDENTIFIER}) depending on whether $T$ has been registered as a
-\texttt{typedef}.
-
-In contrast, Tree-sitter parses source files in isolation without lexical
-feedback from an active symbol table. Consequently, Tree-sitter's context-free
-parsing tables interpret $(T)(e)$ as a \texttt{call\_expression} whenever $T$ is
-an arbitrary typedef identifier or when the operand $e$ is itself parenthesized,
-classifying $(T)$ as a parenthesized callable function and $(e)$ as its argument list.
-
-Because OmniDeps strictly separates local syntactic extraction (Phase 1) from
-global semantic resolution (Phase 2), the framework does not attempt to resolve
-this ambiguity through ad-hoc syntactic heuristics during CST traversal. Instead,
-Phase 1 faithfully unrolls the parenthesized callee (recording $T$ in
-$\mathcal{B}.\text{calls}$), deferring disambiguation to the query execution
-phase ($\rho_{\text{exec}}$) where the global Scope Tree $\mathcal{E}$ is fully
-materialized.
-
-During Phase 2b, the resolution engine inspects every call target $c \in \mathcal{B}.\text{calls}$.
-Crucially, rather than embedding hardcoded language switches (e.g., \texttt{if is\_c}),
-OmniDeps addresses this variance through its declarative resolution configuration
-$\mathcal{K}$ (Section \ref{sec:resolution_config}):
-\begin{itemize}
-  \item In object-oriented languages like Python and C++, types are first-class
-    callable entities (\texttt{callable\_types = true}), where invoking a class
-    syntactically executes an instance constructor.
-  \item In procedural languages like C, types are fundamentally non-callable
-    entities (\texttt{callable\_types = false}): C possesses neither user-defined
-    constructors nor callable operator overloading (\texttt{operator()}).
-\end{itemize}
-
-Formally, let $\tau = \rho_{\text{exec}}(c, s)$ be the evaluated call target within
-lexical scope $s$, and let $\mathcal{K}_s = \mathcal{K}(\text{language}(\mathcal{E}, s))$
-be the active resolution configuration. The engine evaluates:
-\begin{equation}
-  \text{is\_type\_or\_alias}(\tau) = 
-  \begin{cases}
-    \text{true} & \text{if } \tau \in \mathcal{P} \\
-                & \quad \lor \ \text{lookup}(\mathcal{E}, \tau) \in \{ \text{Symbol::Type}, \text{Symbol::TypeAlias} \} \\
-    \text{false} & \text{otherwise}
-  \end{cases}
-\end{equation}
-where $\mathcal{P}$ is the Primitive Registry and $\text{lookup}(\mathcal{E}, \tau)$
-retrieves the symbol declaration from the Scope Tree. If $\neg \mathcal{K}_s.\texttt{callable\_types}$
-and $\text{is\_type\_or\_alias}(\tau)$ holds true, the reference cannot semantically
-represent an executable function call. The executor reclassifies the reference as a
-type cast:
-\begin{equation}
-  \mathcal{B}.\text{type\_casts} \gets \mathcal{B}.\text{type\_casts} \cup \{ \tau \}, \quad \mathcal{B}.\text{calls} \gets \mathcal{B}.\text{calls} \setminus \{ \tau \}
-\end{equation}
-
-This parameter-driven disambiguation guarantees that Phase 3 emits a precise
-\texttt{DependencyKind::CastsTo} edge for expressions such as \texttt{(MyInt)(val)} or
-\texttt{(int)(5.0)}, while genuine function calls enclosed in protective parentheses
-(such as \texttt{(add)(a, b)} or \texttt{(square\_func)(a)}) resolve to $\text{Symbol::Value}$
-and correctly remain in $\mathcal{B}.\text{calls}$. Furthermore, because this
-behavior is governed declaratively by $\mathcal{K}$, the core resolution engine remains
-strictly language-agnostic.
-
-\subsection{Resolution of Disjunctive Types: \texttt{Union}}
+\subsubsection{Resolution of Disjunctive Types: \texttt{Union}}
 \label{sec:union_resolution}
 
 In heterogeneous, multi-language codebases, type references frequently
@@ -1024,22 +1040,6 @@ edges toward all resolved targets present within the union. This conservative
 strategy ensures that all potential behavioral and structural couplings induced
 by polymorphic type choices are faithfully represented in the architectural
 dependency graph.
-
-\subsection{Parametric Polymorphism and Generic Resolution}
-\label{sec:generics_resolution}
-
-Parametric polymorphism (generics in Java, Rust, and Python, or templates
-in C++) introduces an orthogonal dimension to static symbol resolution:
-it decouples the structural definition of an algorithmic abstraction from
-the concrete type arguments supplied at instantiation sites.
-
-To formalize parametric polymorphism without sacrificing language agnosticism,
-the Intermediate Representation distinguishes between generic application and
-type parameter declarations:
-\begin{align*}
-  \tau_{\text{app}} &= \text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}}) \\
-  \tau_{\text{var}} &= \text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})
-\end{align*}
 
 \subsubsection{Phantom Scopes in the Scope Tree}
 
@@ -1267,10 +1267,10 @@ values for each supported language.
     \textbf{Parameter} & \textbf{Python} & \textbf{Rust} &
     \textbf{Java} & \textbf{C++} & \textbf{C} \\ \hline
     \texttt{transitive\_imports} & \checkmark & & & & \\ \hline
-    \texttt{self\_keyword} & --- & \texttt{self} & \texttt{this} &
-    \texttt{this} & --- \\ \hline
-    \texttt{self\_type\_keyword} & --- & \texttt{Self} & --- & --- &
-    --- \\ \hline
+    \texttt{self\_keyword} & - & \texttt{self} & \texttt{this} &
+    \texttt{this} & - \\ \hline
+    \texttt{self\_type\_keyword} & - & \texttt{Self} & - & - &
+    - \\ \hline
     \texttt{implicit\_first\_param\_as\_self} & \checkmark & & & & \\ \hline
     \texttt{extract\_dynamic\_fields} & \checkmark & & & & \\ \hline
     \texttt{assignment\_type\_aliases} & \checkmark & & & & \\ \hline

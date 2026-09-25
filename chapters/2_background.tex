@@ -5,10 +5,10 @@ This chapter introduces the fundamental concepts and technologies
 that form the basis of the architectural analysis process developed
 in this thesis. It begins by defining \textbf{software dependencies},
 the accumulation of \textbf{technical debt} and \textbf{architectural smells},
-and their formal representation through \textbf{graphs}. It then examines
-traditional \textbf{static analysis} approaches, and finally details
-the parsing mechanisms and the \textbf{Tree-sitter} framework
-utilized in this work.
+and their formal representation through \textbf{graphs}. It then details
+parsing mechanisms, syntax trees, and the \textbf{Tree-sitter} framework,
+and concludes with the formal principles of \textbf{lexical scoping} and
+\textbf{name resolution}.
 
 \section{Software Dependencies}
 \label{sec:software_dependencies}
@@ -277,107 +277,6 @@ public class ServiceC {
     breaks the fundamental \textit{IS-A} relationship paradigm and
     can lead to severe compilation or runtime errors.
 \end{itemize}
-
-\section{Traditional Static Analysis and Tooling}
-\label{sec:traditional_static_analysis}
-
-Static analysis tools extract architectural and semantic information from
-source code without executing it. This section reviews traditional
-compiler-based approaches, their inherent coupling to individual languages,
-and how intermediate representations mitigate this complexity.
-
-\subsection{Compiler Front-Ends and Language Coupling}
-\label{sec:compiler_frontends}
-
-Extracting structural information from source code requires robust
-static analysis tools. Traditionally, this process relies heavily on
-\textbf{compiler front-ends}, such as Clang for C/C++ or Roslyn for
-C\# \cite{lattner_llvm_2004}. A compiler front-end typically performs:
-\begin{enumerate}
-  \item \textbf{Lexical Analysis (Tokenization):} Converting text
-    into a stream of tokens.
-  \item \textbf{Syntactic Analysis (Parsing):} Grouping tokens into
-    grammatical structures.
-  \item \textbf{Semantic Analysis:} Type checking and symbol resolution.
-\end{enumerate}
-
-Because these tools must generate executable code, they possess a
-mathematically sound and exhaustive understanding of the language's
-semantics. However, this deep integration is also their primary
-\textit{limitation}: they are inherently \textbf{coupled to a single
-programming language}, its specific version, and its build ecosystem.
-
-\subsection{Intermediate Representations and Decoupling}
-\label{sec:ir_background}
-Developing a cross-language analysis system using language-specific
-tools forces engineers to integrate disparate compiler
-front-ends, each with its own output format, terminology,
-and execution environment. If the system must support $M$ source
-languages and $N$ analysis tools (or back-ends), each tool must be
-individually integrated with each language's front-end, resulting in
-$M \times N$ separate integration efforts. As both $M$ and $N$ grow,
-this combinatorial complexity becomes unsustainable.
-
-Modern compiler architectures, such as LLVM \cite{lattner_llvm_2004},
-solve this problem by introducing an
-\textbf{Intermediate Representation (IR)}: a standardized,
-language-agnostic data structure that sits between the front-end
-(which parses the source code) and the back-end (which performs
-analysis or generates machine code). Each language requires only one
-front-end that translates source code into the IR, and each tool
-requires only one back-end that consumes the IR. The total number of
-components is thus reduced from $M \times N$ to $M + N$. This
-architectural transition is visually illustrated in Figure
-\ref{fig:mxn_problem}.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=\textwidth]{images/background/mxn_problem.png}
-  \caption{Comparison between the $M \times N$ combinatorial
-  explosion and the linear $M + N$ complexity achieved by introducing an IR.}
-  \label{fig:mxn_problem}
-\end{figure}
-
-While LLVM uses a low-level IR focused on executable instructions,
-architectural analysis requires a high-level, structural
-representation. The same $M \times N$ decoupling principle applies to
-this domain in two concrete ways:
-
-\begin{itemize}
-  \item \textbf{Internal decoupling:} Even within a single analysis
-    tool, the pipeline contains multiple language-agnostic phases
-    (name resolution, graph construction, export, visualization).
-    Without an IR, each of these phases would need to handle the
-    syntactic details of every supported language. With a shared IR,
-    only the extraction phase is language-specific; all subsequent
-    phases operate on a single, unified data model.
-  \item \textbf{Ecosystem reuse:} A well-defined architectural IR can
-    be consumed by multiple independent tools (e.g., architectural
-    smell detectors, refactoring assistants, dependency auditors)
-    without each tool reimplementing its own extraction logic for each
-    language.
-\end{itemize}
-
-Designing a universal IR that captures the architectural semantics of
-heterogeneous languages, without descending into low-level memory
-layouts, is the core theoretical foundation required to build a truly
-scalable, language-agnostic dependency extractor.
-
-In recent years, protocols like the \textbf{Language Server Protocol
-(LSP)} have attempted to standardize how development environments
-interact with language-specific analyzers \cite{microsoft_lsp_spec}.
-By standardizing the communication JSON-RPC interface, an IDE can
-interact with any language server to request symbol definitions or
-references. However, LSP is fundamentally designed for
-\textbf{interactive, query-based use cases} (e.g., hovering over a
-  variable to see its type, or requesting "find references" for a
-specific symbol within an open file). Constructing a global
-dependency graph of an entire repository requires a
-\textbf{batch-processing approach}. Attempting to use LSP for this
-purpose would involve artificially spoofing thousands of "find
-references" queries across every symbol in every file, a process that
-is highly stateful, incredibly slow, and simply suboptimal for
-full-scale architectural extraction.
 
 \section{Parsing Technologies and Tree-sitter}
 \label{sec:parsing_and_treesitter}
@@ -652,7 +551,7 @@ to their concrete definitions. This separation of concerns is a
 central architectural decision in designing a scalable,
 language-agnostic analyzer.
 
-\subsection{Type Systems, Dynamic Typing, and Type Hints}
+\subsection{Type Systems and Type Hints}
 The complexity of name resolution is heavily influenced by the
 \textbf{Type System} of the underlying language
 \cite{pierce_types_2002}. In statically typed languages (such as
