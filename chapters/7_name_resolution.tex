@@ -374,6 +374,12 @@ pattern: all scopes reside in a contiguous flat vector
     names declared by the scope (used for type substitution).
   \item \texttt{is\_phantom: bool}: Indicates whether this scope is a synthetic
     phantom scope introduced for a generic type parameter.
+  \item \texttt{children: Vec<ScopeId>}: The ordered list of child scope indices
+    allocated under this scope node in the arena.
+  \item \texttt{children\_by\_name: HashMap<String, Vec<ScopeId>>}: An $\mathcal{O}(1)$
+    downward child index associating names with their allocated sub-scopes,
+    enabling instantaneous sub-scope dispatch (functions, nested types, and blocks)
+    without scanning the arena.
 \end{itemize}
 
 The \texttt{Symbol} enum distinguishes four kinds of entries:
@@ -438,6 +444,22 @@ lexical graph topology from Rust's memory ownership model:
     zero pointer chasing overhead.
 \end{itemize}
 
+Beyond scalar parent pointers, the Scope Tree maintains auxiliary index structures
+to guarantee $\mathcal{O}(1)$ performance during traversal:
+\begin{itemize}
+  \item \textbf{Localized Child Indexing (\texttt{children\_by\_name})}: Each scope
+    indexes its immediate descendants by name. When the execution phase resolves
+    sub-blocks, functions, or member definitions, matching sub-scopes are retrieved
+    in constant time $\mathcal{O}(1)$, completely bypassing any linear scanning over
+    the arena.
+  \item \textbf{Workspace Nominal Type Index (\texttt{type\_scopes\_by\_name})}: The root
+    \texttt{ScopeTree} container maintains a global hash map mapping structured type
+    names to their corresponding \texttt{ScopeId} allocations. This provides instantaneous
+    $\mathcal{O}(1)$ resolution during cross-module out-of-line method linking and
+    implementation block flattening, eliminating potential $\mathcal{O}(N^2)$ whole-arena
+    bottlenecks on enterprise-scale projects containing hundreds of thousands of scopes.
+\end{itemize}
+
 Figure \ref{fig:scope_tree_arena} illustrates this arena-allocated topology.
 
 \begin{figure}[htpb]
@@ -489,7 +511,8 @@ from the workspace modules:
     registrations are \textbf{deferred} into a
     \texttt{pending\_impl\_blocks} list. After all types are
     declared, these are processed: the target type is located in the
-    tree (with a global fallback search across all scopes if not
+    tree (via local parent symbols or through the global nominal index
+    \texttt{type\_scopes\_by\_name} in $\mathcal{O}(1)$ time if not
     found in the immediate parent), and the block's methods, nested
     types, and type aliases are flattened into the target type's scope.
 \end{enumerate}
@@ -1140,9 +1163,9 @@ The flattening algorithm operates as follows:
     structured type's scope
     within the parent module scope. If not found locally, a
     \textbf{global fallback search}
-    scans all arena scopes for a matching name (e.g., handling
-      cross-unit C++ \texttt{.h}/\texttt{.cpp}
-    separations or multi-file Rust modules).
+    queries the global nominal index \texttt{type\_scopes\_by\_name} in
+    $\mathcal{O}(1)$ time (handling cross-unit C++ \texttt{.h}/\texttt{.cpp}
+    separations or multi-file Rust modules without linear arena traversals).
   \item \textbf{Self-Type Alias Injection}: If a
     \texttt{self\_type\_keyword} is configured
     for the language (e.g., \texttt{"Self"} for Rust), a
