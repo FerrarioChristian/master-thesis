@@ -47,13 +47,14 @@ immense resource consumption and fragmented, heavyweight, difficult
 to maintain tooling.
 
 In recent years, the adoption of generic parsers based on unified
-formal grammars, such as Tree-sitter, has simplified the initial
-phase of the process. Tree-sitter can generate a Concrete Syntax Tree
-(CST) for almost any modern language. However, the CST is a low-level
-data structure that models the exact syntax of the text (including
-parentheses, keywords, etc.) but lacks strong semantics. This
-work is based on the observation that, despite the syntactical
-differences between various programming languages, \textbf{the generated CSTs
+formal grammars, such as Tree-sitter
+\cite{brunsfeld_treesitter_2018}, has simplified the initial phase of
+the process. Tree-sitter can generate a Concrete Syntax Tree (CST)
+for almost any modern language. However, the CST is a low-level data
+structure that models the exact syntax of the text (including
+parentheses, keywords, etc.) but lacks strong semantics. This work is
+based on the observation that, despite the syntactical differences
+between various programming languages, \textbf{the generated CSTs
 exhibit remarkable structural similarities}. It is therefore possible
 to exploit these commonalities to make the analysis process
 inherently language-agnostic.
@@ -128,7 +129,7 @@ Traditionally, developing cross-language analysis systems requires
 integrating disjointed tooling ecosystems, which significantly
 increases maintenance complexity. This project aims to bypass these
 limitations by processing the source code of heterogeneous
-languages through a single unified pipeline by transorming it to a
+languages through a single unified pipeline by transforming it to a
 standardized Intermediate Representation, to generate a
 the final \textbf{Dependency Graph}.
 
@@ -235,10 +236,9 @@ The remainder of this thesis is organized as follows:
     of software dependencies, technical debt, architectural smells, graph-based
     architectural modeling, parsing technologies, and lexical scoping.
   \item \textbf{Chapter \ref{ch:related_work}} examines the multi-language
-    analysis challenge, surveying traditional compiler tooling,
-    language-agnostic
-    syntax models, reference resolution graphs, and state-of-the-art dependency
-    extraction frameworks.
+    analysis challenge, surveying traditional compiler front-ends and
+    static analysis tooling, language-agnostic syntax models, reference
+    resolution graphs, and direct precursors to this work.
   \item \textbf{Chapter \ref{ch:ir_formalization}} formally defines the
     language-agnostic Intermediate Representation (IR) that serves as the
     central data model throughout the pipeline.

@@ -3,12 +3,12 @@
 
 This chapter introduces the fundamental concepts and technologies
 that form the basis of the architectural analysis process developed
-in this thesis. It begins by defining \textbf{software dependencies},
-the accumulation of \textbf{technical debt} and \textbf{architectural smells},
-and their formal representation through \textbf{graphs}. It then details
-parsing mechanisms, syntax trees, and the \textbf{Tree-sitter} framework,
-and concludes with the formal principles of \textbf{lexical scoping} and
-\textbf{name resolution}.
+in this thesis. It begins by defining \textbf{software dependencies}
+and their formal representation through \textbf{graphs}, the
+accumulation of \textbf{technical debt} and \textbf{architectural
+smells}. It then details parsing mechanisms, syntax trees, and the
+\textbf{Tree-sitter} framework, and concludes with the formal
+principles of \textbf{lexical scoping} and \textbf{name resolution}.
 
 \section{Software Dependencies}
 \label{sec:software_dependencies}
@@ -98,9 +98,10 @@ tight deadlines, and expedient engineering decisions inevitably introduce
 structural compromises. In software engineering, this accumulation of
 suboptimal design choices is formalized through the metaphor of
 \textbf{Technical Debt} \cite{cunningham_wycash_1992, kruchten_technical_2012}.
-Much like financial debt, technical debt incurs ongoing ``interest'' in the
+Much like financial debt, technical debt is a cause of ongoing
+``interest'' in the
 form of increased maintenance overhead, decreased productivity, and a higher
-propensity for regressions during change operations. If left unmanaged, it
+propensity for regressions during change operations. If not tackled, it
 leads to progressive \textit{architectural decay} (or architectural erosion),
 wherein the actual implementation of the system significantly diverges from
 its intended architecture.
@@ -129,22 +130,25 @@ scope and architectural granularity:
     Empirical investigations have demonstrated that architectural smells are
     largely independent of code-level smells
     \cite{arcelli_fontana_independent_2019}:
-    a codebase may feature pristine, well-formatted classes while simultaneously
-    suffering from severe architectural entanglement. Correcting an
-    architectural smell requires a holistic understanding of the system and
-    demands multi-component refactoring operations.
+    a codebase may feature clean, well-designed classes while simultaneously
+    suffering from severe architectural interlacement. Correcting an
+    architectural smell requires a comprehensive understanding of the system and
+    demands complex multi-component refactoring operations.
 \end{itemize}
 
-Among architectural smells, the most prominent and impactful subset consists of
-\textbf{Dependency Smells}. These flaws originate specifically from improper,
-excessive, or circular dependency patterns between software components (such as
-cyclic couplings or architectural bottlenecks). Because dependency smells
-reside in the relationships and interaction patterns between components rather
-than inside localized source code blocks, they cannot be discovered through
-simple line-by-line or syntactic analysis. Systematically identifying,
-tracking, and mitigating these smells requires modeling the entire codebase as
-a comprehensive, interconnected structure, which is achieved through
-graph-based representations.
+Among the various categories of architectural smells identified in
+the literature \textbf{Dependency Smells} represent a particularly
+critical class. These flaws originate specifically from improper,
+excessive, or circular dependency patterns between software
+components (such as cyclic couplings or architectural bottlenecks).
+Because dependency smells reside in the relationships and interaction
+patterns between components rather than inside localized source code
+blocks, they cannot be discovered through simple line-by-line or
+syntactic analysis. Systematically identifying, tracking, and
+mitigating these smells requires modeling the components and
+relational dependencies of a codebase through formal graph-based
+representations, which can accommodate both densely coupled
+subsystems and disconnected components.
 
 \section{Graph-Based Architectural Representation}
 \label{sec:dependency_graphs}
@@ -158,15 +162,17 @@ Graph} and a \textit{Dependency Graph}.
 \subsection{Component and Dependency Graphs}
 
 A \textbf{Component Graph} represents the hierarchical containment
-and physical organization of the source code. It is defined as a directed graph:
+and physical organization of the components defined within the source
+code. It is defined as a directed graph:
 \[
   G_c = (V, E_c)
 \]
 where $V$ is the set of vertices representing software components
 (e.g., a package, a class, or a method), and $E_c \subseteq V \times
-V$ is the set of directed edges representing strict containment
-relationships, such that an edge $(u, v) \in E_c$ indicates that
-component $u$ contains component $v$ (e.g., a method defined inside a class).
+V$ is the set of directed edges representing \textbf{direct
+containment} relationships. An edge $(u, v) \in E_c$ indicates that
+component $u$ is the immediate hierarchical parent of component $v$
+(e.g., a method defined inside a class).
 
 A \textbf{Dependency Graph} extends the component graph by modeling
 the semantic interactions between these components. It is defined as
@@ -194,9 +200,8 @@ intrinsically \textbf{directed}: if class \texttt{A} calls a method
 of class \texttt{B}, the edge points from \texttt{A} to \texttt{B},
 establishing a dependency vector that indicates \texttt{A} is
 vulnerable to changes in \texttt{B}, but not necessarily vice versa.
-An illustrative example of a real-world software dependency graph is
-provided in Figure \ref{fig:example_dependency_graph}, visually
-demonstrating how components interlock.
+An illustrative example of a software dependency graph is provided in
+Figure \ref{fig:example_dependency_graph}.
 
 \subsection{Dependency Smells}
 Mapping source code to a graph structure provides a powerful
@@ -253,10 +258,22 @@ public class ServiceC {
     \end{figure}
   \item \textbf{Unstable Dependency:} This occurs when a stable, core
     component depends on one or more highly unstable, frequently
-    changing components. This configuration violates the Stable
-    Dependencies Principle \cite{martin_clean_2018},
-    exposing central components to frequent variations and increasing
-    the risk of cascading failures.
+    changing components.
+    According to the metric formalization introduced by Martin
+    \cite{martin_clean_2018}, the instability $I \in [0, 1]$ of a
+    component is quantified as the ratio of efferent coupling ($C_e$,
+    outgoing dependencies) to total coupling:
+    \[
+      I = \frac{C_e}{C_a + C_e}
+    \]
+    where $C_a$ denotes afferent coupling (incoming dependencies). A
+    component is considered \textit{stable} when $I$ approaches 0 (it
+      is heavily depended upon and depends on few entities, making
+    changes difficult and costly), whereas it is \textit{unstable}
+    when $I$ approaches 1. Violating the Stable Dependencies
+    Principle (SDP) by directing dependencies toward components with
+    higher instability exposes critical architectural modules to
+    frequent changes and cascading failures.
   \item \textbf{Hub-Like Dependency:} A component assumes a role of
     excessive centrality, exhibiting a very high number of both
     incoming and outgoing dependencies. Such "hub" components become
@@ -278,59 +295,43 @@ public class ServiceC {
     can lead to severe compilation or runtime errors.
 \end{itemize}
 
-\section{Parsing Technologies and Tree-sitter}
+\section{Syntax Parsing and Tree-sitter}
 \label{sec:parsing_and_treesitter}
 
-A static analyzer relies fundamentally on parsing techniques to transform
-raw source text into structured representations. This section examines
-syntax tree paradigms and details the Tree-sitter framework that enables
-uniform parsing in our pipeline.
-
-\subsection{Syntax Trees: AST versus CST}
-\label{sec:ast_vs_cst}
-
-The foundation of any static analysis tool is the \textbf{parser},
-which translates raw source text into a structured tree
-representation. Before the widespread adoption of parser generators,
-some code analysis tools relied on pattern matching and
-\textbf{regular expressions} to extract structural information from
-source files. However, according to the Chomsky hierarchy
-\cite{chomsky_three_1956}\cite{jager_formal_2012}, regular
-expressions are formally incapable of correctly parsing context-free
-languages, which encompass all modern programming languages. They
-cannot reliably track nested structures, such as matched parentheses
-or nested code blocks \cite{aho_compilers_2007}, leading to brittle
-tools that break on complex formatting or edge cases.
-
-When analyzing source code properly, parsers generally produce one of
-two tree variants:
+Static analysis tools fundamentally rely on parsers to transform raw
+source text into structured syntactic models. In program analysis and
+compiler construction, these representations generally fall into two
+distinct paradigms:
 \begin{itemize}
-  \item \textbf{Abstract Syntax Tree (AST):} Abstracts away the
-    syntactical details that do not affect the program's logic, such
-    as punctuation, whitespace, and comments, focusing only on the
-    semantics (e.g., a "binary operation" node instead of explicitly
-    storing the '+' token). This makes it highly suitable for
-    compiler back-ends.
+  \item \textbf{Abstract Syntax Tree (AST):} Abstracts away
+    non-semantic syntactic details, such as punctuation, delimiters,
+    and whitespace, focusing exclusively on the computational logic
+    (e.g., representing an addition as an operator node rather than
+    preserving the literal \texttt{+} token). This structure is
+    widely used in compiler back-ends and intermediate optimization passes.
   \item \textbf{Concrete Syntax Tree (CST):} Represents the exact,
     unaltered syntactic structure of the source text, maintaining a
     strict one-to-one mapping with the original file. It includes all
     tokens, whitespace, and formatting, making it ideal for tooling
-    that requires exact code correspondence, such as linters,
-    formatters, and architectural analyzers.
+    that requires exact code correspondence, such as linters and code
+    formatters. Furthermore CSTs are often favored in multi-language
+    analyzers because they can be generated directly by parser
+    generators without the engineering cost of building and
+    maintaining custom AST abstractions for each language.
 \end{itemize}
 
-\subsection{The Tree-sitter Framework}
-To achieve high-performance, language-agnostic parsing, this project
-utilizes \textbf{Tree-sitter} \cite{brunsfeld_treesitter_2018}.
-Tree-sitter is a modern, generic parser generator that builds fast,
-robust CSTs. It generates parsers from formal grammars written in a
-Domain Specific Language (DSL) based on JavaScript.
+To achieve high-performance, language-agnostic parsing across
+heterogeneous codebases, the analysis pipeline developed in this
+thesis utilizes \textbf{Tree-sitter} \cite{brunsfeld_treesitter_2018}.
+Tree-sitter is a modern, generic parser generator designed to build
+fast, robust CSTs. It generates parsers from formal grammars written
+in a Domain Specific Language (DSL) based on JavaScript.
 
 One of the most defining characteristics of Tree-sitter is its vibrant,
 community-driven ecosystem. Rather than relying on a centralized team
 to build and maintain parsers, the ecosystem is heavily supported by
 the open-source community. Today, there are robust, production-ready
-parsers available for virtually all modern programming languages.
+parsers available for virtually all production grade programming languages.
 
 A fascinating side effect of this community-driven development is a
 phenomenon of \textit{structural convergence}. When developers write a

@@ -11,11 +11,11 @@ baseline approaches is essential for positioning the framework
 proposed in this thesis, highlighting how it overcomes existing
 bottlenecks in building language-agnostic dependency graphs.
 
-The chapter is structured into six main sections: multi-language analysis
+The chapter is structured into five main sections: multi-language analysis
 and tooling, language-agnostic syntactic representations,
-graph models for reference resolution, dependency extraction frameworks,
-direct precursor prototypes developed within our research laboratory, and
-finally, the architectural positioning of this thesis.
+graph models for reference resolution, direct precursor prototypes developed
+within our research laboratory, and finally, the architectural positioning of
+this thesis.
 
 \section{Multi-Language Analysis and Tooling}
 \label{sec:multilanguage_challenge}
@@ -42,7 +42,7 @@ programming language}, its specific version, and its build ecosystem.
 \label{sec:compiler_frontends_mxn}
 
 Developing a cross-language analysis system using language-specific
-tools forces engineers to integrate disparate compiler
+tools forces engineers to integrate various compiler
 front-ends, each with its own output format, terminology,
 and execution environment. If the system must support $M$ source
 languages and $N$ analysis tools (or back-ends), each tool must be
@@ -95,7 +95,7 @@ heterogeneous languages, without descending into low-level memory
 layouts, is the core theoretical foundation required to build a truly
 scalable, language-agnostic dependency extractor.
 
-\subsection{Intermediate Representations and LSP}
+\subsection{Language Server Protocol (LSP)}
 \label{sec:ir_and_lsp}
 
 In recent years, protocols like the \textbf{Language Server Protocol
@@ -114,15 +114,141 @@ references'' queries across every symbol in every file, a process that
 is highly stateful, incredibly slow, and simply suboptimal for
 full-scale architectural extraction.
 
+\subsection{Code Property Graph: Joern}
+\label{sec:code_property_graphs}
+
+Beyond interactive protocols like LSP, practical multi-language static
+analysis often relies on frameworks that transform entire codebases into
+queryable graph representations. In vulnerability discovery and security
+research, this is typically achieved through fine-grained semantic graphs that
+model instruction-level control and data flows across different programming
+languages.
+
+A well-known open-source platform in this domain is \textbf{Joern}
+\cite{joern_docs}, originally developed by Yamaguchi et al. for
+multi-language static analysis and vulnerability discovery
+\cite{yamaguchi_modeling_2014}.
+
+\textit{How it works:} Joern generates a \textit{Code Property Graph
+(CPG)}, a data structure that unifies three representations: the AST, the
+Control Flow Graph (CFG, which models statement execution order and conditional
+branching), and the Program Dependence Graph (PDG, which tracks data and
+control dependencies between operations) into a single, queryable graph
+database. Analysts can query this graph using a specialized Scala-based Domain
+Specific Language (Ocular/Joern dialect) to track data flow and identify
+security flaws.
+
+\textit{Weaknesses and Limitations:} Constructing a full Code Property Graph
+incurs substantial computational overhead, as extracting CFGs and PDGs requires
+modeling fine-grained runtime execution semantics. While this instruction-level
+granularity is essential for vulnerability discovery, it is unnecessarily
+heavy for high-level architectural analysis. Furthermore, Joern relies on
+separate, heavyweight compiler front-ends (such as Eclipse JDT for Java or
+Eclipse CDT for C/C++) rather than a unified parsing pipeline. As a result,
+supporting additional languages requires integrating dedicated compiler tools,
+reproducing the front-end coupling of the $M \times N$ problem.
+
+\subsection{Architectural Analyzers: Arcan and Depends}
+\label{sec:architectural_dependency_analyzers}
+
+While platforms like Joern operate at the instruction level, architectural
+analysis works at a higher level, extracting component and dependency graphs to
+evaluate structural health, modularity, and technical debt. Two widely used
+tools in this domain, which also serve as experimental baselines in this
+thesis, are \textbf{Arcan} and \textbf{Depends}.
+
+\textbf{Arcan} \cite{fontana_arcan_2017} is a static analysis
+tool developed by Fontana et al. dedicated to the automatic detection of
+architectural smells and the monitoring of architectural decay across software
+releases \cite{sas_investigating_2019}. Similar component and
+dependency graphs are used in industrial architectural suites (such as
+SonarQube or Structure101) to monitor modularity, but Arcan uniquely formalizes
+the automated detection of architectural smells and architectural
+technical debt.
+
+\textit{How it works:} Arcan analyzes software projects (primarily Java and
+C/C++) by extracting multi-layered dependency graphs that capture structural
+relations among packages, classes, and methods. On top of these graphs, Arcan
+executes graph-based algorithms and computes structural and topological metrics
+to detect critical dependency smells, such as Cyclic Dependency, Hub-Like
+Dependency, and Unstable Dependency. Furthermore, it tracks the introduction,
+persistence, and refactoring of these smells over commit histories and release
+cycles, providing quantifiable indicators of architectural technical debt.
+
+\textit{Role and Relevance to this Work:} Within our research laboratory,
+Arcan represents the primary reference baseline for architectural analysis;
+both precursor prototypes to this thesis, Skullian \cite{refolli_2023} and
+Entangle \cite{teruzzi_2024}, evaluated their dependency extraction accuracy
+and graph similarity against Arcan's output. However, Arcan's extraction
+pipeline relies on language-specific frontends and bytecode analyzers (such as
+Spoon for Java or compiler-based parsers for C/C++). Adding support for emerging
+or polyglot software systems (e.g., in Rust, Python, or Go) requires
+engineering dedicated frontends tailored to each language's compiler ecosystem.
+This limitation directly motivates the research in this thesis: designing a
+lightweight, uniform, and language-agnostic extraction engine capable of
+producing faithful dependency graphs across heterogeneous languages, serving as
+an effective frontend for architectural analysis tools like Arcan.
+
+\textbf{Depends} \cite{depends_github} is an open-source, multi-language static
+analysis framework specifically designed to extract fine-grained syntactical
+dependencies among code entities (files, types, and methods). Developed to
+support architecture recovery, code visualization, and modularity evaluation,
+
+\textit{How it works:} Depends relies on language-specific parsers generated
+via \textbf{ANTLR} grammars. For each supported language, an ANTLR-generated
+parser constructs an Abstract Syntax Tree (AST), which is subsequently visited
+to infer explicit syntactic relationships such as inheritance (\texttt{extend},
+\texttt{implement}), behavioral interactions (\texttt{call}, \texttt{create}),
+type declarations (\texttt{parameter}, \texttt{return}), and imports. The
+extracted dependencies are then aggregated into a unified dependency matrix and
+exported into standard interchange formats, such as JSON or Graphviz DOT.
+
+\textit{Role and Relevance to this Work:} In this thesis, Depends represents a
+crucial state-of-the-art multi-language reference baseline. Alongside Arcan,
+Depends is directly utilized in Chapter \ref{ch:evaluation_results} to benchmark
+and validate the accuracy, graph similarity, and extraction performance of
+Omnideps across heterogeneous, multi-language codebases.
+
+\textit{Weaknesses and Limitations:} Although Depends successfully supports
+multiple programming languages, its reliance on language-specific ANTLR
+grammars presents some practical limitations:
+\begin{itemize}
+  \item \textbf{Grammar Maintenance Burden:} While both tools require
+    language-specific logic to recognize initial code constructs, Depends
+    authors and maintains independent ANTLR grammars (\texttt{.g4}) for each
+    supported language. In contrast, our pipeline leverages existing,
+    widely adopted Tree-sitter grammars and strictly isolates language-specific
+    parsing to Phase 1, converting the syntax tree into a shared intermediate
+    model before any resolution begins.
+  \item \textbf{Parsing Algorithm Characteristics:} ANTLR utilizes a
+    top-down $LL(*)$ parsing strategy, which can incur non-trivial
+    memory and execution overhead on large source files compared to
+    bottom-up GLR parsing algorithms. Conversely, Tree-sitter
+    utilizes a bottom-up GLR parser implemented in native C that is
+    inherently error-tolerant, producing a usable syntax tree even
+    from malformed or incomplete source files.
+  \item \textbf{Lack of a Formal Unified IR and Scope Model:} Depends maps
+    AST nodes directly to dependency records without an intermediate, formal
+    algebraic representation. As a result, name resolution and expression
+    handling are implemented through ad-hoc logic within each language's AST
+    visitor, rather than through a single, unified resolution engine. In
+    contrast, our pipeline evaluates reference queries through a formal
+    query algebra over a language-agnostic Scope Tree, ensuring consistent
+    and mathematically defined resolution semantics across all supported
+    languages.
+\end{itemize}
+
 \section{Language-Agnostic Syntax Representations}
 \label{sec:language_agnostic_syntax}
 
 A major challenge in cross-language static analysis is the profound
 heterogeneity of the Abstract Syntax Trees (ASTs) generated by
-different parsers. Since standardizing the parsers themselves is
-generally unfeasible, several works have attempted to unify the
-resulting tree representations to allow a single backend tool to
-analyze software regardless of the source language.
+different parsers.  Analyzing multi-language software with a single
+unified backend therefore requires a common level of abstraction. In
+the literature, prior research has largely pursued this goal at the
+syntactic level by normalizing source code from different programming
+languages into unified tree representations, such as intermediate XML
+markup or universal abstract syntax trees.
 
 \subsection{Syntactic Wrapping: srcML}
 
@@ -179,31 +305,37 @@ lightweight fact extraction and refactoring tasks, it is essentially
 a syntactic markup rather than a semantic model. It does not provide
 built-in name resolution or cross-file dependency linking; it simply
 unifies the syntax. Furthermore, its parser ecosystem is currently
-less mature than modern alternatives like Tree-sitter for supporting
-the deepest semantic intricacies of all modern programming languages.
+restricted to a limited set of languages (C, C++, C\#, and Java), and
+it does not support the full range of available programming languages,
+limiting the future extensibility of the analysis framework.
 
-\textit{Relevance:} As the tool matures, it represents a valid future
-alternative for the extraction layer. An XML-based robust parser
-could potentially replace the Tree-sitter extraction phase of our
-pipeline, standardizing the input format even further without
-requiring the complex tree-cursor navigation and heuristic-based
-identification currently employed.
+\textit{Relevance:} \textit{Relevance:} While srcML cannot be adopted
+in this work due to its current language restrictions, its underlying
+philosophy remains highly relevant. By mapping syntactic constructs
+to a common vocabulary of structural annotations across all supported
+languages, it provides a unified baseline for core program elements.
+Adopting such a cross-language unified annotation scheme could
+represent an interesting alternative for the extraction layer,
+significantly reducing the need for complex heuristics to recognize
+corresponding constructs across different parsing trees.
 
 \subsection{Universal ASTs: Babelfish}
 
-A prominent direction in multi-language analysis is transforming source code
-into a unified, language-agnostic tree representation. A pioneer in this domain
-was \textbf{Babelfish} \cite{babelfish_uast}, an open-source framework that
-introduced the concept of the \textit{Universal Abstract Syntax Tree (UAST)}.
-Babelfish aimed to parse any programming language into a standardized syntax
-tree annotated with language-independent semantic roles. In a similar vein,
-recent research by Curtis \cite{curtis_language-agnostic_2022} and
-Schiewe et al. \cite{schiewe_advancing_2022} focuses on generating
-language-agnostic ASTs to analyze heterogeneous, cloud-native microservices. In
-distributed systems, microservices frequently employ different programming
-languages, making traditional single-language analyzers insufficient for
-tracing cross-service architectural dependencies (e.g., a Python service
-invoking a Java endpoint).
+A widely explored direction in multi-language analysis is
+transforming source code into a unified, language-agnostic tree
+representation. A pioneer in this domain was \textbf{Babelfish}
+\cite{babelfish_uast}, an open-source framework that introduced the
+concept of the \textit{Universal Abstract Syntax Tree (UAST)}.
+Babelfish aimed to parse any programming language into a standardized
+syntax tree annotated with language-independent semantic roles. In a
+similar vein, recent research by Curtis
+\cite{curtis_language-agnostic_2022} and Schiewe et al.
+\cite{schiewe_advancing_2022} focuses on generating language-agnostic
+ASTs to analyze heterogeneous, cloud-native microservices. In
+distributed systems, microservices frequently employ different
+programming languages, making traditional single-language analyzers
+insufficient for tracing cross-service architectural dependencies
+(e.g., a Python service invoking a Java endpoint).
 
 \textit{How it works:} To bridge language differences, these approaches
 introduce an explicit multi-stage translation pipeline. Language-specific
@@ -217,32 +349,30 @@ analyzers traverse this normalized tree to extract architectural abstractions
 language.
 
 \textit{Weaknesses and Limitations:} Although effective for coarse-grained
-structural classification, relying on a Universal AST presents several major
+syntactic classification, relying on a Universal AST presents several major
 limitations for deep architectural analysis. First, maintaining dedicated
 transformation drivers is costly: every supported grammar requires continuous
-manual maintenance to align new language constructs with the universal schema.
-Second, full-tree normalization incurs significant memory overhead, as entire
-codebases must be translated and serialized into verbose intermediate models.
-Third, converting disparate languages into a common schema is inherently lossy.
-To fit diverse semantic systems into a universal structure, representations
-inevitably resort to lowest common denominators. Collapsing distinct concepts
-(such as Rust traits and pattern matching versus Java classes and classical
-inheritance) into generic node kinds discards the exact scoping rules and type
-bounds needed for fine-grained name and dependency resolution.
+manual engineering to map evolving language syntax into the universal schema.
+Second, full-tree normalization incurs significant computational and memory
+overhead, as entire codebases must be translated into statement-level and
+expression-level universal syntax trees, capturing low-level details (such as
+arithmetic operations or loop constructs) that are irrelevant for architectural
+dependencies. Third, attempting to unify diverse language syntaxes into a single
+syntactic tree is inherently lossy: collapsing language-specific constructs
+into generic node kinds discards the distinct scoping and visibility
+semantics required for faithful name resolution.
 
 \textit{Relevance:} Our work directly addresses these drawbacks by avoiding an
-intermediate Universal AST entirely. Instead of transforming code into a common
-syntactic representation, we abstract the \textit{extraction logic}. We perform
-a \textbf{heuristic-based extraction} directly on the Concrete Syntax Tree (CST)
-produced by Tree-sitter. Our framework models programming languages as
-combinations of orthogonal behavioral features. By querying native CST nodes
-through naming heuristics and language feature configurations (e.g., detecting
-whether a language uses directory-based packages or inline module blocks), we
-extract only the architectural entities required by our Intermediate
-Representation ($\mathcal{D}_{IR}$). This skips the heavy serialization
-pipeline and preserves the full language context needed for deterministic
-dependency resolution, enabling straightforward extension to new languages
-without building custom AST transformers.
+instruction-level Universal AST entirely. Instead of normalizing all source
+syntax into a single monolithic tree, we perform selective, heuristic-based
+extraction directly on Tree-sitter Concrete Syntax Trees (CSTs). We extract
+only high-level architectural constructs (modules, types, signatures, and
+reference queries) into a lightweight Intermediate Representation
+($\mathcal{D}_{IR}$), discarding intra-procedural statement syntax immediately
+after extraction. Crucially, rather than forcing heterogeneous scoping rules
+into a generic syntactic schema, our pipeline preserves language-specific
+resolution semantics through the declarative configuration $\mathcal{K}$
+evaluated during Phase 2.
 
 \section{Graph Models for Reference Resolution}
 \label{sec:graph_models_reference_resolution}
@@ -308,125 +438,6 @@ bottlenecks. Conversely, our approach avoids this combinatorial
 explosion by replacing unguided graph traversal with deterministic
 algebraic lookups on a Scope Tree.
 
-\section{Dependency Extraction Frameworks}
-\label{sec:program_analysis_dependency_extraction}
-
-While the aforementioned approaches address isolated phases of analysis
-(syntactic parsing or reference resolution), broader research has explored
-transforming entire codebases into queryable graph representations to enable
-global static analysis. These methodologies diverge significantly in their
-abstraction granularity and analytical objectives: fine-grained semantic
-graphs capture instruction-level control and data flows for vulnerability
-discovery, whereas coarse-grained dependency analyzers model architectural
-components to evaluate structural health and technical debt. Importantly,
-despite their different analytical scopes, both paradigms traditionally share a
-fundamental operational bottleneck: their heavy reliance on language-specific,
-compiler-bound front-ends or independently maintained language grammars.
-
-\subsection{Code Property Graph: Joern}
-\label{sec:code_property_graphs}
-
-\textbf{Joern} \cite{joern_docs} is a prominent, open-source
-platform originally developed by Yamaguchi et al. for robust,
-multi-language static analysis, primarily targeting vulnerability
-discovery \cite{yamaguchi_modeling_2014}.
-
-\textit{How it works:} Joern generates a \textit{Code Property Graph
-(CPG)}, a highly complex data structure that unifies the AST, the
-Control Flow Graph (CFG), and the Program Dependence Graph (PDG) into
-a single, queryable graph database. Analysts can interrogate this
-massive graph using a specialized Scala-based Domain Specific
-Language (Ocular/Joern dialect) to track data flow and identify security flaws.
-
-\textit{Weaknesses and Limitations:} The primary weakness of Joern,
-when considered for purely architectural dependency extraction, is
-its sheer weight and complexity. Generating CFGs and PDGs requires a
-deep understanding of the runtime execution semantics of the
-language, which introduces massive computational overhead.
-Furthermore, Joern does not use a single unified parser; it relies on
-distinct, heavyweight frontends (e.g., Eclipse JDT for Java, Eclipse
-CDT for C/C++) to generate the CPG for different languages. This
-violates the goal of maintaining a lightweight, truly
-language-agnostic extraction pipeline.
-
-\subsection{Architectural Analyzers: Arcan and Depends}
-\label{sec:architectural_dependency_analyzers}
-
-\textbf{Arcan} \cite{fontana_arcan_2017} is a state-of-the-art static analysis
-tool developed by Fontana et al. dedicated to the automatic detection of
-architectural smells and the monitoring of architectural decay across software
-releases \cite{sas_investigating_2019}. Similar coarse-grained component and
-dependency graphs are leveraged in industrial architectural suites (such as
-SonarQube or Structure101) to monitor modularity, but Arcan uniquely formalizes
-the automated detection of architectural smells and architectural
-technical debt.
-
-\textit{How it works:} Arcan analyzes software projects (primarily Java and
-C/C++) by extracting multi-layered dependency graphs that capture structural
-relations among packages, classes, and methods. On top of these graphs, Arcan
-executes graph-based algorithms and computes structural and topological metrics
-to detect critical dependency smells, such as Cyclic Dependency, Hub-Like
-Dependency, and Unstable Dependency. Furthermore, it tracks the introduction,
-persistence, and refactoring of these smells over commit histories and release
-cycles, providing quantifiable indicators of architectural technical debt.
-
-\textit{Role and Relevance to this Work:} Within our research laboratory,
-Arcan represents the primary reference baseline for architectural analysis;
-both precursor prototypes to this thesis, Skullian \cite{refolli_2023} and
-Entangle \cite{teruzzi_2024}, evaluated their dependency extraction accuracy
-and graph similarity against Arcan's output. However, Arcan's extraction
-pipeline relies on language-specific frontends and bytecode analyzers (such as
-Spoon for Java or compiler-based parsers for C/C++). Adding support for emerging
-or polyglot software systems (e.g., in Rust, Python, or Go) requires
-engineering dedicated frontends tailored to each language's compiler ecosystem.
-This limitation directly motivates the research in this thesis: designing a
-lightweight, uniform, and language-agnostic extraction engine capable of
-producing faithful dependency graphs across heterogeneous languages, serving as
-an effective frontend for architectural analysis tools like Arcan.
-
-\textbf{Depends} \cite{depends_github} is an open-source, multi-language static
-analysis framework specifically designed to extract fine-grained syntactical
-dependencies among code entities (files, types, and methods). Developed to
-support architecture recovery, code visualization, and modularity evaluation,
-Depends can analyze projects written in a variety of programming languages,
-including Java, C/C++, Python, Go, and Ruby.
-
-\textit{How it works:} Depends relies on language-specific parsers generated
-via \textbf{ANTLR} grammars. For each supported language, an ANTLR-generated
-parser constructs an Abstract Syntax Tree (AST), which is subsequently visited
-to infer explicit syntactic relationships such as inheritance (\texttt{extend},
-\texttt{implement}), behavioral interactions (\texttt{call}, \texttt{create}),
-type declarations (\texttt{parameter}, \texttt{return}), and imports. The
-extracted dependencies are then aggregated into a unified dependency matrix and
-exported into standard interchange formats, such as JSON or Graphviz DOT.
-
-\textit{Role and Relevance to this Work:} In this thesis, Depends represents a
-crucial state-of-the-art multi-language reference baseline. Alongside Arcan,
-Depends is directly utilized in Chapter \ref{ch:evaluation_results} to benchmark
-and validate the accuracy, graph similarity, and extraction performance of
-Omnideps across heterogeneous, multi-language codebases.
-
-\textit{Weaknesses and Limitations:} Although Depends successfully supports
-multiple programming languages, its reliance on language-specific ANTLR
-grammars presents distinct architectural drawbacks compared to our approach:
-\begin{itemize}
-  \item \textbf{Grammar Maintenance Burden:} Because Depends relies on
-    independent ANTLR grammars and custom AST visitor passes for each
-    individual language, adding support for a new language or updating an
-    existing one requires substantial manual engineering, reproducing the
-    combinatorial front-end maintenance problem.
-  \item \textbf{Parsing Algorithm Characteristics:} ANTLR utilizes a
-    top-down $LL(*)$ parsing strategy, which can incur non-trivial memory and
-    execution overhead on large source files compared to bottom-up GLR
-    parsing algorithms.
-  \item \textbf{Lack of a Formal Unified IR:} Depends maps AST nodes directly
-    to dependency records without an intermediate, formal algebraic
-    representation. Consequently, it cannot easily propagate generic type
-    parameters, evaluate chained access expressions through unified scope
-    trees, or manage complex module partitioning without custom,
-    language-specific resolution logic.
-\end{itemize}
-
 \section{Direct Precursors}
 \label{sec:precursors}
 
@@ -450,7 +461,7 @@ then used the built-in Stack Graph path-finding algorithm to resolve
 all references and build a dependency graph.
 
 \textit{Weaknesses and Limitations:} The evaluation of Skullian
-exposed severe practical and scalability limits of Stack Graphs for
+exposed practical and scalability limits of Stack Graphs for
 architectural-level dependency extraction.
 \begin{itemize}
   \item \textbf{Grammar Complexity}: Writing the language-specific
@@ -466,15 +477,6 @@ architectural-level dependency extraction.
     to missed dependencies. Relaxing the path-similarity constraints
     (MAX\_SIMILAR\_PATH\_COUNT) inevitably resulted in system stalls or
     Out-Of-Memory (OOM) crashes, making large-scale projects unanalyzable.
-  \item \textbf{Benchmark Results}: In comparison to Arcan
-    \cite{fontana_arcan_2017}, Skullian
-    detected 22 out of 32 dependencies in the Pruijt et al.
-    benchmark. On real-world software (JUnit4, JUnit5, and Antlr4),
-    the resulting dependency graphs exhibited low structural
-    similarity to Arcan's baseline, with Jaccard similarity indexes
-    ranging between ~20\% and 48\% (specifically, 19.73\% for JUnit5 and
-    25.42\% for JUnit4), making the approach inefficient and
-    impractical for complex architectural analysis
 \end{itemize}
 
 \subsection{Scope-Climbing Resolution: Entangle}
@@ -566,16 +568,13 @@ use highly predictable naming conventions across different grammars
 constructs by applying heuristics directly on the original CST.
 Coupled with a feature-based configuration to manage broad behavioral
 differences (like identifying if a language uses directory-based
-packages or inline modules), this makes the extraction phase truly
-and natively language-agnostic, eliminating the manual configuration
-burden for each new language.
+packages or inline modules), this makes the extraction phase natively
+language-agnostic.
 
-Furthermore, this formalization inherits the exceptional execution
-speed achieved by Entangle while systematically solving its major
-structural flaws. The formal IR natively models complex,
+The formal IR natively models complex,
 multi-layered module hierarchies (solving the namespace collision
 issues). The resolution engine has been rigorously expanded to
 support generic types, evaluated access paths, and accurate type
 bounds. Ultimately, this thesis elevates the experimental concepts of
-previous iterations into a mathematically sound, provably decoupled,
-and highly performant language-agnostic architectural analyzer.
+previous iterations into a mathematically sound, provably decoupled
+language-agnostic architectural analyzer.
