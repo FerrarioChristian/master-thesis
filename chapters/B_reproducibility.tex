@@ -35,9 +35,10 @@ To extract the dependency graph from a target project, use the
 \begin{verbatim}
 omnideps analyze /path/to/project --output graph.json
 \end{verbatim}
-This command will parse the codebase, execute the extraction
-heuristics, run the resolution engine, and output the final
-dependency graph in standard JSON format.
+This command parses the codebase, executes the extraction heuristics, runs
+the name resolution engine, and outputs the final dependency graph directly
+in standard Cytoscape.js JSON format.
+
 
 \subsection*{Custom Configuration}
 To initialize a default configuration file (\texttt{omnideps.json})

@@ -333,3 +333,4 @@ Tectonic.toml
 src
 build/main
 revision
+build/synthesis

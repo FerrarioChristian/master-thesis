@@ -1,0 +1,449 @@
+\documentclass[a4paper, 11pt]{article}
+
+% --- Margini di pagina (meno larghi rispetto alla tesi) ---
+\usepackage[a4paper, margin=2.5cm]{geometry}
+
+% --- Pacchetti tipografici e lingua ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{newunicodechar}
+\newunicodechar{’}{'}
+\newunicodechar{Ł}{\L{}}
+\usepackage{setspace}
+\usepackage{microtype}
+
+% --- Matematica e simboli ---
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% --- Figure e tabelle ---
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{adjustbox}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{enumitem}
+
+% --- Collegamenti ipertestuali (stile come da modello allegato con
+% box verde per le citazioni) ---
+\usepackage{xcolor}
+\usepackage[
+  colorlinks=false,
+  citebordercolor={0 1 0},
+  linkbordercolor={0.8 0 0},
+  urlbordercolor={0 0.5 1},
+  pdfborder={0 0 1}
+]{hyperref}
+
+% --- Bibliografia condivisa con la tesi (biblatex + biber, stile IEEE) ---
+\usepackage[
+  backend=biber,
+  style=ieee,
+  sorting=none,
+]{biblatex}
+\addbibresource{bibliografia.bib}
+
+\pagestyle{plain}
+
+\begin{document}
+
+% ==============================================================================
+% INTESTAZIONE PRIMA PAGINA (Titolo e Partecipanti come da modello)
+% ==============================================================================
+\begin{center}
+  \vspace*{0.2cm}
+  {\LARGE \textbf{A Language-Agnostic Framework\\ for Dependency
+  Extraction}\par}
+
+  \vspace{1.6em}
+  {\large \textbf{Candidate:} Christian Ferrario\par}
+
+  \vspace{1.0em}
+  {\large
+    \textbf{Supervisor:} Prof. Francesca Arcelli Fontana\\[0.3em]
+  \textbf{Co-supervisor:} Dr. Francesco Refolli\par}
+
+  \vspace{1.6em}
+  {\large October 2026\par}
+\end{center}
+
+\vspace{1.2em}
+
+% ==============================================================================
+% 1. OBJECTIVES OF THE STUDY
+% ==============================================================================
+\section{Introduction and Objectives of the Study}
+\label{sec:objectives}
+
+Modern software systems require continuous evolution to adapt to
+changing business requirements and technological paradigms.
+A software system is rarely
+static; its lifecycle requires continuous maintenance and extension
+\cite{lehman_programs_1980}.
+However, frequent and rapid modifications often lead to architectural
+degradation, giving rise to accumulated \textbf{technical debt}
+\cite{cunningham_wycash_1992, kruchten_technical_2012}.
+While low-level code smells (e.g., long methods, duplicated code)
+primarily affect local readability and code quality
+\cite{fowler_refactoring_2013}, architectural flaws such as circular
+dependencies, cyclic package couplings, and hub-like structures
+(\textit{Architectural Smells}) severely hinder system
+maintainability and prevent safe refactoring operations
+\cite{garcia_identifying_2009, arcelli_fontana_independent_2019}.
+
+To prevent technical debt from accumulating unnoticed, software
+organizations increasingly rely on automated static analysis tools
+that construct architectural \textbf{Dependency Graphs}.
+These directed graphs model software components (modules, classes,
+interfaces, functions) as nodes and their inter-relationships
+(inheritance, containment, invocations, type usages) as edges.
+However, existing static analyzers suffer from a significant
+limitation: \textbf{they are tightly coupled with specific
+programming languages or compiler front-ends}.
+Developing and maintaining distinct analyzers for heterogeneous
+languages (such as Java, C++, Python, and Rust) incurs enormous
+redundant engineering overhead, leading to fragmented tooling
+ecosystems with divergent abstraction models and maintenance bottlenecks.
+
+Generic incremental parsers, such as Tree-sitter
+\cite{brunsfeld_treesitter_2018}, have made it feasible to generate
+Concrete Syntax Trees (CSTs) across virtually any production grade
+programming language.
+While CSTs model low-level grammar rather than semantic abstractions,
+cross-language inspection reveals that they exhibit remarkable
+structural similarities.
+This thesis builds on the observation that these structural
+commonalities can be exploited to design an architectural dependency
+extraction pipeline that is inherently language-agnostic.
+
+\paragraph{Project Objectives.}
+The primary objective of this thesis is to design, formalize, and
+implement \textbf{OmniDeps}, a language-agnostic static analysis
+framework capable of extracting comprehensive architectural
+dependency graphs across heterogeneous programming languages
+(specifically targeting C, C++, Java, Python, and Rust) through a
+single unified pipeline.
+Specifically, the research pursues three core objectives:
+\begin{enumerate}[leftmargin=2.0em, noitemsep]
+  \item \textbf{Design and Formalization}: Formalizing a
+    language-agnostic Intermediate Representation (IR) through
+    strongly typed algebraic data types (sum and product types) and
+    an algebraic query model for name resolution, abstracting
+    architectural declarations and behavioral dependencies away from
+    language-specific syntax.
+  \item \textbf{Framework Implementation}: Engineering OmniDeps as a
+    modular, high-throughput static analysis toolchain in Rust,
+    realizing the three-phase functional pipeline to transform native
+    Tree-sitter CSTs into normalized dependency graphs.
+  \item \textbf{Empirical Validation}: Verifying extraction capabilities
+    against ground-truth semantic oracles across language
+    constructs, and benchmarking cross-tool structural alignment and
+    performance against established analyzers
+    (\textit{Arcan}~\cite{fontana_arcan_2017},
+      \textit{Depends}~\cite{depends_github}, and
+    \textit{Entangle}~\cite{teruzzi_2024}) on real-world software
+    repositories using a graph alignment and harmonization methodology.
+\end{enumerate}
+
+To achieve these objectives without re-implementing an entire
+compiler toolchain, the framework operates under the foundational
+premise that \textbf{the analyzed source code is semantically valid
+and compiles successfully within its native toolchain}.
+This deliberately scopes out compiler-level validity checks
+(e.g., type checking, visibility enforcement) and enables OmniDeps to
+focus strictly on architectural dependency extraction.
+
+% ==============================================================================
+% 2. EXECUTION: ARCHITECTURE AND METHODOLOGY
+% ==============================================================================
+\section{Execution and Methodology}
+\label{sec:execution}
+
+To guarantee extensibility, formal correctness, and cross-language
+consistency, OmniDeps is architected upon principles of
+\textbf{algebraic data types} \cite{pierce_types_2002} and functional
+composition.
+The analysis is structured as a deterministic three-phase pipeline,
+where each phase is a strongly typed, side-effect-free transformation:
+
+\begin{figure}[htpb]
+  \centering
+  \includegraphics[width=0.92\textwidth]{images/introduction/analysis_pipeline.png}
+  \caption{The functional three-phase pipeline of the OmniDeps analyzer.}
+  \label{fig:pipeline}
+\end{figure}
+
+\subsection{Phase 1: Syntactic Extraction to Intermediate Representation}
+The extraction phase ingests Concrete Syntax Trees (CSTs) produced by
+Tree-sitter parsers and maps concrete syntactic nodes into our
+universal Intermediate Representation (IR).
+This is the only stage in the pipeline that maintains direct contact
+with language-specific grammars.
+Rather than implementing dedicated parser front-ends for each target
+language, the analyzer exploits the \textbf{structural convergence}
+and recurring syntactic patterns observed in Tree-sitter CSTs across
+different programming languages.
+By applying lightweight, heuristic classification predicates directly
+on syntax tree nodes, a unified extraction pipeline identifies and
+extracts the key architectural constructs:
+\begin{itemize}[leftmargin=2.0em, noitemsep]
+  \item \textbf{Modules and Structured Types}: Packages, namespaces,
+    and source modules defining architectural boundaries, alongside
+    structured types (classes, structs, interfaces, traits, enums)
+    with their inheritance links and generics.
+  \item \textbf{Members and Behavioral Bodies}: Functions, methods,
+    constructors, and fields, including nested statement blocks
+    capturing intra-procedural operations (calls, instantiations,
+    field accesses, and local variables).
+  \item \textbf{Auxiliary Declarations and Imports}: Import
+    directives (explicit, wildcard, and aliased), type aliases,
+    detached implementation blocks (e.g., Rust \texttt{impl}), and
+    annotations/decorators.
+\end{itemize}
+By mapping heterogeneous syntax nodes into the strongly typed data
+structures of our IR (formalized through algebraic data types), the
+framework abstracts away language-specific syntax, keywords, and grammar rules.
+Consequently, all subsequent analytical phases (name resolution and
+graph construction) operate exclusively on standardized architectural
+entities, completely decoupled from the original source language.
+
+\subsection{Phase 2: Name Resolution}
+The name resolution phase transforms the symbolic, unresolved type
+references produced during extraction into semantically resolved pointers.
+Operating entirely on the uniform Intermediate Representation, this
+phase is language-independent: all language-specific scoping rules,
+receiver conventions, and import semantics are decoupled into a
+declarative language configuration and a registry of primitive types.
+
+\paragraph{Architectural Rationale: Decoupling Local State from
+Global Resolution.}
+During syntactic extraction (Phase 1), each source file is analyzed
+in complete isolation.
+Within function and method bodies, however, references depend heavily
+on transient intra-procedural context, such as formal parameters,
+local variable declarations, block-level lexical shadowing, and
+implicit receivers (\texttt{this} or \texttt{self}).
+Attempting to resolve all dependencies in a single global step would
+require the resolution engine to track and juggle procedural state
+across every block in the workspace simultaneously, leading to high
+coupling, state pollution, and order-dependent complexities.
+To resolve this issue, OmniDeps decomposes name resolution into two
+distinct, sequential sub-phases: \textbf{Query Building} and
+\textbf{Query Execution}.
+
+\paragraph{Phase 2a: Query Building.}
+The goal of this sub-phase is to eliminate all transient
+intra-procedural state before attempting global resolution.
+By traversing the extracted ASTs with an ephemeral \textbf{Symbol
+Stack} (a stack of lexical frames pushed and popped when entering and
+exiting blocks and functions), the builder tracks local variables,
+parameters, and implicit receivers.
+When an intra-procedural reference (such as \texttt{x.method()}) is
+encountered, the local variable \texttt{x} is substituted with its
+declared or inferred type.
+Every syntactic path is thus rewritten into a self-contained formula
+expressed in our \textbf{Query Algebra}, which formalizes navigation
+through three orthogonal primitives:
+\begin{itemize}[leftmargin=2.0em]
+  \item \texttt{Find}: An ascending lexical search that climbs from
+    the current scope towards the root to locate an identifier.
+  \item \texttt{Extract}: A structural member descent that accesses a
+    member within a target module or type resulting from a sub-query,
+    navigating through inheritance hierarchies when necessary.
+  \item \texttt{Call}: Return-type extraction of a callable entity.
+    This primitive is used strictly in type inference contexts (e.g.,
+      untyped variable assignments or fluent method chaining like
+    \texttt{a.f().g()}), ensuring that type propagation is cleanly
+    distinguished from behavioral call statements, which directly
+    target the callee entity to build call-graph edges.
+\end{itemize}
+Once all function bodies have been translated into closed algebraic
+queries, the Symbol Stack is safely deallocated.
+All method bodies are now represented uniformly by self-contained
+queries, leaving the codebase entirely free of transient procedural state.
+
+\paragraph{Phase 2b: Query Execution.}
+The execution phase constructs a unified, global \textbf{Scope Tree}
+that captures the lexical and modular containment of the entire
+workspace (packages, modules, structured types, functions, and nested blocks).
+Because execution takes place after the entire workspace has been
+indexed and local variables have already been abstracted into
+queries, the engine can resolve cross-file references, imports, and
+inheritance hierarchies in a single deterministic traversal,
+completely independent of source file processing order.
+
+To evaluate these queries, the engine performs lexical scope climbing
+up the parent chain in the Scope Tree, inspecting local symbol
+tables, inherited members, and visible imports (both direct and
+wildcard) before falling back to a global workspace search and
+language primitives.
+When navigating structural member access, ancestor exploration
+employs memoization to prevent combinatorial explosions in complex or
+multiple inheritance hierarchies, ensuring predictable search times.
+Method call chains are resolved by inspecting return types, ensuring
+that dependencies are correctly tracked across chained invocations.
+
+\paragraph{Output and Semantic Binding.}
+At the conclusion of Phase 2, every symbolic reference across the
+workspace is definitively resolved into a concrete semantic target:
+internal references are bound to their canonical workspace
+definitions, external dependencies (such as standard library entities
+or third-party packages) are categorized as external endpoints, and
+fundamental data types are mapped to language primitives.
+This process transforms the forest of isolated syntax trees into a
+coherent, fully linked semantic model ready for architectural graph projection.
+
+\subsection{Phase 3: Dependency Graph Construction}
+The final phase of the pipeline projects the resolved Intermediate
+Representation into an architectural directed multigraph, where
+vertices represent software components and edges model semantic dependencies.
+This transformation proceeds in two consecutive traversal passes:
+
+\paragraph{Node Flattening.}
+The hierarchical module tree is recursively flattened to promote all
+extracted components (modules, structured types, functions, fields,
+and type aliases) into independent graph vertices.
+Each vertex is assigned a canonical \textbf{Qualified Name} computed
+by prepending its ancestor module paths, establishing a globally
+unique identifier for every component across the workspace.
+
+\paragraph{Edge Generation and Dependency Extraction.}
+A second traversal pass inspects all resolved type references across
+signatures and function bodies to instantiate directed dependency edges.
+Through this traversal, we extract a broad spectrum of software
+dependencies, including: \textit{structural and inheritance dependencies}
+(module containment, component nesting, subtyping, and trait or interface
+implementations); \textit{type-level couplings} established by field, parameter,
+and return types, type aliases, and generic constraint bounds; and
+\textit{behavioral interactions} extracted from function bodies (method
+invocations, type instantiations, and attribute accesses).
+To ensure referential integrity, edges referencing verified external
+libraries or built-in primitives dynamically synthesize corresponding
+\texttt{External} and \texttt{Primitive} endpoints, while
+unresolvable references are discarded.
+Finally, duplicate edges between identical endpoints are pruned to
+prevent distorted coupling metrics, producing a clean, normalized
+dependency graph ready for architectural evaluation.
+
+% ==============================================================================
+% 3. EVALUATION AND RESULTS
+% ==============================================================================
+\section{Evaluation and Results}
+\label{sec:results}
+
+The validation of OmniDeps evaluates three core aspects: extraction
+correctness against ground-truth semantic benchmarks, structural
+alignment with state-of-the-art static analyzers on real-world
+software systems, and runtime performance scalability.
+
+\subsection{Micro-Benchmark Validation}
+To verify the extraction pipeline and query-based resolution engine,
+OmniDeps was tested against hand-crafted micro-benchmarks across all
+five supported languages (C, C++, Java, Python, and Rust).
+These benchmarks systematically isolate challenging language-specific
+constructs, such as out-of-line C++ template specializations, generic
+trait bounds in Rust, multi-interface inheritance in Java, and
+dynamic package re-exports in Python.
+OmniDeps achieved \textbf{100\% precision and recall} in structural
+entity extraction and reference resolution across all suites,
+confirming that the universal Intermediate Representation and query
+algebra faithfully capture the semantics of each language.
+
+\subsection{Comparison with State-of-the-Art Analyzers}
+Benchmarking dependency extractors across independent tools is
+challenging because analyzers adopt divergent metamodels, graph
+representations, and granularity levels.
+To enable fair comparison on real-world software, we developed a graph
+harmonization process that canonicalizes entity identifiers using
+unified qualified paths, lifts fine-grained members (such as functions
+and variables) to their enclosing architectural components (classes or
+modules) while suppressing intra-component self-loops, synthesizes
+explicit containment hierarchies, and maps tool-specific
+relationships onto a common relational taxonomy.
+
+Using this methodology, OmniDeps was evaluated against three established
+tools---\textit{Arcan} (compiler front-end), \textit{Depends}
+(ANTLR grammar parsers), and \textit{Entangle} (Tree-sitter
+prototype)---across a curated corpus of 28 open-source repositories
+(including Redis, Godot, Elasticsearch, Django, and Tokio).
+
+\begin{table}[htpb]
+  \centering
+  \small
+  \caption{Pairwise structural similarity (Jaccard index) across benchmark repositories.}
+  \label{tab:results_summary}
+  \vspace{0.4em}
+  \begin{adjustbox}{max width=\textwidth}
+    \begin{tabular}{lcccccc}
+      \toprule
+      \textbf{Language} & \multicolumn{2}{c}{\textbf{OmniDeps vs. Arcan}} & \multicolumn{2}{c}{\textbf{OmniDeps vs. Depends}} & \multicolumn{2}{c}{\textbf{OmniDeps vs. Entangle}} \\
+      \cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+      & Nodes & Edges & Nodes & Edges & Nodes & Edges \\
+      \midrule
+      \textbf{Java}   & 0.81 & 0.74 & 0.88 & 0.81 & 0.84 & 0.76 \\
+      \textbf{C}      & ---  & ---  & 0.85 & 0.78 & 0.79 & 0.71 \\
+      \textbf{C++}    & ---  & ---  & 0.82 & 0.73 & ---  & ---  \\
+      \textbf{Python} & ---  & ---  & 0.79 & 0.70 & ---  & ---  \\
+      \textbf{Rust}   & ---  & ---  & ---  & ---  & ---  & ---  \\
+      \bottomrule
+    \end{tabular}
+  \end{adjustbox}
+\end{table}
+
+As summarized in Table \ref{tab:results_summary}, in object-oriented
+environments (Java), OmniDeps exhibits high structural agreement with
+both Arcan (node similarity 0.81, edge similarity 0.74) and Depends
+(node similarity 0.88, edge similarity 0.81), demonstrating that
+heuristic extraction over incremental syntax trees achieves fidelity
+comparable to compiler-based front-ends.
+In Rust, OmniDeps provides the first architectural analyzer capable
+of extracting complete dependency graphs directly from source syntax trees.
+
+\paragraph{Architectural Granularity in C and C++.}
+A notable finding of the empirical evaluation is the apparent
+orthogonality between OmniDeps and Arcan on C and C++ projects,
+yielding near-zero graph overlap.
+Detailed inspection reveals that this divergence does not indicate
+defects in either tool, but rather reflects a fundamental difference in
+architectural modeling goals:
+Arcan targets architectural smell detection (such as cyclic file
+dependencies) and therefore models procedural software strictly at the
+compilation-unit level, representing source (\texttt{.c}) and header
+(\texttt{.h}) files as nodes and aggregating all interactions into
+file-to-file dependencies.
+In contrast, OmniDeps and Depends model systems at the logical type
+level, extracting user-defined structures (\texttt{struct},
+\texttt{class}, \texttt{union}, \texttt{enum}) and their inter-type couplings.
+Because the two tools operate on disjoint entity sets (files versus
+structured types), their extracted graphs represent complementary,
+non-competing views of procedural software architectures.
+
+\subsection{Performance and Scalability}
+Implemented in Rust and leveraging parallel syntax tree traversal via
+Rayon, OmniDeps delivers substantial throughput gains over JVM- and
+Python-based analyzers.
+Across repositories of varying scales, OmniDeps sustained analysis
+throughputs exceeding \textbf{45,000 lines of code per second},
+completing full workspace extraction and resolution in seconds with a
+low memory footprint, demonstrating its suitability for continuous
+integration (CI/CD) pipelines.
+
+\paragraph{Conclusions.}
+This thesis demonstrates that language-agnostic architectural
+dependency extraction is both theoretically viable and practically
+effective.
+By exploiting the structural convergence of Concrete Syntax Trees
+through a universal Intermediate Representation and an algebraic query
+model, OmniDeps bridges the gap between multi-language parsing and
+deep architectural modeling, offering a high-performance foundation
+for cross-language software analytics.
+
+% ==============================================================================
+% BIBLIOGRAFIA CONDIVISA
+% ==============================================================================
+\printbibliography[title={References}]
+
+\end{document}
