@@ -83,8 +83,7 @@ the explicit relationships defined by the syntax and the type system.
 Conversely, \textbf{dynamic dependencies}, such as those introduced
 by reflection, dependency injection containers, late binding
 (polymorphism), or features like Python's \texttt{eval()}, manifest
-their true target only during program execution
-\cite{horwitz_interprocedural_1988}. Because static analysis cannot
+their true target only during program execution. Because static analysis cannot
 reliably predict the runtime state, it focuses exclusively on the
 declared, compile-time architecture. This thesis is strictly scoped
 to the extraction and modeling of \textit{static} dependencies.
@@ -116,14 +115,15 @@ scope and architectural granularity:
 \begin{itemize}
   \item \textbf{Code Smells:} These are localized anomalies confined to
     fine-grained programming constructs, such as an individual method,
-    variable, or class. Typical examples include \textit{Long Method},
+    variable, or class \cite{arcelli_fontana_automatic_2012}. Typical
+    examples include \textit{Long Method},
     \textit{Large Class}, or \textit{Long Parameter List}. Because their
     scope is purely local, code smells can usually be detected through
     direct syntactic analysis (or Abstract Syntax Tree inspection) and can be
     remedied via standard, localized refactorings without impacting the
     overall architecture of the system.
   \item \textbf{Architectural Smells:} Unlike code smells, architectural
-    smells \cite{garcia_identifying_2009, arcelli_fontana_automatic_2012}
+    smells \cite{garcia_identifying_2009}
     represent macroscopic design flaws that affect the global structure of the
     software. They arise from poorly managed dependencies, suboptimal module
     organization, or cross-cutting violations of architectural boundaries.
