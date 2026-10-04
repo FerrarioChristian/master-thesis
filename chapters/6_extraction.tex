@@ -10,18 +10,16 @@ Representation defined in Chapter \ref{ch:ir_formalization}.
 Formally, the extraction phase is defined as:
 $$\varepsilon : \mathcal{W} \to \mathcal{D}$$
 where the workspace $\mathcal{W}$ represents the collection of source
-files across
-the repository, and $\mathcal{D}$ denotes the domain of valid module hierarchies
-$\vec{\mathcal{M}}$.
+files across the repository, and $\mathcal{D}$ denotes the domain of
+valid module hierarchies $\vec{\mathcal{M}}$.
 For each individual source file $w \in \mathcal{W}$, extraction parses the file
-using the corresponding language grammar $L \in \mathcal{L}$ and
-produces a local
+using the corresponding language grammar and produces a local
 module hierarchy $\vec{\mathcal{M}} \in \mathcal{D}$.
-This is the \textbf{only phase that depends on the source language}
-$L \in \mathcal{L}$. Since Tree-sitter CST nodes contain only
-positional metadata (byte offsets into the source buffer), every
-extraction function accesses the underlying source buffer of $w$
-to retrieve textual identifiers and expressions.
+This is the \textbf{only phase that depends on the source language}.
+Since Tree-sitter CST nodes contain only positional metadata (byte
+offsets into the source buffer), every extraction function accesses
+the underlying source buffer of $w$ to retrieve textual identifiers
+and expressions.
 
 The extraction subsystem is organized into four logical layers, each
 depending only on the layers below it (depicted in Figure
@@ -59,15 +57,15 @@ and summarized in Table \ref{tab:extraction_layers}):
 \label{sec:extract_from_cst}
 
 The top-level extraction function \texttt{extract\_from\_cst} receives
-a Tree-sitter \texttt{Language} grammar and a source string, and
+a Tree-sitter language grammar and a source string, and
 produces a vector of IR modules. Its workflow is:
 \begin{enumerate}
   \item A Tree-sitter parser is instantiated and configured with the
     language grammar.
   \item The source code is parsed into a Concrete Syntax Tree (CST),
     producing a root node.
-  \item If the language uses package declarations (e.g., Java's
-    \texttt{package com.example;}), the root children are scanned for
+  \item If the language uses package declarations (e.g.
+    \texttt{package com.example}), the root children are scanned for
     a package declaration node and the package path is extracted.
   \item A module vector and a pending-attributes buffer are initialized.
   \item The recursive traversal function \texttt{walk\_cst} is
@@ -78,7 +76,8 @@ produces a vector of IR modules. Its workflow is:
 The function returns both the extracted modules and the optional
 package path. A higher-level function, \texttt{parse\_source}, then
 applies the appropriate Module Grouping Strategy (Section
-\ref{sec:module_strategies}) and loads the Primitive Registry for the language.
+\ref{sec:module_strategies}) to organize the components into their
+hierarchical module paths.
 
 \section{CST Traversal: \texttt{walk\_cst}}
 \label{sec:walk_cst}
@@ -107,8 +106,7 @@ classification to the dispatcher. Its traversal logic follows four rules:
     recognized, its children of type ``body'' or ``block'' are still
     traversed. This handles the case of struct or class definitions
     nested inside a function body, which is permitted in some
-    languages. Components found during this secondary traversal are
-    inserted into the current module, not into the function.
+    languages.
   \item If the dispatcher returns \texttt{None} (unrecognized node),
     recursively traverse all children of the current node.
 \end{enumerate}
@@ -125,12 +123,13 @@ internal methods as free functions.
   \label{fig:cst_pruning_flow}
 \end{figure}
 
-An implicit ``root'' module is created lazily on demand: when the
-first component is encountered and the module vector is still empty,
-a module named \texttt{"root"} is inserted. This ensures that the IR
-always contains at least one module container.
+During single-file CST traversal, an ephemeral ``root'' module container is
+created lazily on demand: when the first component is encountered and the
+module vector is still empty, a temporary module named \texttt{"root"} is
+inserted to collect declarations before the Module Grouping Strategy organizes
+them into their final namespace paths.
 
-\subsubsection{Pending Attributes Mechanism}
+\paragraph{Pending Attributes Mechanism}
 
 Annotations and decorators (e.g., Python's \texttt{@staticmethod},
 Rust's \texttt{\#[derive(Debug)]}, Java's \texttt{@Override}) are
@@ -143,7 +142,7 @@ appended to this buffer. When the next component (function, class,
 field, etc.) is recognized, the buffered attributes are attached to
 it as its \texttt{annotations} list, and the buffer is cleared.
 
-\section{The Heuristic Dispatcher}
+\subsection{Dispatch Priority Ordering}
 \label{sec:dispatcher}
 
 The dispatcher is the central decision point of the extraction phase.
@@ -151,43 +150,33 @@ For each CST node, it invokes a chain of \texttt{try\_parse\_*}
 functions in a fixed priority order, returning the first successful match:
 
 \begin{enumerate}
-  \item \textbf{Imports} (highest priority): Recognized via exact
-    node kind matching (\texttt{use\_declaration},
-      \texttt{import\_declaration}, \texttt{import\_statement},
-    \texttt{import\_from\_statement}, \texttt{preproc\_include}).
-  \item \textbf{Attributes / Decorators}: Nodes of kind
-    \texttt{attribute\_item}, \texttt{decorator}, or similar are
-    recognized and their contents extracted into type references,
-    returning a \texttt{ParsedItem::Attribute}.
-  \item \textbf{Modules / Namespaces}: Recognized only if the
-    language configuration enables \texttt{inline\_mod\_based} or
-    \texttt{namespace\_based} modules (e.g., Rust \texttt{mod
-    \{...\}}, C++ \texttt{namespace \{...\}}).
+  \item \textbf{Imports}: Recorded before processing contained
+    declarations.
+  \item \textbf{Decorators}: Declarative
+    metadata to subsequent declarations.
+  \item \textbf{Modules}: If module syntax is enabled by the language
+    configuration.
   \item \textbf{Structured Types}: Classes, structs, interfaces,
-    traits, enums, and enum variants.
-  \item \textbf{Functions / Methods}: Free functions, method
-    declarations, constructors, and Python
-    \texttt{decorated\_definition} wrappers.
-  \item \textbf{Implementation Blocks}: Detached implementation blocks
-    (e.g., Rust \texttt{impl} items).
-  \item \textbf{Type Aliases}: \texttt{typedef},
-    \texttt{type\_alias\_declaration}, \texttt{type\_item}, and
-    related node kinds.
-  \item \textbf{Free Variables / Global Declarations} (lowest
-    priority): Static items, const items, and top-level variable declarations.
+    traits, and enums.
+  \item \textbf{Functions and Methods}: Functions, constructors and methods.
+  \item \textbf{Detached implementations}: Such as Rust \texttt{impl} blocks.
+  \item \textbf{Type Aliases}: Explicit type synonyms and alias declarations.
+  \item \textbf{Free Variables}: Global variables and static
+    constants.
 \end{enumerate}
 
 The dispatch order prevents ambiguity: a module node must be captured
 as a module before any of its inner structs are individually matched,
 and a class node must be captured as a whole before its methods are
-matched as free functions. This ordering is critical for correctness.
+matched as free functions. This ordering ensures that enclosing containers take
+precedence over their member declarations.
 
 The dispatcher's return type is a \texttt{ParsedItem} enum with four
 variants: \texttt{Component} (for modules, types, functions, fields,
 type aliases), \texttt{ImplBlock}, \texttt{Imports} (which may return
 multiple imports from a single node), and \texttt{Attribute}.
 
-\section{Classification Heuristics}
+\subsection{Classification Heuristics}
 \label{sec:classifiers}
 
 The classifiers are boolean predicates that identify the
@@ -229,8 +218,14 @@ or syntactic context must \textit{not} indicate a different semantic role).
     \texttt{base}, \texttt{constructor} \\ \hline
     \texttt{is\_function} & \texttt{function}, \texttt{method},
     \texttt{fn\_item}, \texttt{func}, \texttt{constructor},
-    \texttt{decorated\_definition}; or \texttt{declaration} with nested
+    \texttt{destructor}, \texttt{decorated\_definition}; or
+    \texttt{declaration} with nested
     \texttt{function\_declarator} & \texttt{class} \\ \hline
+    \texttt{is\_closure} & \texttt{closure\_expression},
+    \texttt{lambda\_expression}, \texttt{lambda}, \texttt{arrow\_function},
+    \texttt{function\_expression}, \texttt{func\_literal},
+    \texttt{lambda\_literal}, \texttt{anonymous\_method\_expression}
+    & None (exact match) \\ \hline
     \texttt{is\_import} & \texttt{use\_declaration},
     \texttt{import\_declaration},
     \texttt{import\_statement}, \texttt{import\_from\_statement},
@@ -283,7 +278,7 @@ ignored); if its parent is a \texttt{translation\_unit} or
 \texttt{declaration\_list}, it is classified as a global variable.
 
 A specialized helper, \texttt{has\_nested\_function\_declarator},
-unrolls nested C/C++ declarators to disambiguate function
+unrolls nested declarators to disambiguate function
 declarations from variable declarations that happen to contain
 function pointer syntax.
 
@@ -348,277 +343,26 @@ unresolved or failed ones).
 
 The \texttt{try\_parse\_function} function extracts:
 \begin{enumerate}
-  \item The identifier (with special handling for Python's
-    \texttt{decorated\_definition}, which wraps the actual function definition).
-  \item Parameters, via \texttt{extract\_parameters}.
-  \item The return type, via \texttt{extract\_return\_type}.
-  \item The \texttt{is\_constructor} flag, set to \texttt{true} if
-    the node kind contains ``constructor''.
-  \item Annotations, via the annotation extraction module.
-  \item The function body, if present: the parser looks for a child
-    named \texttt{"body"}, or falls back to children of kind
-    \texttt{"block"}, \texttt{"constructor\_body"}, or
-    \texttt{"statement\_block"}. If found, the body is extracted as a
-    structured \texttt{Block} ($\mathcal{B}$) via
-    \texttt{extract\_block} (Section \ref{sec:body_extraction}). If
-    no body is found (e.g., forward declarations in C/C++ headers),
-    the body is set to \texttt{None}.
+  \item \textbf{Identifier}: The simple or qualified function name,
+    unwrapping wrapper nodes such as Python's \texttt{decorated\_definition}.
+  \item \textbf{Parameters}: Formal parameters extracted via
+    \texttt{extract\_parameters}, including parameter names and type references.
+  \item \textbf{Return Type}: The declared return type, extracted via
+    \texttt{extract\_return\_type}.
+  \item \textbf{Constructor Flag}: Marked as a constructor when the node kind
+    indicates constructor semantics.
+  \item \textbf{Annotations}: Metadata decorators or compiler attributes
+    attached to the declaration.
+  \item \textbf{Function Body}: If a body is present (located through the
+    \texttt{body} field or compound block containers), its internal scope
+    hierarchy is extracted as a structured \texttt{Block} ($\mathcal{B}$)
+    via \texttt{extract\_block} (Section \ref{sec:body_parsing}).
+    When no body is present (such as interface methods or C/C++ forward
+    declarations), the body is recorded as \texttt{None}.
 \end{enumerate}
 
-\subsection{Import Parsing}
-
-The \texttt{try\_parse\_imports} function handles import statements
-across all supported languages. It returns a vector of
-\texttt{Import} structures because some syntactic forms (e.g.,
-Python's \texttt{from module import a, b, c}) produce multiple
-logical imports from a single CST node. The parser:
-\begin{itemize}
-  \item Detects wildcard imports by checking for \texttt{*},
-    \texttt{.*}, \texttt{::*}, or \texttt{using namespace} patterns.
-  \item Detects import aliases by searching for the \texttt{as}
-    keyword in the import text.
-  \item Extracts import paths using CST named fields where available,
-    with textual fallback parsing. File extensions (e.g.,
-    \texttt{.h}, \texttt{.hpp}) are stripped from C/C++
-    \texttt{\#include} paths.
-\end{itemize}
-
-\subsection{Implementation Block Parsing}
-
-The \texttt{try\_parse\_impl\_block} function extracts:
-\begin{itemize}
-  \item The target type (\texttt{impl\_for}), as a \texttt{TypeRef}.
-  \item The optionally implemented trait
-    (\texttt{implements\_trait}), extracted by searching for the
-    \texttt{for} keyword in the node text to distinguish \texttt{impl
-    Type} from \texttt{impl Trait for Type}.
-  \item Methods, nested types, and type aliases defined within the block.
-\end{itemize}
-
-\subsection{Type Alias and Free Variable Parsing}
-
-Type aliases are extracted with their declared name and target type reference.
-For languages supporting explicit alias syntax (such as Rust
-  \texttt{type X = Y;}
-or C++ \texttt{using X = Y;}), the parser extracts the alias name and target
-using \texttt{extract\_type\_ref}.
-
-In dynamically typed languages such as Python, type variables and aliases
-are created via value assignments at module or class scope. When the
-\texttt{AssignmentTypeAliases} feature flag is enabled in the language
-configuration, the parser detects assignment statements where the right-hand
-side denotes a type constructor:
-\begin{itemize}
-  \item \textbf{Type Variable Factories}: Calls to
-    \texttt{TypeVar('T', bound=...)}
-    are captured as a type alias mapping \texttt{T} to a
-    $\text{TypeRef::TypeVar}(\texttt{"T"}, \vec{\tau}_{bounds})$.
-  \item \textbf{Generic Subscriptions}: Subscript expressions such as
-    \texttt{Vector = List[float]} are parsed as a type alias whose target is a
-    $\text{TypeRef::Generic}$.
-\end{itemize}
-
-Free variables (global constants, static items) are extracted as
-\texttt{Field} entries with their name, type reference, and annotations.
-
-\section{Low-Level Extractors}
-\label{sec:extractors}
-
-The lowest layer of the extraction subsystem provides atomic
-functions that interact directly with CST nodes.
-
-\subsection{Text Extraction}
-
-\begin{itemize}
-  \item \textbf{\texttt{node\_text}}: Extracts the raw source text
-    corresponding to a CST node by reading from the source buffer
-    using the node's byte range. This is the fundamental bridge
-    between the positional CST and the textual content of the source code.
-  \item \textbf{\texttt{split\_qualified\_name}}: Normalizes a
-    qualified name string (e.g., \texttt{std::vector},
-    \texttt{java.util.List}) into a \texttt{QualifiedName} vector by
-    splitting on separator characters (\texttt{:}, \texttt{.}, and
-    whitespace). The \texttt{->} operator is normalized to \texttt{.}
-    before splitting. When called on plain type text, any trailing generic
-    parameter bracket (\texttt{<...>}) is stripped to isolate the
-    nominal base path,
-    while structured generic decomposition is handled beforehand by
-    \texttt{extract\_type\_ref}.
-\end{itemize}
-
-\subsection{Identifier Extraction}
-
-\begin{itemize}
-  \item \textbf{\texttt{extract\_identifier}}: Extracts the simple
-    name of a component by trying a chain of named fields
-    (\texttt{name}, \texttt{type\_identifier}, \texttt{identifier}),
-    with a fallback to the \texttt{declarator} field for C and C++
-    declarations. The declarator fallback recursively descends nested
-    declarator nodes (\texttt{pointer\_declarator},
-    \texttt{function\_declarator}, \texttt{reference\_declarator}) to
-    reach the base identifier. The declarator unwrapping accepts
-    both normal identifiers and \texttt{destructor\_name} nodes, preserving
-    the \texttt{\textasciitilde} prefix for C++ destructors (e.g.,
-    \texttt{\textasciitilde Server})
-    to distinguish them from constructors and prevent naming collisions.
-  \item \textbf{\texttt{extract\_qualified\_name}}: Extracts
-    multi-part names by first trying named fields and applying
-    \texttt{split\_qualified\_name}, then falling back to collecting
-    all child nodes of type \texttt{identifier} or
-    \texttt{type\_identifier} into a vector.
-\end{itemize}
-
-\subsection{Type Reference Extraction}
-
-The function \texttt{extract\_type\_ref} converts a CST node into a
-\texttt{TypeRef}. It operates through a cascade of progressively less
-specific strategies:
-
-\begin{enumerate}
-  \item \textbf{Type wrapper unwrapping}: If the node is a single-child
-    generic wrapper (such as a Python \texttt{type} node), extraction
-    recurses directly into its inner child.
-  \item \textbf{Union types}: If the node represents a union type
-    (\texttt{union\_type}, a binary operator with \texttt{|}, or a
-    \texttt{Union[...]} annotation), it is recursively decomposed
-    into \texttt{TypeRef::Union($\vec{\tau}$)} to represent type disjunctions.
-  \item \textbf{Generic and template types}: The extractor invokes
-    \texttt{try\_extract\_generic} to inspect AST nodes representing
-    parametric types across languages:
-    \begin{itemize}
-      \item Tree-sitter node kinds \texttt{template\_type} (C++),
-        \texttt{generic\_type} (Java, Rust), and \texttt{subscript}
-        (Python \texttt{List[T]});
-      \item Textual fallback \texttt{parse\_generic\_from\_text} for bracketed
-        type expressions embedded in declarator text (such as
-        \texttt{std::vector<int>}).
-    \end{itemize}
-    The base container is extracted recursively as $\tau_{base}$, and each
-    parameter is extracted as $\tau_i \in \vec{\tau}_{args}$, constructing
-    $\text{TypeRef::Generic}(\tau_{base}, \vec{\tau}_{args})$.
-  \item \textbf{Direct identifiers}: If the node itself is an
-    \texttt{identifier}, \texttt{type\_identifier},
-    \texttt{scoped\_identifier}, \texttt{scoped\_type\_identifier},
-    \texttt{field\_access}, \texttt{field\_expression}, or
-    \texttt{attribute}, its text is extracted directly and split into
-    a qualified name.
-  \item \textbf{Named fields}: The node's children are inspected for
-    named fields \texttt{type}, \texttt{return\_type},
-    \texttt{field\_type}, \texttt{value\_type}, and \texttt{right}.
-    If found, the field's node is recursively processed with
-    \texttt{extract\_type\_ref}.
-  \item \textbf{Child identifier search}: All children are iterated,
-    looking for nodes of kind \texttt{type\_identifier},
-    \texttt{primitive\_type}, \texttt{identifier}, or \texttt{type}.
-    A guard rejects children whose text contains whitespace, to avoid
-    capturing complex expressions.
-  \item \textbf{Textual fallback}: The node text is scanned for
-    \texttt{:} or \texttt{->} characters, and the substring after the
-    delimiter is parsed as a qualified name.
-  \item \textbf{Failure}: If all strategies fail,
-    \texttt{TypeRef::Failed(vec![])} is returned.
-\end{enumerate}
-
-\subsection{Parameter Extraction}
-
-The function \texttt{extract\_parameters} locates the
-\texttt{parameters} named field and iterates over its children of
-type ``parameter''. For each parameter, it extracts:
-\begin{itemize}
-  \item The parameter name via \texttt{extract\_identifier}.
-  \item The parameter type via \texttt{extract\_type\_ref}.
-  \item The variadic flag, set to \texttt{true} if the parameter text
-    contains \texttt{...} or \texttt{*args}.
-\end{itemize}
-
-A \textbf{sanitization step} is applied to prevent a common false
-positive in dynamically typed languages: if the extracted type text
-matches the parameter name exactly (e.g., \texttt{self} in Python,
-where the parameter has no type annotation), the extractor recognizes
-that the fallback captured the parameter name instead of a type, and
-replaces the result with \texttt{TypeRef::Failed}. This prevents
-untyped parameters from generating spurious dependencies.
-
-\subsection{Type Parameter and Constraint Extraction}
-
-Generic type parameters and template variables are extracted by
-\texttt{extract\_type\_parameters}, constructing an ordered vector of
-$\text{TypeParameter}$ tuples ($\theta = \langle \iota,
-\vec{\tau}_{bounds} \rangle$).
-The extraction pipeline operates in four coordinated steps:
-
-\begin{enumerate}
-  \item \textbf{Container Discovery}: The extractor searches for type parameter
-    lists under named fields (\texttt{type\_parameters},
-    \texttt{parameters}) or child
-    node kinds (\texttt{type\_parameter\_list},
-    \texttt{template\_parameter\_list}).
-    For C++, if a class or function definition is enclosed within a
-    \texttt{template\_declaration} node, the template parameters are
-    harvested from the
-    parent container.
-  \item \textbf{Parameter and Inline Bound Extraction}: Each child
-    parameter node
-    is decomposed by \texttt{extract\_single\_type\_parameter}. The
-    parameter identifier
-    $\iota$ is extracted from the \texttt{name} field or inner
-    \texttt{type\_identifier}.
-    Any immediate bounds (such as Java \texttt{T extends Serializable} or Rust
-    \texttt{T: Display + Clone}) are parsed into constraint type references
-    $\vec{\tau}_{bounds}$.
-  \item \textbf{Trailing Constraint Clauses}: For languages that separate bounds
-    from the parameter list (such as Rust \texttt{where} clauses),
-    \texttt{merge\_clause\_bounds} traverses the
-    \texttt{where\_clause} node, matching
-    each \texttt{where\_predicate} target against the extracted
-    parameters and appending
-    the specified trait bounds to the corresponding $\vec{\tau}_{bounds}$.
-  \item \textbf{Generic Base Class Extraction}: In Python, where type parameters
-    on classes are declared by inheriting from \texttt{Generic[T, U]},
-    \texttt{extract\_generic\_base\_parameters} inspects the
-    superclass list to extract
-    the type variables as formal type parameters on the structured type.
-\end{enumerate}
-
-\subsection{Super-Type Extraction}
-
-The function \texttt{extract\_super\_types} searches for inheritance
-references in a variety of named fields across languages:
-\begin{itemize}
-  \item Java: \texttt{super\_type}, \texttt{extends},
-    \texttt{implements}, \texttt{interfaces}
-  \item Python: \texttt{superclass}, \texttt{superclasses}
-  \item C++: \texttt{base\_class\_clause} child nodes
-  \item Rust: trait bounds in type parameter lists
-\end{itemize}
-
-For each found node, it traverses the children looking for
-\texttt{type\_identifier}, \texttt{identifier},
-\texttt{scoped\_type\_identifier}, and type lists, extracting each as
-a \texttt{TypeRef::Unresolved}.
-
-\subsection{The Generic List Combinator}
-
-The function \texttt{extract\_list\_of<T, F>} is a higher-order
-combinator that takes a parser function \texttt{F} and applies it to
-all children of a node. If a child is not matched by the parser but
-is a container node (its kind contains ``body'', ``list'', ``block'',
-or ``declaration''), the combinator descends recursively into that container.
-
-A guard condition prevents descent into function bodies: this ensures
-that when extracting fields of a class, local variable declarations
-inside methods are not mistakenly extracted as class fields. This
-combinator is used to implement:
-\begin{itemize}
-  \item \texttt{extract\_fields}: Extracts field declarations using
-    an inline field parser.
-  \item \texttt{extract\_methods}: Extracts methods using
-    \texttt{try\_parse\_function}.
-  \item \texttt{extract\_nested\_types}: Extracts nested type
-    definitions using \texttt{try\_parse\_structured\_type}.
-\end{itemize}
-
-\section{Structured Body Extraction}
+\subsection{Structured Body Parsing}
+\label{sec:body_parsing}
 \label{sec:body_extraction}
 
 The body of a function is extracted into a structured \texttt{Block}
@@ -690,11 +434,10 @@ into three categories:
         \end{itemize}
         When callable identifiers or expressions are enclosed in protective
         parentheses (e.g., \texttt{(func)()} or macro expansions), the
-        function \texttt{extract\_call\_path} recursively unwraps
+        function \\ \texttt{extract\_call\_path} recursively unwraps
         \texttt{parenthesized\_expression} CST nodes. This strips literal
         punctuation tokens and yields clean identifier sequences without
-        attempting premature, error-prone semantic disambiguation during
-        purely syntactic extraction.
+        attempting semantic resolution during syntactic extraction.
       \item \textbf{Field and Member Accesses}: Explicit property
         accesses, attribute dereferences, and qualified symbol paths.
       \item \textbf{Type Casts}: Explicit type conversions and cast
@@ -708,90 +451,264 @@ the recursive \texttt{extract\_block} call, not by
 \texttt{find\_behavioral\_deps}. This guarantees that each dependency
 is recorded at the exact lexical scope level where it occurs.
 
-For Rust macros (e.g., \texttt{println!}, \texttt{vec!}), a
-specialized function \texttt{parse\_token\_tree\_macro} implements a
-state machine over the flat token stream to
-reconstruct qualified paths and extract dependencies from macro invocations.
+\subsection{Import Parsing}
 
-\section{Annotation and Decorator Extraction}
-\label{sec:annotation_extraction}
-
-Metadata annotations, decorators, and compiler attributes represent declarative
-dependencies that alter runtime behavior or generate code. The
-extractor captures
-these dependencies across the diverse syntactic conventions of each language:
-
+The \texttt{try\_parse\_imports} function handles import statements
+across all supported languages. It returns a vector of
+\texttt{Import} structures because some syntactic forms (e.g.,
+Python's \texttt{from module import a, b, c}) produce multiple
+logical imports from a single CST node. The parser:
 \begin{itemize}
-  \item \textbf{Python}: Decorators attached to function or class definitions
-    are extracted to capture meta-programming wrappers. The extractor
-    handles bare
-    decorators (\texttt{@decorator}), qualified module paths
-    (\texttt{@module.decorator}),
-    and parameterized factory calls (\texttt{@decorator(args)}).
-  \item \textbf{Rust}: Outer and inner attributes associated with
-    items are captured.
-    In particular, derive macros (e.g., \texttt{\#[derive(Debug,
-    Clone)]}) are expanded
-    into individual type references, creating explicit dependencies
-    on each derived trait.
-  \item \textbf{Java}: Class-, method-, and field-level annotations
-    (both marker and
-    value-carrying annotations) are extracted, normalizing the
-    annotation identifier by
-    stripping leading syntactical delimiters.
-  \item \textbf{C/C++}: Standard and compiler-specific attribute
-    specifiers (such as
-    standard \texttt{[[...]]} attributes or compiler pragmas) are
-    captured when attached
-    to declarations.
+  \item Detects wildcard imports by checking for \texttt{*},
+    \texttt{.*}, \texttt{::*}, or \texttt{using namespace} patterns.
+  \item Detects import aliases by searching for the \texttt{as}
+    keyword in the import text.
+  \item Extracts import paths using CST named fields where available,
+    with textual fallback parsing. File extensions (e.g.,
+    \texttt{.h}, \texttt{.hpp}) are stripped from C/C++
+    \texttt{\#include} paths.
 \end{itemize}
 
-As described in Section \ref{sec:walk_cst}, because annotations
-frequently appear syntactically
-before their target construct rather than inside its subtree,
-extracted annotations are
-buffered during CST traversal and attached to the subsequent
-recognized component.
+\subsection{Implementation Block Parsing}
 
-\section{Language-Agnostic Structural Heuristics}
-\label{sec:structural_heuristics}
+The \texttt{try\_parse\_impl\_block} function extracts:
+\begin{itemize}
+  \item The target type (\texttt{impl\_for}), as a \texttt{TypeRef}.
+  \item The optionally implemented trait
+    (\texttt{implements\_trait}), extracted by searching for the
+    \texttt{for} keyword in the node text to distinguish \texttt{impl
+    Type} from \texttt{impl Trait for Type}.
+  \item Methods, nested types, and type aliases defined within the block.
+\end{itemize}
 
-The extraction layer relies on heuristics that operate purely on CST
-structure without language-specific branches:
+\subsection{Type Alias and Free Variable Parsing}
+
+Type aliases are extracted with their declared name and target type reference.
+For languages supporting explicit alias syntax (such as Rust
+  \texttt{type X = Y;}
+or C++ \texttt{using X = Y;}), the parser extracts the alias name and target
+using \texttt{extract\_type\_ref}.
+
+In dynamically typed languages such as Python, type variables and aliases
+are created via value assignments at module or class scope. When the \\
+\texttt{AssignmentTypeAliases} feature flag is enabled in the language
+configuration, the parser detects assignment statements where the right-hand
+side denotes a type constructor:
+\begin{itemize}
+  \item \textbf{Type Variable Factories}: Calls to
+    \texttt{TypeVar('T', bound=...)}
+    are captured as a type alias mapping \texttt{T} to a
+    $\text{TypeRef::TypeVar}(\texttt{"T"}, \vec{\tau}_{bounds})$.
+  \item \textbf{Generic Subscriptions}: Expressions such as
+    \texttt{Vector = List[float]} are parsed as a type alias whose target is a
+    $\text{TypeRef::Generic}$.
+\end{itemize}
+
+Free variables (global constants, static items) are extracted as
+\texttt{Field} entries with their name, type reference, and annotations.
+
+\section{Low-Level Extractors}
+\label{sec:extractors}
+
+The lowest layer of the extraction subsystem provides atomic
+functions that interact directly with CST nodes.
+
+\subsection{Text Extraction}
 
 \begin{itemize}
-  \item \textbf{Recursive Declarator Descent}: In C and C++, the base
-    identifier or parameter list of a function declaration can be
-    nested inside multiple declarator nodes (e.g.,
-      \texttt{pointer\_declarator} wrapping
-    \texttt{function\_declarator}). The extractors recursively
-    descend the CST until they identify the semantic leaf, enabling
-    correct extraction of functions returning pointers, typedefs, and
-    complex declaration forms. The helper
-    \texttt{has\_nested\_function\_declarator} assists in
-    distinguishing function declarations from pointer variable declarations.
+  \item \textbf{\texttt{node\_text}}: Extracts the raw source text
+    corresponding to a CST node by reading from the source buffer
+    using the node's byte range. This is the fundamental bridge
+    between the positional CST and the textual content of the source code.
+  \item \textbf{\texttt{split\_qualified\_name}}: Normalizes a
+    qualified name string (such as \\ \texttt{java.util.List},
+    \texttt{std::vector})
+    into a \texttt{QualifiedName} vector by
+    splitting on separator characters (\texttt{:}, \texttt{.}, and
+    whitespace). The \texttt{->} operator is normalized to \texttt{.}
+    before splitting. When called on plain type text, any trailing generic
+    parameter bracket (\texttt{<...>}) is stripped to isolate the
+    nominal base path,
+    while structured generic decomposition is handled beforehand by
+    \texttt{extract\_type\_ref}.
+\end{itemize}
 
-  \item \textbf{Contextual Classification via Parent Chain}: To
-    distinguish global from local variables when they share the same
-    node kind (\texttt{declaration} in C), the classifier inspects
-    ancestor nodes. Declarations nested inside a
-    \texttt{compound\_statement} or \texttt{function\_definition} are
-    classified as local; those under a \texttt{translation\_unit} are
-    classified as global.
+\subsection{Identifier Extraction}
 
-  \item \textbf{C \texttt{type\_definition} Hoisting}: C's
-    \texttt{typedef struct \{...\} Name;} pattern produces a
-    \texttt{type\_definition} node containing an inner
-    \texttt{struct\_specifier}. The parser detects this pattern,
-    hoists the inner fields from the specifier, assigns the outer
-    name, and produces a single \texttt{StructuredType} without a
-    redundant anonymous inner type.
+\begin{itemize}
+  \item \textbf{\texttt{extract\_identifier}}: Extracts the simple
+    name of a component by trying a chain of named fields
+    (\texttt{name}, \texttt{type\_identifier}, \texttt{identifier}),
+    with a fallback to the \texttt{declarator} field for C and C++
+    declarations. The declarator fallback recursively descends nested
+    declarator nodes (\texttt{pointer\_declarator},
+    \texttt{function\_declarator}, \texttt{reference\_declarator}) to
+    reach the base identifier. The declarator unwrapping accepts
+    both normal identifiers and \texttt{destructor\_name} nodes, preserving
+    the \texttt{\textasciitilde} prefix for C++ destructors (e.g.,
+    \texttt{\textasciitilde Server})
+    to distinguish them from constructors and prevent naming collisions.
+  \item \textbf{\texttt{extract\_qualified\_name}}: Extracts
+    multi-part names by first trying named fields and applying
+    \texttt{split\_qualified\_name}, then falling back to collecting
+    all child nodes of type \texttt{identifier} or
+    \texttt{type\_identifier} into a vector.
+\end{itemize}
+
+\subsection{Type Reference Extraction}
+
+The function \texttt{extract\_type\_ref} converts a CST node into a
+\texttt{TypeRef}. It operates through a cascade of progressively less
+specific strategies:
+
+\begin{enumerate}
+  \item \textbf{Type wrapper unwrapping}: If the node is a single-child
+    generic wrapper (such as a Python \texttt{type} node), extraction
+    recurses directly into its inner child.
+  \item \textbf{Union types}: If the node represents a union type
+    (\texttt{union\_type}, a binary operator with \texttt{|}, or a
+    \texttt{Union[...]} annotation), it is recursively decomposed
+    into \texttt{TypeRef::Union($\vec{\tau}$)} to represent type disjunctions.
+  \item \textbf{Generic and template types}: The function
+    \texttt{try\_extract\_generic} is called to inspect AST nodes representing
+    parametric types across languages:
+    \begin{itemize}
+      \item Tree-sitter node kinds \texttt{template\_type} (C++),
+        \texttt{generic\_type} (Java, Rust), and \texttt{subscript}
+        (Python \texttt{List[T]});
+      \item Textual fallback \texttt{parse\_generic\_from\_text} for bracketed
+        type expressions embedded in declarator text (such as
+        \texttt{std::vector<int>}).
+    \end{itemize}
+    The base container is extracted recursively as $\tau_{base}$, and each
+    parameter is extracted as $\tau_i \in \vec{\tau}_{args}$, constructing
+    $\text{TypeRef::Generic}(\tau_{base}, \vec{\tau}_{args})$.
+  \item \textbf{Direct identifiers}: If the node itself is an
+    \texttt{identifier}, \texttt{type\_identifier},
+    \texttt{scoped\_identifier}, \texttt{scoped\_type\_identifier},
+    \texttt{field\_access}, \\ \texttt{field\_expression}, or
+    \texttt{attribute}, its text is extracted directly and split into
+    a qualified name.
+  \item \textbf{Named fields}: The node's children are inspected for
+    named fields \texttt{type}, \texttt{return\_type},
+    \texttt{field\_type}, \texttt{value\_type}, and \texttt{right}.
+    If found, the field's node is recursively processed with
+    \texttt{extract\_type\_ref}.
+  \item \textbf{Child identifier search}: All children are iterated,
+    looking for nodes of kind \texttt{type\_identifier},
+    \texttt{primitive\_type}, \texttt{identifier}, or \texttt{type}.
+    A guard rejects children whose text contains whitespace, to avoid
+    capturing complex expressions.
+  \item \textbf{Textual fallback}: The node text is scanned for
+    \texttt{:} or \texttt{->} characters, and the substring after the
+    delimiter is parsed as a qualified name.
+  \item \textbf{Failure}: If all strategies fail,
+    \texttt{TypeRef::Failed(vec![])} is returned.
+\end{enumerate}
+
+\subsection{Parameter Extraction}
+
+The function \texttt{extract\_parameters} locates the
+\texttt{parameters} named field and iterates over its children of
+type ``parameter''. For each parameter, it extracts:
+\begin{itemize}
+  \item The parameter name via \texttt{extract\_identifier}.
+  \item The parameter type via \texttt{extract\_type\_ref}.
+  \item The variadic flag, set to \texttt{true} if the parameter text
+    contains \texttt{...} or \texttt{*args}.
+\end{itemize}
+
+A \textbf{sanitization step} is applied to prevent a common false
+positive in dynamically typed languages: if the extracted type text
+matches the parameter name exactly (e.g., \texttt{self} in Python,
+where the parameter has no type annotation), the extractor recognizes
+that the fallback captured the parameter name instead of a type, and
+replaces the result with \texttt{TypeRef::Failed}. This prevents
+untyped parameters from generating spurious dependencies.
+
+\subsection{Type Parameter and Constraint Extraction}
+
+Generic type parameters and template variables are extracted by the function
+\texttt{extract\_type\_parameters}, constructing an ordered vector of
+$\text{TypeParameter}$ tuples ($\theta = \langle \iota,
+\vec{\tau}_{bounds} \rangle$).
+The extraction pipeline operates in four coordinated steps:
+
+\begin{enumerate}
+  \item \textbf{Container Discovery}: The extractor searches for type parameter
+    lists under named fields (\texttt{type\_parameters},
+    \texttt{parameters}) or child
+    node kinds (\texttt{type\_parameter\_list},
+    \texttt{template\_parameter\_list}).
+    For C++, if a class or function definition is enclosed within a
+    \texttt{template\_declaration} node, the template parameters are
+    harvested from the
+    parent container.
+  \item \textbf{Parameter and Inline Bound Extraction}: Each child
+    parameter node
+    is decomposed by \texttt{extract\_single\_type\_parameter}. The
+    parameter identifier
+    $\iota$ is extracted from the \texttt{name} field or inner
+    \texttt{type\_identifier}.
+    Any immediate bounds (such as Java \texttt{T extends Serializable} or Rust
+    \texttt{T: Display + Clone}) are parsed into constraint type references
+    $\vec{\tau}_{bounds}$.
+  \item \textbf{Trailing Constraint Clauses}: For languages that separate bounds
+    from the parameter list (such as Rust \texttt{where} clauses),
+    \texttt{merge\_clause\_bounds} traverses the
+    \texttt{where\_clause} node, matching
+    each \texttt{where\_predicate} target against the extracted
+    parameters and appending
+    the specified trait bounds to the corresponding $\vec{\tau}_{bounds}$.
+  \item \textbf{Generic Base Class Extraction}: Where type parameters
+    on classes are declared by inheriting from \texttt{Generic[T, U]},
+    \texttt{extract\_generic\_base\_params} inspects the
+    superclass list to extract
+    the type variables as formal type parameters on the structured type.
+\end{enumerate}
+
+\subsection{Super-Type Extraction}
+
+The function \texttt{extract\_super\_types} searches for inheritance
+references in a variety of named fields across languages:
+\begin{itemize}
+  \item Java: \texttt{super\_type}, \texttt{extends},
+    \texttt{implements}, \texttt{interfaces}
+  \item Python: \texttt{superclass}, \texttt{superclasses}
+  \item C++: \texttt{base\_class\_clause} child nodes
+  \item Rust: trait bounds in type parameter lists
+\end{itemize}
+
+For each found node, it traverses the children looking for
+\texttt{type\_identifier}, \texttt{identifier},
+\texttt{scoped\_type\_identifier}, and type lists, extracting each as
+a \texttt{TypeRef::Unresolved}.
+
+\subsection{The Generic List Combinator}
+
+The function \texttt{extract\_list\_of<T, F>} is a higher-order
+combinator that takes a parser function \texttt{F} and applies it to
+all children of a node. If a child is not matched by the parser but
+is a container node (its kind contains ``body'', ``list'', ``block'',
+or ``declaration''), the combinator descends recursively into that container.
+
+A guard condition prevents descent into function bodies: this ensures
+that when extracting fields of a class, local variable declarations
+inside methods are not mistakenly extracted as class fields. This
+combinator is used to implement:
+\begin{itemize}
+  \item \texttt{extract\_fields}: Extracts field declarations using
+    an inline field parser.
+  \item \texttt{extract\_methods}: Extracts methods using
+    \texttt{try\_parse\_function}.
+  \item \texttt{extract\_nested\_types}: Extracts nested type
+    definitions using \\ \texttt{try\_parse\_structured\_type}.
 \end{itemize}
 
 \section{Workspace Orchestration}
 \label{sec:workspace_orchestration}
 
-While \texttt{generic\_extract} operates on individual files, the
+While \texttt{extract\_from\_cst} operates on individual files, the
 analyzer is designed for multi-file projects. The workspace
 orchestration proceeds as follows:
 
@@ -801,21 +718,22 @@ orchestration proceeds as follows:
     the source language (\texttt{.rs}, \texttt{.java}, \texttt{.py},
     \texttt{.c}, \texttt{.cpp}, \texttt{.h}, \texttt{.hpp}, etc.).
   \item Each file is independently extracted via
-    \texttt{parse\_source}, which invokes \texttt{generic\_extract}
+    \texttt{parse\_source}, which invokes \texttt{extract\_from\_cst}
     and then applies the Module Grouping Strategy.
   \item All extracted module hierarchies are accumulated into the
-    global module hierarchy $\vec{\mathcal{M}} \in \mathcal{D}$. Primitive
-    registries from each language are merged into a combined registry.
-  \item Only after all files have been extracted and unified does the
-    system invoke the subsequent pipeline phases. This design ensures
-    that cross-file dependencies are resolved transparently.
+    workspace-wide module forest $\vec{\mathcal{M}} \in \mathcal{D}$.
+  \item Only after all files have been extracted and accumulated into
+    $\vec{\mathcal{M}}$ does the system proceed to the subsequent
+    pipeline phases.
+    This design ensures that cross-file dependencies are resolved
+    transparently over the complete codebase.
 \end{enumerate}
 
 \subsection{Module Grouping Strategies}
 \label{sec:module_strategies}
 
-The module grouping strategy determines how the flat output of
-\texttt{generic\_extract} is organized into the hierarchical module
+The module grouping strategy determines how the resulting flat output of
+\texttt{extract\_from\_cst} is organized into the hierarchical module
 tree. The choice of strategy is controlled by the
 \texttt{ModuleConfig} section of the language configuration:
 

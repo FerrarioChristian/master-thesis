@@ -15,8 +15,8 @@ $$\phi : \mathcal{W} \to \mathcal{G} \qquad \phi = \gamma \circ \rho
 \rho_{\text{build}}) \circ \varepsilon$$
 
 The pipeline is illustrated in Figure \ref{fig:pipeline_detailed}.
-Each phase receives the output of its predecessor and produces a
-strictly richer representation of the codebase.
+Each phase receives the output of its predecessor and transforms it into
+a higher-level, semantically refined representation of the codebase.
 
 \begin{figure}[htpb]
   \centering
@@ -27,19 +27,16 @@ strictly richer representation of the codebase.
   \label{fig:pipeline_detailed}
 \end{figure}
 
-A fundamental design property of this decomposition is the classical separation
-between concrete syntax and semantic analysis, mirroring standard
-compiler pipeline
-architectures \cite{aho_compilers_2007}. Phase 1 is the only phase
-that interacts
-with language-specific syntax and parse trees. Phase 2 operates on
-the uniform IR
-and relies on the declarative language configuration $\mathcal{K}$ to
-account for
-language-specific semantic rules (such as scoping and import
-visibility), inspired
-by modular language product lines \cite{vacchi_neverlang_2015}. Finally, Phase 3
-is purely structural and completely language-agnostic.
+A fundamental design property of this decomposition is the classical
+separation between concrete syntax and semantic analysis, mirroring
+standard compiler pipeline architectures \cite{aho_compilers_2007}.
+Phase 1 is the only phase that interacts with language-specific
+syntax and parse trees. Across the pipeline, the declarative language
+configuration $\mathcal{K}$, inspired by modular language product
+lines \cite{vacchi_neverlang_2015}, parameterizes language-specific
+behaviors governing module grouping strategies in Phase 1 and
+semantic scoping rules in Phase 2. Finally, Phase 3 is purely
+structural and completely language-agnostic.
 
 \section{Phase 1: Syntactic Extraction ($\varepsilon$)}
 \label{sec:phase1_overview}
@@ -68,7 +65,7 @@ The extraction operates through four logical layers:
   \item \textbf{Parsing}: Tree-sitter generates a CST for each source
     file, preserving every token of the original code.
   \item \textbf{Classification}: Heuristic predicates inspect CST
-    node kinds (e.g., \texttt{struct\_item},
+    node kinds (such as \texttt{struct\_item},
     \texttt{function\_definition}, \texttt{class\_declaration}) using
     string-based pattern matching to determine the role of each node.
     This approach exploits the structural similarity of Tree-sitter
@@ -77,25 +74,19 @@ The extraction operates through four logical layers:
     into IR components by extracting their constituent parts (names,
     fields, methods, parameters, return types, super-types, annotations).
   \item \textbf{Body Extraction}: Function bodies are analyzed to
-    extract behavioral dependencies (function calls, type
-    instantiations, field accesses, type casts) and local variable
-    declarations, organized into a recursive \texttt{Block} structure
-    that mirrors the lexical scope hierarchy of the source code.
+    extract syntactic invocations, field accesses, and reference queries
+    alongside local variable declarations, organized into a recursive
+    \texttt{Block} structure that mirrors the lexical scope hierarchy of
+    the source code.
 \end{enumerate}
 
 After individual file extraction, a \textbf{Module Grouping Strategy}
-organizes the extracted modules into a hierarchical tree that
-reflects the project's namespace conventions. Different strategies
-are applied depending on the language: directory-based namespacing
-(Python, Rust), package declarations (Java), explicit namespace
-blocks (C++), or a flat fallback (C). In the presence of package
-markers or source files lacking top-level declarations (such as empty
-\texttt{\_\_init\_\_.py} files or comment-only headers), extraction
-yields $\vec{\mathcal{M}} = \emptyset$ without allocating extraneous
-nodes or triggering indexing faults. For C++, an additional
-\textbf{out-of-line method linking} step associates method
-definitions written in \texttt{.cpp} files with their class
-declarations in \texttt{.hpp} headers.
+organizes the extracted modules into a hierarchical tree that reflects the
+project's namespace structure. The grouping mechanism is driven by declarative
+configuration flags in $\mathcal{K}$ rather than hardcoded language branches,
+supporting directory-based hierarchies (e.g., Python, Rust), explicit package
+declarations (e.g., Java), syntax-level namespace blocks (e.g., C++), or a
+flat root fallback (e.g., C).
 
 \subsection{Output}
 
@@ -106,7 +97,8 @@ structured types, free functions, imports, implementation blocks,
 type aliases, and free variables. All type references ($\tau$) at
 this stage are in their initial extraction states:
 raw symbolic identifiers $\text{Unresolved}(\pi_{\text{raw}})$,
-parameterized type applications $\text{Generic}(\tau_{base}, \vec{\tau}_{args})$,
+parameterized type applications $\text{Generic}(\tau_{base},
+\vec{\tau}_{args})$,
 type parameter variables $\text{TypeVar}(\iota, \vec{\tau}_{bounds})$,
 or composite
 disjunctions $\text{Union}(\vec{\tau})$ for dynamic typing (e.g.,
@@ -138,9 +130,9 @@ $$\rho : \mathcal{D} \to \mathcal{D}_{\text{res}} \qquad \rho =
 
 The name resolution phase transforms the symbolic type references
 produced by extraction into resolved semantic pointers. This is the
-phase that connects the isolated components into a coherent
-dependency network by determining, for each type reference, which
-component in the workspace it refers to.
+phase that binds isolated structural components into a semantically
+connected architectural model by determining, for each type reference,
+which component in the workspace (or external library) it refers to.
 
 \subsection{Input}
 
@@ -155,12 +147,19 @@ $$\rho_{\text{build}} : \mathcal{D} \xrightarrow{\Delta}
 \mathcal{D}_{\mathcal{Q}} \qquad \rho_{\text{exec}} :
 \mathcal{D}_{\mathcal{Q}} \xrightarrow{\Gamma} \mathcal{D}_{\text{res}}$$
 
+This two-step decomposition separates local intra-procedural context from
+global workspace resolution. References inside function bodies frequently
+depend on local variables, parameters, and block-level shadowing. Resolving
+these references in a single step would require maintaining complex local state
+alongside global symbol lookups. Instead, dividing the process into query
+building and query execution cleanly isolates these concerns:
+
 \begin{enumerate}
   \item \textbf{Query Building} ($\rho_{\text{build}}$): The module hierarchy
     is traversed with an ephemeral \textit{Symbol Stack} ($\Delta$)
-    that tracks local variable bindings. Each \texttt{Unresolved}
-    type reference is replaced by an algebraic \textit{Resolution
-    Query} ($\mathcal{Q}$) composed of three primitives:
+    that tracks local variable and parameter bindings across lexical blocks.
+    Each \texttt{Unresolved} type reference is replaced by an algebraic
+    \textit{Resolution Query} ($\mathcal{Q}$) composed of three primitives:
     \begin{itemize}
       \item \texttt{Find($s$)}: Ascending scope search for identifier $s$.
       \item \texttt{Extract($q$, $s$)}: Structural member access on
@@ -168,72 +167,52 @@ $$\rho_{\text{build}} : \mathcal{D} \xrightarrow{\Delta}
       \item \texttt{Call($q$)}: Return-type extraction after
         evaluating sub-query $q$ as a callable.
     \end{itemize}
-    The Symbol Stack enables local variable substitution: when a
-    reference such as \texttt{x.method()} is encountered, the stack
-    replaces \texttt{x} with its declared type, transforming the
-    reference into a query that can be resolved globally.
+    The Symbol Stack enables local variable substitution: when an expression
+    such as \texttt{x.method()} is encountered, the stack substitutes
+    \texttt{x} with its declared type, transforming the intra-procedural
+    reference into a self-contained algebraic query that can be resolved
+    globally. Once traversal completes, all local variable state is eliminated.
 
   \item \textbf{Query Execution} ($\rho_{\text{exec}}$): A global \textit{Scope
-    Tree} ($\mathcal{E}$) is constructed from the entire workspace
-    using an arena allocator. Each query expression is then evaluated
-    against this tree using \textit{Lexical Scope Climbing}: starting
-    from the scope where the reference was declared, the algorithm
-    ascends the parent chain, checking local symbols, imports, and
-    inherited members, until the target is found or the root is reached.
+    Tree} ($\mathcal{E}$) is constructed to index all declared modules, types,
+    and members across the workspace. The engine evaluates each query
+    expression against this tree, navigating the corresponding lexical and
+    structural scopes to bind each reference to its definitive target
+    declaration
+    or identify it as an external symbol.
 \end{enumerate}
 
 The resolution is parameterized by a per-language
 \textbf{configuration} ($\mathcal{K}$) that controls behaviors
-such as transitive import resolution, implicit self/this parameter
-injection, and Deref coercion handling.
+such as transitive import visibility, implicit receiver parameter
+binding and instance keyword recognition.
 
 \subsection{Output}
 
-The output of Phase 2 is the resolved forest of module trees
-$\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$, retaining the
-isomorphic structural topology of the codebase while transforming every
-raw identifier and deferred query expression into one of eight post-resolution
-states (as formalized in Figure \ref{fig:typeref_lifecycle} of
-Chapter \ref{ch:ir_formalization}):
+The output of Phase 2 is the resolved module forest
+$\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$. Structurally, it
+maintains the exact topology and component hierarchy extracted in Phase 1.
+Semantically, every symbolic identifier and query expression has been
+evaluated to determine the target component it refers to.
 
-\begin{itemize}
-  \item $\text{Resolved}(\pi_{\text{abs}})$: The reference was successfully
-    bound to an internal component within the workspace, identified by its
-    canonical absolute qualified name $\pi_{\text{abs}} \in \Pi$.
-  \item $\text{External}(\pi_{\text{ext}})$: The reference points to an entity
-    outside the analyzed workspace (e.g., standard library APIs, third-party
-    packages or framework types), identified by its external qualified path
-    $\pi_{\text{ext}} \in \Pi_{\text{ext}}$.
-  \item $\text{Prim}(\iota_p)$: The reference denotes a fundamental built-in
-    primitive type ($\iota_p \in \mathcal{P}$) registered in the
-    language-specific Primitive Registry, requiring no namespace binding.
-  \item $\text{Generic}(\tau_{\text{base}}, \vec{\tau}_{\text{args}})$: A
-    parameterized type application whose base type reference $\tau_{\text{base}}$
-    and type argument references $\vec{\tau}_{\text{args}}$ have each been
-    recursively resolved.
-  \item $\text{TypeVar}(\iota, \vec{\tau}_{\text{bounds}})$: A generic
-    type parameter or placeholder variable whose bound references
-    $\vec{\tau}_{\text{bounds}}$ have been evaluated against visible scopes.
-  \item $\text{Union}(\vec{\tau})$: A composite disjunctive type
-    (such as dynamic type unions \texttt{Union[A, B]} in Python), where
-    each constituent type reference $\tau_i \in \vec{\tau}$ has been
-    recursively resolved.
-  \item $\text{EvaluatedAccess}(\tau_{\text{path}}, \tau_{\text{type}})$: A
-    compound resolution state resulting from field or member access chains,
-    which retains both the evaluated receiver path $\tau_{\text{path}}$ and the
-    terminal structural type $\tau_{\text{type}}$.
-  \item $\text{Failed}(\pi_{\text{raw}})$: Static resolution was unable to
-    locate the symbol in any accessible lexical, imported, or inherited scope,
-    preserving the original unresolvable identifier
-    $\pi_{\text{raw}}$ to support
-    precision/recall metrics and fallback diagnostics.
-\end{itemize}
+In this resolved model, references targeting internal components within the
+analyzed workspace are bound to their fully qualified paths, while
+references to standard library APIs or third-party packages are classified as
+external symbols or language primitives. For parameterized and composite
+constructs, all constituent type arguments are recursively resolved. Finally,
+any symbol that cannot be located in visible scopes is recorded as a failed
+lookup, preserving diagnostic context for downstream evaluation. At this stage,
+the codebase is represented as a fully linked architectural model ready for
+graph generation.
 
 \subsection{Key Properties}
 \begin{itemize}
-  \item This phase is \textbf{completely language-independent}. The
-    resolution algorithm operates solely on the IR, with
-    language-specific behavior controlled by configuration flags.
+  \item The resolution engine is \textbf{language-agnostic}: the core
+    resolution algorithm, Scope Tree traversal, and query evaluation
+    operate exclusively on the shared IR, while language-specific semantic
+    rules (such as import visibility, \texttt{self} bindings, and
+    inheritance conventions) are supplied declaratively through the
+    configuration $\mathcal{K}$.
   \item The resolution is \textbf{workspace-global}: because the
     Scope Tree is built from all files simultaneously, cross-file
     dependencies are resolved transparently.
@@ -259,10 +238,11 @@ architectural analysis and visualization.
 
 \subsection{Input}
 
-The input is the resolved forest of module trees
+The input is the resolved module forest
 $\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$
-produced by Phase 2, where type references populate their
-post-resolution states.
+produced by Phase 2, in which all type references have been resolved to their
+corresponding internal declarations, external dependencies, or
+language primitives.
 
 \subsection{Process}
 
@@ -270,28 +250,23 @@ The construction proceeds in two steps:
 
 \begin{enumerate}
   \item \textbf{Node Flattening}: The hierarchical module tree is
-    recursively traversed, and every component (module, structured
-    type, function, field, type alias) is extracted into a flat
-    vector of vertices $V$. Each vertex receives a globally unique
-    qualified name computed by prepending all ancestor module names.
-    Additionally, implicit nodes are synthesized for primitive types
+    recursively traversed, promoting every declared component (modules,
+    structured types, functions, fields, and type aliases) into a flat
+    set of vertices $V$. Each vertex receives a globally unique
+    qualified name that reflects its full enclosing namespace path.
+    Additionally, implicit nodes are synthesized in $V$ for primitive types
     and external dependencies that are referenced by edges but not
-    declared in the workspace.
+    declared in the workspace, ensuring the graph is self-contained.
   \item \textbf{Edge Generation}: The module tree is traversed a
-    second time, inspecting every resolved type reference to emit
-    directed edges. The system defines 16 distinct edge kinds
-    organized into five categories: structural (containment and
-    nesting), inheritance, type-level (field types, parameter types,
-    return types, generic bounds), behavioral (calls, instantiations, field
-    accesses), and auxiliary (imports, casts, annotations). After
-    generation, edges are deduplicated to prevent inflated coupling metrics.
+    second time, inspecting every resolved reference across declarations,
+    signatures, and blocks to emit directed dependency edges.
+    Each edge connects the source component to its resolved target
+    and is typed according to the architectural relationship it represents
+    (such as inheritance, type usage in parameters or return types, member
+    accesses, or function invocations). Unresolved references are omitted to
+    avoid introducing noise, and redundant parallel edges of the same
+    kind are deduplicated to prevent distorted coupling metrics.
 \end{enumerate}
-
-The graph is exported in two formats: a raw JSON serialization of the
-full \texttt{DependencyGraph} structure, and a
-Cytoscape.js-compatible format \cite{franz_cytoscapejs_2016} where
-structural containment is encoded as compound node nesting rather
-than explicit edges.
 
 \subsection{Output}
 
@@ -311,28 +286,15 @@ $\mathcal{G} = (V, E)$:
     \in \mathcal{K}_{\text{edge}}$.
 \end{itemize}
 
-An \texttt{AnalysisSummary} is also produced, containing aggregate
-statistics (total modules, structured types, free functions, resolved
-references, and failed references).
+The graph is primarily serialized in a Cytoscape.js-compatible JSON format
+\cite{franz_cytoscapejs_2016} where structural containment is encoded as
+compound node nesting rather than explicit edges.
 
 \subsection{Key Properties}
 \begin{itemize}
   \item This phase is \textbf{completely language-independent}. The lowering
     algorithm operates uniformly over the resolved IR without
     language-specific branches.
-  \item \textbf{Comprehensive Target Extraction}: Dependency edges
-    are emitted from all
-    semantically meaningful type references. While $\text{Resolved}$
-    and $\text{External}$
-    produce direct dependency targets, $\text{Primitive}$ references
-    generate edges to
-    synthesized primitive nodes, $\text{Union}(\vec{\tau})$
-    references recursively decompose
-    into edges toward all constituent types, and
-    $\text{EvaluatedAccess}$ references produce
-    edges to both the accessed receiver and the resulting type.
-    Failed references do not emit
-    spurious edges, avoiding noise in coupling metrics.
   \item \textbf{Graph Closure Property}: The constructed graph is
     strictly closed:
     $\forall \langle u, v, k \rangle \in E \implies u \in V \land v \in V$.
@@ -342,43 +304,39 @@ references, and failed references).
     (\texttt{Component::External} and \texttt{Component::Primitive})
     are dynamically
     instantiated in $V$ to guarantee structural integrity.
-  \item The graph is \textbf{flat}: the original hierarchical nesting
-    is encoded either as explicit containment edges or, in the
-    Cytoscape export, as compound node parent relationships.
 \end{itemize}
 
 The detailed implementation of this phase, including the flattening
 algorithm, the complete edge taxonomy, and the Cytoscape export
 process, is presented in Chapter \ref{ch:graph_construction}.
 
-\section{End-to-End Data Flow}
+\section{Pipeline and Architectural Guarantees}
 \label{sec:data_flow}
 
-Table \ref{tab:pipeline_summary} summarizes the domain transformations,
-operational contexts, and characteristics of each phase across the pipeline.
+Table \ref{tab:pipeline_summary} synthesizes the pipeline
+transformations across phases, detailing their domain mappings,
+operational contexts, and execution scopes.
 
 \begin{table}[htpb]
   \centering
   \small
-  \begin{tabular}{|l|c|l|l|l|l|}
+  \begin{tabularx}{\textwidth}{|l|l|X|l|}
     \hline
-    \textbf{Phase} & \textbf{Op.} & \textbf{Input Domain} &
-    \textbf{Output Domain} & \textbf{Context} & \textbf{Scope} \\ \hline
-    1. Extraction & $\varepsilon$ & Source files $\mathcal{W}$ &
-    Unresolved IR $\mathcal{D}$ & Tree-sitter CST & Per-file \\ \hline
-    2a. Query Building & $\rho_{\text{build}}$ & Unresolved IR
-    $\mathcal{D}$ & Query IR $\mathcal{D}_{\mathcal{Q}}$ & Symbol
-    Stack $\Delta$ & Local scope \\ \hline
-    2b. Query Execution & $\rho_{\text{exec}}$ & Query IR
-    $\mathcal{D}_{\mathcal{Q}}$ & Resolved IR
-    $\mathcal{D}_{\text{res}}$ & Context $\Gamma = \langle
-    \mathcal{E}, \mathcal{P}, \mathcal{K} \rangle$ & Workspace-wide \\ \hline
-    3. Graph Construction & $\gamma$ & Resolved IR
-    $\mathcal{D}_{\text{res}}$ & Dependency Graph $\mathcal{G}$ &
-    Registry $\mathcal{P}$ & Workspace-wide \\ \hline
-  \end{tabular}
-  \caption{Summary of the pipeline transformations: operators,
-  domains, operational contexts, and scope.}
+    \textbf{Phase} & \textbf{Transformation} & \textbf{Context} &
+    \textbf{Scope} \\ \hline
+    1. Extraction & $\varepsilon : \mathcal{W} \to \mathcal{D}$ &
+    Tree-sitter CST & Per-file \\ \hline
+    2a. Query Building & $\rho_{\text{build}} : \mathcal{D} \to
+    \mathcal{D}_{\mathcal{Q}}$ & Symbol Stack $\Delta$ & Local scope \\ \hline
+    2b. Query Execution & $\rho_{\text{exec}} :
+    \mathcal{D}_{\mathcal{Q}} \to \mathcal{D}_{\text{res}}$ &
+    Execution Context $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K}
+    \rangle$ & Workspace \\ \hline
+    3. Graph Construction & $\gamma : \mathcal{D}_{\text{res}} \to
+    \mathcal{G}$ & - & Workspace \\ \hline
+  \end{tabularx}
+  \caption{Summary of pipeline transformations: operators, domain
+  mappings, operational contexts, and execution scope.}
   \label{tab:pipeline_summary}
 \end{table}
 

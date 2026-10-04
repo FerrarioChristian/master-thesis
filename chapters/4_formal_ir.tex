@@ -4,13 +4,13 @@
 \section{Introduction}
 The analysis pipeline described in Chapter \ref{ch:analysis_pipeline}
 is structured as a composition of typed transformations. Given a
-source file $S$ belonging to a language $L \in \mathcal{L}$,
-Tree-sitter produces a Concrete Syntax Tree (CST), which is then
-transformed by the extraction function $\varepsilon$ (detailed in Chapter
-\ref{ch:extraction}) into a forest of Module hierarchies:
-$$\varepsilon : \mathcal{L} \times \mathcal{S}_{code} \to \mathcal{D}$$
-The goal of this chapter is to formally define the domain
-$\mathcal{D}$ of the Intermediate Representation, i.e., the
+workspace $\mathcal{W}$ containing source files $w \in \mathcal{W}$
+across supported programming languages, Tree-sitter produces Concrete
+Syntax Trees (CSTs), which are then transformed by the extraction
+function $\varepsilon$ (detailed in Chapter \ref{ch:extraction}) into
+a forest of Module hierarchies: $$\varepsilon : \mathcal{W} \to
+\mathcal{D}$$ The goal of this chapter is to formally define the
+domain $\mathcal{D}$ of the Intermediate Representation, i.e., the
 set of all valid Module hierarchies $\vec{\mathcal{M}}$ that can be
 produced by the extraction function. The IR is designed as a
 \textit{conservative extension} \cite{aho_compilers_2007}
@@ -45,7 +45,7 @@ discovery and resolution. To guarantee \textit{Type Safety} between
 the extraction phases and the graph generation, we define $\tau$ as
 a sum type:
 \begin{align*}
-  \tau ::=&\ \text{Prim}(\iota_p) \quad (\iota_p \in \mathcal{P}) \\
+  \tau ::=&\ \text{Primitive}(\iota_p) \quad (\iota_p \in \mathcal{P}) \\
   &\mid \text{Unresolved}(\pi_{raw}) \\
   &\mid \text{ResolutionQuery}(\mathcal{Q}) \\
   &\mid \text{Resolved}(\pi_{abs}) \\
@@ -297,7 +297,7 @@ We define a \textbf{Component} ($\mathcal{C}$) as the disjoint union
 Each component represents the logical unit that can appear as a
 vertex in the dependency graph:
 \begin{align*}
-  \mathcal{C} ::=&\ \text{Mod}(\mathcal{M}) \\
+  \mathcal{C} ::=&\ \text{Module}(\mathcal{M}) \\
   &\mid \text{StructuredType}(\mathcal{S}) \\
   &\mid \text{TypeAlias}(\mathcal{A}) \\
   &\mid \text{Function}(\mathcal{F}) \\
@@ -368,8 +368,8 @@ this work draws from the concept of \textbf{Language Product Lines}
 language as a monolithic entity, the analyzer decomposes languages
 into a set of orthogonal \textbf{language features}. Each feature
 represents a specific semantic capability (e.g., ``supports implicit
-  self parameter'', ``uses transitive imports'', ``allows detached
-implementation blocks'') that may or may not be present in any given
+self parameter'', ``uses transitive imports'') that may or may not be
+present in any given
 language. The analyzer's behavior is then parameterized by these
 features, selecting the appropriate processing strategies at each
 pipeline phase.
