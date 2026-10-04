@@ -79,21 +79,30 @@ Where:
     the provided source code (e.g., standard libraries,
     \texttt{java.util.*}, external crates).
   \item \textbf{Generic($\tau_{base}, \vec{\tau}_{args}$)}: Represents a
-    parameterized or template type application (such as \texttt{Vector<T>} or
-    \texttt{Map<K, V>}). It couples a base type reference $\tau_{base}$
-    with an ordered sequence of argument type references $\vec{\tau}_{args}$.
+    parameterized or template type application (such as \texttt{List<String>} or
+    \texttt{Map<String, Integer>}). It couples a base generic type
+    reference $\tau_{base}$
+    with a sequence of argument type references $\vec{\tau}_{args}$.
   \item \textbf{TypeVar($\iota, \vec{\tau}_{bounds}$)}: Represents a
-    generic type parameter or placeholder variable identified by
-    $\iota \in \mathcal{I}$,
-    constrained by an ordered sequence of upper bounds $\vec{\tau}_{bounds}$.
+    generic type parameter or placeholder variable declared on a
+    structured type or
+    method (such as \texttt{T} in \texttt{class Box<T extends Number>}).
+    It is identified by $\iota \in \mathcal{I}$ and constrained by upper bounds
+    $\vec{\tau}_{bounds}$.
   \item \textbf{Union($\vec{\tau}$)}: Captures a disjunction of types
     (e.g., \texttt{Union[A, B]} in Python or \texttt{A | B} in
     TypeScript). It maintains a vector of references that must be
     individually processed.
   \item \textbf{EvaluatedAccess($\tau_{path}, \tau_{type}$)}: A
-    wrapper that preserves both the originally queried path and the
-    final structural type. This ensures that intermediate access
-    chains generate corresponding dependency edges.
+    composite reference used for member and property accesses (such as
+    \texttt{customer.address}). It pairs the type of the accessed object
+    $\tau_{path}$ (e.g., \texttt{Customer}) with the type of the accessed field
+    or return value $\tau_{type}$ (e.g., \texttt{Address}).
+    If the intermediate representation only recorded the type of the field
+    (\texttt{Address}), the analyzer would lose the architectural dependency on
+    the object being accessed (\texttt{Customer}).
+    Preserving both references ensures that dependency edges are created toward
+    both the containing entity and the field type.
   \item \textbf{Failed($\pi_{raw}$)}: Indicates that the static
     resolution phase has failed. It keeps track of the target path to
     support fallback analysis and calculate statistical metrics on
@@ -121,65 +130,112 @@ and behavior of the entity.
 
 \subsection{Members and Signatures}
 We define the \textbf{Field} type ($f$), representing an attribute or
-data field. A field is modeled as the tuple of an identifier
-$\iota \in \mathcal{I}$, a type reference $\tau$, and a vector of
-type references:
-$$f = \langle \iota, \tau, \vec{\tau} \rangle$$
+data field. A field is modeled as the tuple:
+$$f = \langle \iota, \tau, \vec{\tau}_{ann} \rangle$$
+where:
+\begin{itemize}
+  \item $\iota \in \mathcal{I}$: the identifier or member name.
+  \item $\tau$: the declared or inferred type reference of the field.
+  \item $\vec{\tau}_{ann}$: the ordered vector of type references representing
+    annotations, attributes, or decorators applied directly to the field
+    (e.g., \texttt{@Autowired}, \texttt{@Column}, or language-specific compiler
+    directives).
+\end{itemize}
 
 We define the \textbf{Parameter} type ($p$) for function parameters:
-$$p = \langle \iota^?, \tau, \mathbb{B} \rangle$$ where the identifier
-$\iota^?$ is optional (to support lambda functions and anonymous
-parameters), $\tau$ is the declared type, and $\mathbb{B}$ indicates
-whether the parameter is variadic.
+$$p = \langle \iota^?, \tau, \mathbb{B}_{var} \rangle$$
+where:
+\begin{itemize}
+  \item $\iota^?$: the optional parameter identifier (omitted in
+    anonymous parameters or lambda expressions).
+  \item $\tau$: the declared or inferred type reference of the parameter.
+  \item $\mathbb{B}_{var} \in \{ \top, \bot \}$: a boolean flag
+    indicating whether the parameter is variadic (e.g.,
+    \texttt{...args} or \texttt{*args}).
+\end{itemize}
 
-To abstract the concept of a function's ``signature'' from the
+To abstract the concept of a function's signature from the
 component that implements it, we introduce the \textbf{Signature}
 type ($\sigma$):
 $$\sigma = \langle \vec{p}, \tau_{ret} \rangle$$
-where $\vec{p}$ is the ordered parameter vector and $\tau_{ret}$ is
-the return type reference.
+where:
+\begin{itemize}
+  \item $\vec{p}$: the ordered vector of formal parameters.
+  \item $\tau_{ret}$: the return type reference.
+\end{itemize}
 
 We define the \textbf{Type Parameter} construct ($\theta$) to model generic
 type variables and template parameters declared on structured types
 or functions:
 $$\theta = \langle \iota, \vec{\tau}_{bounds} \rangle$$
-where $\iota \in \mathcal{I}$ is the parameter identifier and
-$\vec{\tau}_{bounds}$
-is an ordered vector of type references specifying constraint bounds
-(such as interface
-implementations, trait bounds, or base class restrictions).
+where:
+\begin{itemize}
+  \item $\iota \in \mathcal{I}$: the parameter identifier or name.
+  \item $\vec{\tau}_{bounds}$: the ordered vector of type references specifying
+    constraint bounds (such as interface implementations, trait bounds, or base
+    class restrictions).
+\end{itemize}
 
 Building on this, to model the hierarchical body of a function, we
 introduce the \textbf{Block} construct ($\mathcal{B}$). A lexical
 block (typically delimited by braces \texttt{\{\}}) isolates an
 internal scope where local variables can be declared. Leveraging the
-same structure as data fields ($f = \langle \iota, \tau, \dots \rangle$), local
-variables are formalized as a vector of $f$. The block
+same structure as data fields ($f = \langle \iota, \tau,
+\vec{\tau}_{ann} \rangle$),
+local variables are formalized as a vector of $f$. The block
 tracks its behavioral dependencies and can recursively nest further
 blocks (as in \texttt{if} or \texttt{while} statements):
 $$\mathcal{B} = \langle \vec{f}, \vec{\tau}_{calls},
 \vec{\tau}_{inst}, \vec{\tau}_{acc}, \vec{\tau}_{casts},
 \vec{\mathcal{B}}_{sub} \rangle$$
-where $\vec{\tau}_{calls}$ represents the set of type references
-whose functions are explicitly invoked within the block,
-$\vec{\tau}_{inst}$ represents the structured types explicitly
-instantiated (e.g., via \texttt{new}), $\vec{\tau}_{acc}$
-represents the direct read or write references to a component's
-state, and $\vec{\tau}_{casts}$ captures explicit type casts (e.g.,
-\texttt{as} conversions or C-like casts).
+where:
+\begin{itemize}
+  \item $\vec{f}$: the vector of local variable declarations scoped
+    to the block.
+  \item $\vec{\tau}_{calls}$: the set of type references whose
+    functions or methods
+    are explicitly invoked within the block.
+  \item $\vec{\tau}_{inst}$: the set of structured types explicitly instantiated
+    (e.g., via \texttt{new}).
+  \item $\vec{\tau}_{acc}$: the set of type references accessed directly through
+    reads or writes to member states.
+  \item $\vec{\tau}_{casts}$: the set of type references involved in
+    explicit type
+    casts or conversions (e.g., \texttt{as} expressions or C-style casts).
+  \item $\vec{\mathcal{B}}_{sub}$: the vector of nested sub-blocks representing
+    nested scopes (such as conditional branches and loops).
+\end{itemize}
 
-Finally, we define the universal \textbf{Function} type
-($\mathcal{F}$) as a container that binds a qualified name to a
-specific signature, an ordered vector of generic type parameters,
-an optional root block modeling its body, a boolean flag for
-constructors, and a vector of annotations:
+Finally, we define the unified \textbf{Function} type
+($\mathcal{F}$), which models both class/struct methods and standalone free
+functions under a single formal representation:
 $$\mathcal{F} = \langle \pi, \sigma, \vec{\theta}, \mathcal{B}^?,
 \mathbb{B}_{ctor}, \vec{\tau}_{ann} \rangle$$
+where:
+\begin{itemize}
+  \item $\pi \in \Pi$: the qualified path uniquely identifying the
+    function within
+    its declaring module or enclosing type.
+  \item $\sigma$: the function signature $\langle \vec{p}, \tau_{ret} \rangle$,
+    encapsulating the ordered parameters and the return type reference.
+  \item $\vec{\theta}$: the ordered vector of generic type parameters
+    declared on
+    the function (e.g., \texttt{<T>} in generic methods).
+  \item $\mathcal{B}^?$: the optional root lexical block representing
+    the function
+    body, present for concrete implementations and omitted for abstract methods
+    or interface declarations.
+  \item $\mathbb{B}_{ctor} \in \{ \top, \bot \}$: a boolean flag
+    indicating whether
+    the function is a constructor or initializer.
+  \item $\vec{\tau}_{ann}$: the ordered vector of annotation or decorator type
+    references applied to the function.
+\end{itemize}
 
 The architectural role of an $\mathcal{F}$ (whether it acts as a
-Method or a Free Function) is not encoded in its type, but is
+method or a free function) is therefore not hardcoded in its type, but is
 determined exclusively by the structural context in which it is
-placed (within a structured type or a module).
+placed (within a structured type or directly within a module).
 
 Overloading is naturally handled within the Intermediate Representation
 by the set of functions of an entity: a structured type or module can contain
@@ -193,7 +249,7 @@ dependencies over fine-grained signature differentiation.
 
 \subsection{Structured Types ($\mathcal{S}$)}
 Let $\text{Kind} = \{ \text{Class, Struct, Interface, Trait, Enum,
-EnumVariant} \}$ be the domain of structured type categories. A
+EnumVariant} \}$ be the domain of structural type kinds. A
 structured type is defined by the tuple:
 $$\mathcal{S} = \langle \pi, k \in \text{Kind}, \vec{\theta}, \vec{f},
 \vec{\mathcal{F}}, \vec{\tau}_{sup}, \vec{\mathcal{S}}_{nest},
@@ -201,7 +257,7 @@ $$\mathcal{S} = \langle \pi, k \in \text{Kind}, \vec{\theta}, \vec{f},
 where:
 \begin{itemize}
   \item $\pi$: the qualified name identifying the entity within the system.
-  \item $k$: the structural category (defined in $\text{Kind}$) that
+  \item $k \in \text{Kind}$: the structural kind that
     preserves the original semantics of the construct.
   \item $\vec{\theta}$: the vector of generic type parameters
     declared on the entity.
@@ -262,11 +318,34 @@ introduce the temporary construct \textbf{ImplBlock} or
 \textbf{Implementation Extension}:
 $$\mathcal{X} = \langle \pi, \tau_{target}, \tau_{trait}^?,
 \vec{\mathcal{F}}, \vec{\mathcal{S}}_{nest}, \vec{\mathcal{A}} \rangle$$
-where $\pi$ is the name of the extension (typically derived from the
-target type), $\tau_{target}$ is the type to which the implementation
-applies, $\tau_{trait}^?$ is an optional reference to the implemented
-trait or interface, and the other fields represent functions, nested
-types, and aliases associated with the extension.
+where:
+\begin{itemize}
+  \item $\pi \in \Pi$: the qualified path identifying where the
+    extension block is
+    declared in the project's module hierarchy.
+    An implementation can be located in a different file or module
+    from the target type itself. For example, a struct \texttt{Point}
+    declared in module \texttt{geometry} can have an extension block
+    written in module \texttt{render}. Tracking $\pi$ allows the
+    analyzer to know which source file contains the block, ensuring
+    that references inside its methods are resolved using that file's
+    import declarations before the methods are merged into the target type.
+  \item $\tau_{target}$: the type reference denoting the target structured type
+    that receives the implementation.
+  \item $\tau_{trait}^?$: an optional type reference identifying the trait or
+    interface being implemented (omitted for inherent implementation
+      blocks, such
+    as \texttt{impl Target}).
+  \item $\vec{\mathcal{F}}$: the vector of functions (methods)
+    defined within the
+    extension block.
+  \item $\vec{\mathcal{S}}_{nest}$: the vector of nested structured
+    types declared
+    within the scope of the block.
+  \item $\vec{\mathcal{A}}$: the vector of associated type aliases
+    defined within
+    the block (e.g., associated types satisfying trait contracts).
+\end{itemize}
 
 % For example, the following Rust code:
 % \begin{verbatim}
