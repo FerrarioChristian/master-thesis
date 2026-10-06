@@ -7,20 +7,21 @@ in this thesis. It begins by defining \textbf{software dependencies}
 and their formal representation through \textbf{graphs}, the
 accumulation of \textbf{technical debt} and \textbf{architectural
 smells}. It then details parsing mechanisms, syntax trees, and the
-\textbf{Tree-sitter} framework, and concludes with the formal
-principles of \textbf{lexical scoping} and \textbf{name resolution}.
+\textbf{Tree-sitter} framework \cite{brunsfeld_treesitter_2018}, and
+concludes with the formal principles of \textbf{lexical scoping} and
+\textbf{name resolution}.
 
 \section{Software Dependencies}
 \label{sec:software_dependencies}
 
 In software engineering, a \textbf{dependency} exists when a
 component requires the presence or functionality of another component
-to perform its task or to compile correctly
-\cite{martin_clean_2018}. Managing these dependencies is
-arguably one of the most critical aspects of software design. It is
-directly related to the concepts of \textbf{coupling} (the degree of
-interdependence between software modules) and \textbf{cohesion} (the
-degree to which elements inside a module belong together). A
+to perform its task or to compile correctly \cite{martin_clean_2018}.
+Managing these dependencies is arguably one of the most critical
+aspects of software design. It is directly related to the fundamental
+concepts of \textbf{coupling} (the degree of interdependence between
+software modules) and \textbf{cohesion} (the degree to which elements
+inside a module belong together) \cite{stevens_structured_1974}. A
 well-architected system typically aims for \textit{high cohesion} and
 \textit{low coupling}, ensuring that components can be maintained,
 tested, and extended in isolation without triggering cascading
@@ -183,7 +184,7 @@ a multigraph:
 The set $E_d$ contains all the logical dependencies extracted from
 the code. A dependency fundamentally exists whenever a piece of code
 (Component A) cannot function, compile, or execute without the
-presence of another (Component B).
+presence of another (Component B). \cite{parnas79dependencies}
 
 \begin{figure}[htpb]
   \centering
@@ -215,8 +216,9 @@ Empirical research has demonstrated that architectural smells are largely
 independent of code-level smells, thus requiring dedicated structural
 analysis \cite{arcelli_fontana_independent_2019}.
 Notable architectural dependency smells identified in the
-literature \cite{garcia_identifying_2009} and detected through graph-based
-analysis tools \cite{fontana_arcan_2017} include:
+literature \cite{garcia_identifying_2009} and detected through dedicated
+architectural analysis tools such as Arcan \cite{fontana_arcan_2017} and
+DV8 \cite{cai_dv8_2019} include:
 
 \begin{itemize}
   \item \textbf{Cyclic Dependency:} The most notorious anomaly occurs
@@ -301,7 +303,7 @@ public class ServiceC {
 Static analysis tools fundamentally rely on parsers to transform raw
 source text into structured syntactic models. In program analysis and
 compiler construction, these representations generally fall into two
-distinct paradigms:
+distinct paradigms \cite{aho_compilers_2007, scott_programming_2016}:
 \begin{itemize}
   \item \textbf{Abstract Syntax Tree (AST):} Abstracts away
     non-semantic syntactic details, such as punctuation, delimiters,
@@ -314,10 +316,12 @@ distinct paradigms:
     strict one-to-one mapping with the original file. It includes all
     tokens, whitespace, and formatting, making it ideal for tooling
     that requires exact code correspondence, such as linters and code
-    formatters. Furthermore CSTs are often favored in multi-language
-    analyzers because they can be generated directly by parser
-    generators without the engineering cost of building and
-    maintaining custom AST abstractions for each language.
+    formatters. From the perspective of multi-language architectural
+    analysis, operating directly on CSTs provides a substantial
+    engineering advantage: it eliminates the need to build, maintain,
+    and synchronize custom language-specific translators from parse
+    trees to intermediate ASTs, drastically reducing the complexity
+    of supporting new programming languages.
 \end{itemize}
 
 To achieve high-performance, language-agnostic parsing across

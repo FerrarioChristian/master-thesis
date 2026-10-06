@@ -8,10 +8,10 @@ The name resolution phase transforms the symbolic type references
 ($\tau = \texttt{Unresolved}$) produced by the extraction phase into
 semantically resolved pointers. Formally:
 $$\rho : \mathcal{D} \to \mathcal{D}_{\text{res}}$$
-where $\mathcal{D}$ is the domain of extracted module hierarchies
+where $\mathcal{D}$ is the domain of extracted component hierarchies
 $\vec{\mathcal{M}}$,
 and $\mathcal{D}_{\text{res}}$ represents the domain of semantically
-resolved module
+resolved component
 trees. The transformation preserves the isomorphic structural
 topology of the codebase,
 while type references undergo a state transition: every
@@ -424,8 +424,12 @@ cycles, such as
 By storing all scopes in a flat, contiguous vector
 (\texttt{Vec<Scope>}) and modeling pointers
 as plain scalar indices (\texttt{type ScopeId = usize}), the Arena
-Allocator completely decouples
-lexical graph topology from Rust's memory ownership model:
+Allocator completely decouples lexical graph topology from Rust's memory
+ownership model. Each \texttt{ScopeId} operates as an implicit relative
+pointer, representing an offset into the arena buffer that guarantees
+instantaneous $\mathcal{O}(1)$ random access. Because the compiler treats
+these scalar indices as copyable primitive values rather than tracked
+memory references, this implicit pointer architecture provides key guarantees:
 \begin{itemize}
   \item The entire Scope Tree $\mathcal{E}$ is owned by a single
     contiguous memory container

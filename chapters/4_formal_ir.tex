@@ -8,11 +8,13 @@ workspace $\mathcal{W}$ containing source files $w \in \mathcal{W}$
 across supported programming languages, Tree-sitter produces Concrete
 Syntax Trees (CSTs), which are then transformed by the extraction
 function $\varepsilon$ (detailed in Chapter \ref{ch:extraction}) into
-a forest of Module hierarchies: $$\varepsilon : \mathcal{W} \to
+a hierarchical forest of architectural components: $$\varepsilon :
+\mathcal{W} \to
 \mathcal{D}$$ The goal of this chapter is to formally define the
 domain $\mathcal{D}$ of the Intermediate Representation, i.e., the
-set of all valid Module hierarchies $\vec{\mathcal{M}}$ that can be
-produced by the extraction function. The IR is designed as a
+set of all valid component hierarchies rooted in top-level Module
+trees $\vec{\mathcal{M}}$ that can be produced by the extraction
+function. The IR is designed as a
 \textit{conservative extension} \cite{aho_compilers_2007}
 of the high-level syntactic constructs shared across languages: it
 preserves the essential architectural semantics (types, functions,
@@ -58,7 +60,7 @@ a sum type:
 \end{align*}
 Where:
 \begin{itemize}
-  \item \textbf{Prim}: Represents fundamental primitive types
+  \item \textbf{Primitive}: Represents fundamental primitive types
     ($\iota_p \in \mathcal{P}$). Since primitive keywords vary drastically
     across languages, the set $\mathcal{P}$ is not static but
     provided by a \textit{Primitive Registry} populated at load time.
@@ -206,7 +208,7 @@ where:
     nested scopes (such as conditional branches and loops).
 \end{itemize}
 
-Finally, we define the unified \textbf{Function} type
+Finally, we define the \textbf{Function} type
 ($\mathcal{F}$), which models both class/struct methods and standalone free
 functions under a single formal representation:
 $$\mathcal{F} = \langle \pi, \sigma, \vec{\theta}, \mathcal{B}^?,
@@ -296,12 +298,20 @@ where:
 % [\ ] \rangle$
 
 \subsection{Type Alias ($\mathcal{A}$)}
-A \textbf{Type Alias} allows defining a new name for an existing
-type. It is modeled as the tuple:
+A \textbf{Type Alias} allows defining a new nominal identifier for an
+existing type. It is modeled as the tuple:
 $$\mathcal{A} = \langle \pi, \tau_{target} \rangle$$
-where $\tau_{target}$ is the reference to the original type. During
-graph construction, type aliases are maintained as independent nodes
-to accurately track the semantic use of domains.
+where:
+\begin{itemize}
+  \item $\pi \in \Pi$: the qualified path uniquely identifying the
+    type alias within its declaring scope or module hierarchy.
+  \item $\tau_{target} \in \mathcal{T}$: the type reference pointing to the
+    underlying aliased type.
+\end{itemize}
+
+During graph construction, type aliases are maintained as independent nodes
+to accurately track the semantic use of domain-specific types and architectural
+coupling.
 
 % For example, the Rust declaration \texttt{type NodeId = usize;} is
 % modeled as $\mathcal{A} = \langle \langle\texttt{NodeId}\rangle,
@@ -363,12 +373,29 @@ and traits are \textit{flattened} into the target structured type's
 scope, effectively disappearing from the final architectural model.
 
 \section{Component Architecture}
-The entire software system is represented as a hierarchy of
-\textbf{Module} instances ($\mathcal{M}$). A module recursively
-aggregates structured types, functions, sub-modules, type aliases,
-free variables, and implementation extensions. This hierarchical
-structure constitutes the domain $\mathcal{D}$ of the
-Intermediate Representation.
+The software system is formalized as a hierarchical forest of
+\textbf{Components} ($\mathcal{C}$), organized at the root level by a
+containment hierarchy of \textbf{Module} instances ($\mathcal{M}$).
+Rather than treating modules as the sole hierarchical structure, the
+Intermediate Representation recognizes that containment is recursive
+across multiple component layers:
+\begin{itemize}
+  \item Modules recursively aggregate nested sub-modules
+    ($\vec{\mathcal{M}}_{nest}$),
+    structured types ($\vec{\mathcal{S}}$), free functions
+    ($\vec{\mathcal{F}}$),
+    and top-level definitions;
+  \item Structured types recursively nest inner classes, structs, or traits
+    ($\vec{\mathcal{S}}_{nest}$), as well as member fields
+    ($\vec{f}$) and methods
+    ($\vec{\mathcal{F}}$);
+  \item Functions encapsulate lexical execution blocks ($\mathcal{B}$),
+    which in turn nest sub-blocks ($\vec{\mathcal{B}}_{sub}$) and
+    local declarations.
+\end{itemize}
+This multi-level structural containment constitutes the domain
+$\mathcal{D}$ of the Intermediate Representation, representing a forest of
+component trees where top-level modules serve as roots.
 
 \subsection{Component ($\mathcal{C}$)}
 We define a \textbf{Component} ($\mathcal{C}$) as the disjoint union
@@ -387,9 +414,10 @@ vertex in the dependency graph:
 
 \subsection{Module ($\mathcal{M}$)}
 \label{sec:module_def}
-The entire program structure is captured by the \textbf{Module} type
-($\mathcal{M}$), defined recursively to reflect the hierarchy of the
-file system or namespaces:
+At the root level of the component forest, the primary namespace and
+encapsulation units are captured by the \textbf{Module} type ($\mathcal{M}$),
+defined recursively to reflect the hierarchy of the file system, packages,
+or namespaces:
 $$\mathcal{M} = \langle \pi, str_{lang}^?, str_{path}^?,
 \vec{\delta}_{imp}, \vec{\mathcal{M}}_{nest}, \vec{\mathcal{S}},
 \vec{\mathcal{A}}, \vec{\mathcal{F}}, \vec{f}_{free},

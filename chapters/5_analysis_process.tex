@@ -90,8 +90,8 @@ flat root fallback (e.g., C).
 
 \subsection{Output}
 
-The output is a forest of \textbf{Module trees} $\vec{\mathcal{M}}
-\in \mathcal{D}$,
+The output is a hierarchical forest of \textbf{component trees rooted
+in module instances} $\vec{\mathcal{M}} \in \mathcal{D}$,
 unified across all files in the workspace. Each module contains its
 structured types, free functions, imports, implementation blocks,
 type aliases, and free variables. All type references ($\tau$) at
@@ -136,7 +136,7 @@ which component in the workspace (or external library) it refers to.
 
 \subsection{Input}
 
-The input is the forest of module trees $\vec{\mathcal{M}} \in \mathcal{D}$
+The input is the forest of component trees $\vec{\mathcal{M}} \in \mathcal{D}$
 produced by Phase 1, accompanied by the declarative Language Configuration
 $\mathcal{K}$ and the Primitive Registry $\mathcal{P}$.
 
@@ -155,7 +155,7 @@ alongside global symbol lookups. Instead, dividing the process into query
 building and query execution cleanly isolates these concerns:
 
 \begin{enumerate}
-  \item \textbf{Query Building} ($\rho_{\text{build}}$): The module hierarchy
+  \item \textbf{Query Building} ($\rho_{\text{build}}$): The component hierarchy
     is traversed with an ephemeral \textit{Symbol Stack} ($\Delta$)
     that tracks local variable and parameter bindings across lexical blocks.
     Each \texttt{Unresolved} type reference is replaced by an algebraic
@@ -189,7 +189,7 @@ binding and instance keyword recognition.
 
 \subsection{Output}
 
-The output of Phase 2 is the resolved module forest
+The output of Phase 2 is the resolved component forest
 $\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$. Structurally, it
 maintains the exact topology and component hierarchy extracted in Phase 1.
 Semantically, every symbolic identifier and query expression has been
@@ -238,7 +238,7 @@ architectural analysis and visualization.
 
 \subsection{Input}
 
-The input is the resolved module forest
+The input is the resolved component forest
 $\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$
 produced by Phase 2, in which all type references have been resolved to their
 corresponding internal declarations, external dependencies, or
@@ -249,7 +249,7 @@ language primitives.
 The construction proceeds in two steps:
 
 \begin{enumerate}
-  \item \textbf{Node Flattening}: The hierarchical module tree is
+  \item \textbf{Node Flattening}: The hierarchical component forest is
     recursively traversed, promoting every declared component (modules,
     structured types, functions, fields, and type aliases) into a flat
     set of vertices $V$. Each vertex receives a globally unique
@@ -257,7 +257,7 @@ The construction proceeds in two steps:
     Additionally, implicit nodes are synthesized in $V$ for primitive types
     and external dependencies that are referenced by edges but not
     declared in the workspace, ensuring the graph is self-contained.
-  \item \textbf{Edge Generation}: The module tree is traversed a
+  \item \textbf{Edge Generation}: The component forest is traversed a
     second time, inspecting every resolved reference across declarations,
     signatures, and blocks to emit directed dependency edges.
     Each edge connects the source component to its resolved target
