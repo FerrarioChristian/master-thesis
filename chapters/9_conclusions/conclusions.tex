@@ -1,3 +1,79 @@
 \section{Conclusions}
 \label{ch:conclusions}
 
+Software architecture recovery and dependency analysis represent fundamental
+pillars of modern software engineering, underpinning critical activities
+ranging from architectural smell detection and refactoring recommendation to
+modularity assessment and technical debt monitoring. However, the accelerating
+adoption of multi-language ecosystems and polyglot monorepos has exposed a
+critical vulnerability in traditional static analysis tools: their heavy
+reliance on compiler-coupled frontends and complex build-system bootstrapping.
+In enterprise environments and large-scale empirical studies, requiring
+fully resolved classpaths, compiler SDK installations, and synchronized build
+descriptors leads to prohibitive operational failure rates, brittle tooling,
+and severe scalability bottlenecks.
+
+To address these limitations, this dissertation designed, formalized, and
+empirically validated \textbf{OmniDeps}, a high-performance, language-agnostic
+static analysis framework that decouples architectural dependency extraction
+from native compiler toolchains. Operating under the foundational premise
+that the analyzed source code compiles successfully within its native build
+environment, OmniDeps demonstrates that Concrete Syntax Trees (CSTs) can be
+directly queried and projected into normalized architectural dependency graphs
+without executing compiler type-checking passes or whole-program bytecode
+verification.
+
+This research delivered three primary contributions:
+\begin{enumerate}
+  \item \textbf{Formalization of a Universal Intermediate Representation}:
+    We established a strongly typed, mathematically grounded Intermediate
+    Representation ($\mathcal{D}_{IR}$) based on algebraic data types, coupled
+    with an algebraic query language governed by three orthogonal primitives
+    (\texttt{Find}, \texttt{Extract}, and \texttt{Call}). This formalization
+    abstracts structural declarations, modular scoping, and behavioral
+    invocations away from idiosyncratic language grammars.
+  \item \textbf{A Deterministic, High-Throughput Functional Pipeline}:
+    We engineered an arena-allocated, parallel analysis pipeline implemented
+    in native Rust. Leveraging Tree-sitter's incremental C parsers and Rayon's
+    work-stealing concurrency, the architecture achieves single-pass CST
+    extraction and deterministic two-phase symbol resolution across five
+    diverse programming languages: C, C++, Java, Python, and Rust.
+  \item \textbf{Rigorous Empirical Validation and Graph Harmonization}:
+    To overcome the fundamental challenge of comparing heterogeneous static
+    analyzers, we formulated a mathematical Graph Alignment and Harmonization
+    Framework based on canonical entity identification, semantic entity
+    lifting ($\lambda$), intermediate package synthesis, and unified edge
+    taxonomies. Using this framework, OmniDeps was validated against formal
+    micro-benchmark oracles and benchmarked against three state-of-the-art
+    analyzers (\textit{Arcan}, \textit{Depends}, and \textit{Entangle}) across
+    an extensive corpus of \textbf{156 open-source repositories} comprising over
+    45 million lines of code.
+\end{enumerate}
+
+The empirical evaluation provided decisive validation of the proposed model:
+\begin{itemize}
+  \item \textbf{Fidelity}: On hand-crafted semantic ground truth, OmniDeps
+    achieved \textbf{100\% precision, 100\% recall, and an $F_1$-score of
+    1.000} across all supported languages, verifying the formal correctness of
+    its scope climbing and query evaluation algorithms.
+  \item \textbf{Parity}: In structured object-oriented ecosystems (Java),
+    OmniDeps recovered approximately \textbf{98\% of architectural entities}
+    identified by full compiler symbol tables, with edge Jaccard similarity
+    converging to $\approx 0.58$--$0.60$ across independent baseline tools.
+  \item \textbf{Operational Feasibility}: While compiler-coupled tools suffered
+    severe attrition due to missing build configurations (Arcan completing only
+    54.0\% of projects), OmniDeps achieved an overall completion rate of
+    \textbf{99.4\%} (155 out of 156 repositories), demonstrating radical
+    practical robustness.
+  \item \textbf{Scalability}: Sustaining an average throughput of \textbf{74,445
+    lines of code per second}, OmniDeps yielded speedups of \textbf{13.2x over
+    Depends}, \textbf{48.2x over Arcan}, and \textbf{4.0x over Entangle},
+    enabling near-instantaneous architectural extraction on systems with
+    hundreds of thousands of lines of code.
+\end{itemize}
+
+In conclusion, this work proves that language-agnostic architectural dependency
+extraction is both theoretically sound and industrially viable. By trading
+redundant compiler-level type verification for declarative CST pattern queries
+and decoupled lexical scope trees, OmniDeps bridges the gap between polyglot
+versatility, architectural fidelity, and real-time execution performance.

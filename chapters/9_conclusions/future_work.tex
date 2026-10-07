@@ -102,13 +102,13 @@ Integration (CI) pipelines.
 
 Future iterations of the framework could achieve massive performance
 gains by introducing concurrency at multiple levels of the pipeline.
-The Extraction Phase (Phase 1) is "embarrassingly parallel": since
+The Extraction Phase (Phase 1) exhibits inherent data-parallelism: since
 the Tree-sitter AST parsing and heuristic extraction do not rely on
-any shared state, each source file can be processed entirely
-independently. Implementing a thread-pool architecture (for instance,
-utilizing Rust's \texttt{rayon} library) would allow the system to
-process hundreds of files concurrently, bottlenecked only by the disk
-I/O and available CPU cores.
+any mutable shared state, each source file can be processed entirely
+independently. Utilizing a thread-pool architecture (such as
+Rust's \texttt{rayon} library) allows the system to process files
+concurrently across all available CPU cores, maximizing processor utilization
+and bounded only by system I/O.
 
 The Resolution Phase (Phase 2), however, presents a more complex
 concurrency challenge. The global Scope Tree and the Intermediate
