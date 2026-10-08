@@ -1,182 +1,154 @@
 \section{Future Work}
 \label{ch:future_work}
 
-The work presented in this thesis establishes a mathematically sound,
-performant, and truly language-agnostic framework for architectural
-dependency extraction. By abstracting the extraction logic through a
-heuristic-based approach on Concrete Syntax Trees (CST) and
-formalizing a flexible Intermediate Representation
-($\mathcal{D}_{IR}$), the system successfully overcomes the
-scalability and configuration bottlenecks of previous iterations. The
-validation phase demonstrated the robustness of the model across
-different object-oriented and procedural languages (such as Java,
-Python, C++, and Rust), properly resolving complex nested scopes,
-generic types, and cross-module imports.
+The work presented in this thesis establishes a scalable and language-agnostic
+framework for architectural dependency extraction. By abstracting extraction
+logic through syntax-directed queries on Concrete Syntax Trees (CSTs) and
+formalizing a flexible Intermediate Representation ($\mathcal{D}_{IR}$), the
+system addresses the configuration and scalability bottlenecks of traditional
+compiler-coupled front-ends. The empirical evaluation demonstrated the
+practical viability of the approach across five programming languages,
+resolving nested scopes, qualified paths, and cross-module dependencies.
 
-However, as the primary focus of this research was the
-conceptualization, formalization, and validation of the theoretical
-model, several avenues remain open for future improvements and
-extensions. The following sections outline the most promising
-directions for future research.
+However, because the primary focus of this research was the conceptualization,
+formalization, and empirical validation of the intermediate representation model
+and extraction heuristics, several avenues remain open for future research.
+The following subsections outline the primary directions for future work.
 
-\section{Formal Provability and Type Theory}
+\subsection{Performance and Concurrency Optimizations}
+\label{subsec:future_performance}
 
-While the current framework provides an informal argument of
-correctness by construction, achieved through explicit domains,
-codomains, and well-typed functional composition ($\phi = \gamma \circ \rho
-\circ \varepsilon$), it does not currently employ a formal system of typing
-judgments or inference rules (e.g., $\Gamma \vdash e : \tau$).
-However, the architectural design of the system makes full
-mathematical formalization a highly feasible and compelling direction
-for future research.
+Throughout the development of this thesis, the primary objective was ensuring
+the correctness, sound formalization, and baseline algorithmic
+scalability of the
+intermediate representation and algebraic query engine. Consequently, minimal
+effort was directed toward low-level execution tuning, and the current research
+prototype operates sequentially. While the algorithmic complexity remains well
+bounded—sustaining high throughput on modern hardware—real-world continuous
+integration (CI) pipelines and large enterprise monorepos can benefit from
+explicit concurrency.
 
-The framework already possesses strong foundations suited for Type
-Theory: the Intermediate Representation is built entirely on
-Algebraic Data Types (sum and product types), and the resolution of
-symbols follows a strict state machine (transitioning from
-  \texttt{Unresolved} to \texttt{ResolutionQuery}, and finally to
-\texttt{Resolved}).
-
-To achieve complete formal provability, future iterations would need
-to address several key gaps:
+Future iterations of the framework can introduce parallelism at multiple stages:
 \begin{itemize}
-  \item \textbf{Type-Level Phase Guarantees:} Currently, a
-    \texttt{Module} is represented by the same Rust type both before
-    and after resolution. The invariant that "no \texttt{Unresolved}
-    references exist after Phase 2" is only guaranteed at runtime. A
-    formal implementation would require parametric typing or
-    Generalized Algebraic Data Types (GADTs), such as
-    \texttt{Module<Phase>}, to enforce these state transitions
-    strictly at compile time.
-  \item \textbf{Formalization of Invariants:} To write rigorous
-    inference rules (e.g., proving that if a module is well-formed in
-      the unresolved state, the builder function will produce a
-    well-formed query state), the structural invariants of what
-    constitutes a "well-formed" module at each specific phase must be
-    mathematically specified.
-  \item \textbf{Conditional Correctness of Extraction:} Because Phase
-    1 relies on heuristics, its extraction correctness is
-    intrinsically approximate and cannot be formally proven for every
-    possible malformed AST. Therefore, the formalization would focus
-    on proving \textit{conditional correctness}: guaranteeing that
-    \textit{if} Phase 1 produces a valid Intermediate Representation,
-    \textit{then} the subsequent resolution phases are mathematically sound.
-  \item \textbf{Mechanized Proofs:} Finally, fully validating this
-    type-theoretical model would require transcribing the framework's
-    definitions into a proof assistant, such as Coq, Lean, or Agda,
-    to mechanically verify all preservation and progress lemmas.
+  \item \textbf{Data-Parallel Syntactic Extraction}: The extraction
+    phase (Phase 1)
+    is embarrassingly parallel, as Tree-sitter parsing and CST
+    traversal operate on
+    individual source files without requiring mutable shared state.
+    Processing files
+    concurrently across available CPU cores (for instance, via a
+      work-stealing thread
+    pool such as Rust's \texttt{rayon}) would scale extraction throughput almost
+    linearly with core count, bounded primarily by disk I/O.
+  \item \textbf{Concurrent Query Resolution}: In the resolution phase (Phase 2),
+    evaluating self-contained queries against the global Scope Tree presents
+    opportunities for read-concurrency. Independent symbol queries
+    originating from
+    different function bodies can be evaluated in parallel using concurrent data
+    structures or fine-grained reader-writer locks (\texttt{RwLock}),
+    while batching
+    graph vertex and edge insertions to minimize contention.
 \end{itemize}
 
-\section{Extraction Phase: srcML Integration}
+\subsection{Inter-Language Dependency Detection}
+\label{subsec:future_inter_language}
 
-While the current heuristic-based extraction directly from
-Tree-sitter CSTs eliminates the need for manual dispatch tables, it
-remains the most delicate phase of the pipeline. The framework relies
-on structural heuristics and string-matching of node names (e.g.,
-identifying nodes containing \texttt{struct} or \texttt{class}).
-Consequently, it is somewhat fragile to unexpected grammar updates or
-drastic structural variations in Tree-sitter parsers.
+Currently, while OmniDeps parses multi-language repositories into a unified
+intermediate representation within a single workspace, dependency resolution
+remains confined within each language's individual boundaries. For
+example, a native
+Java method call is recorded as an external reference, but it is not
+linked to its
+corresponding C or C++ implementation.
 
-A highly promising future development involves replacing or
-augmenting the first extraction phase with an XML-based parser such
-as \textbf{srcML}. As discussed in the Related Work chapter, srcML
-standardizes source code into an XML format while preserving all
-original text and structural context. Transitioning to srcML would
-completely decouple the extraction engine from Tree-sitter's AST
-volatility, transforming the heuristic identification of
-architectural entities into a purely declarative and robust process
-(e.g., using standardized XPath queries to reliably extract
-\texttt{<class>} or \texttt{<function>} nodes).
+In modern systems, cross-language interactions are ubiquitous. A
+compelling future
+direction is extending the resolution engine with bridging heuristics capable of
+identifying and resolving these \textbf{inter-language dependencies}:
+\begin{itemize}
+  \item \textbf{Foreign Function Interfaces (FFI)}: For conventions such as the
+    Java Native Interface (JNI), the framework could identify \texttt{native}
+    declarations, compute their standard C/C++ mangled symbols (e.g.,
+      following the
+    \texttt{Java\_Package\_Class\_Method} scheme), and resolve the
+    link directly to
+    the matching C/C++ definition in the workspace. Similar bridging
+    logic can be
+    applied to Rust-Python bindings via PyO3 or C foreign function
+    calls in Python.
+  \item \textbf{Interface Definition Languages (IDLs)}: In
+    distributed architectures
+    communicating via Remote Procedure Calls (such as gRPC Protocol
+      Buffers or OpenAPI
+    specifications), extracting interface schemas would allow the
+    analyzer to use the
+    IDL contract as an architectural bridge, linking services implemented in
+    different languages (e.g., a Go server and a Python client) into a coherent,
+    end-to-end dependency graph.
+\end{itemize}
 
-\section{Performance Optimizations}
+\subsection{Alternative Programming Paradigms}
+\label{subsec:future_paradigms}
 
-Throughout the development of this thesis, the primary objective was
-ensuring the correctness and algorithmic scalability of the
-mathematical model, the resolution strategies, and the algebraic
-query engine. Consequently, there has been limited focus on low-level
-execution optimization, and the current prototype operates almost
-entirely sequentially. While the algorithmic complexity is
-well-bounded, real-world industrial applications demand extremely
-fast execution times to integrate seamlessly into Continuous
-Integration (CI) pipelines.
+The design and empirical validation of OmniDeps have thus far focused on
+procedural and object-oriented languages within the broader C-family
+(C, C++, Java,
+Python, and Rust). These languages share foundational architectural
+concepts, such
+as explicit file and package modules, structured types (classes,
+structs, interfaces),
+and identifiable function or method declarations.
 
-Future iterations of the framework could achieve massive performance
-gains by introducing concurrency at multiple levels of the pipeline.
-The Extraction Phase (Phase 1) exhibits inherent data-parallelism: since
-the Tree-sitter AST parsing and heuristic extraction do not rely on
-any mutable shared state, each source file can be processed entirely
-independently. Utilizing a thread-pool architecture (such as
-Rust's \texttt{rayon} library) allows the system to process files
-concurrently across all available CPU cores, maximizing processor utilization
-and bounded only by system I/O.
+Although the Intermediate Representation ($\mathcal{D}_{IR}$) was designed to be
+language-agnostic, extending it to support non-imperative paradigms represents a
+meaningful research opportunity:
+\begin{itemize}
+  \item \textbf{Functional Languages}: In languages such as Haskell, OCaml, or
+    Clojure, software architecture relies heavily on higher-order functions,
+    currying, closures, and algebraic module systems (e.g., ML
+    functors). Capturing
+    architectural coupling in these ecosystems will require refining the query
+    algebra to track function composition and lexical binding without relying on
+    class-like encapsulation.
+  \item \textbf{Declarative and Logic Paradigms}: In declarative systems (such as SQL
+    transformations or Prolog rule bases), dependencies manifest as relational
+    derivations and predicate unification rather than procedural call hierarchies.
+    Expanding the relational taxonomy to represent declarative data-flow and rule
+    dependencies would further broaden the applicability of the framework.
+\end{itemize}
 
-The Resolution Phase (Phase 2), however, presents a more complex
-concurrency challenge. The global Scope Tree and the Intermediate
-Representation ($\mathcal{D}_{IR}$) act as shared memory structures.
-Parallelizing the resolution process requires migrating from standard
-sequential data structures to lock-free concurrent collections or
-employing fine-grained Reader-Writer locks (e.g., \texttt{RwLock}).
-For example, independent queries resolving variables inside different
-function bodies can run perfectly in parallel by acquiring read-locks
-on the global scope, while insertions of new entities or edges would
-require isolated write-locks. Furthermore, batching graph insertions
-instead of streaming them individually would drastically minimize
-lock contention on the underlying graph database, enabling the tool
-to analyze enterprise-scale, multi-million-line codebases in a
-fraction of the current time.
+\subsection{Analysis Engine and Modeling Refinements}
+\label{subsec:future_engine_refinements}
 
-\section{Inter-Language Dependency Detection}
-
-Currently, while the framework successfully aggregates graphs
-extracted from multi-language repositories into a unified
-representation, the resolution of dependencies remains confined
-within the boundaries of each individual language. A native Java
-method call, for instance, is correctly identified as an external
-invocation, but it is not formally linked to its actual C/C++ implementation.
-
-In modern distributed or highly optimized systems, cross-language
-interactions are ubiquitous. A compelling future extension involves
-detecting and formally resolving these \textbf{inter-language
-dependencies}. To achieve this natively, the resolution engine must
-be extended with "bridge" heuristics capable of translating
-cross-boundary calling conventions. For example, in the case of the
-Java Native Interface (JNI), the framework could identify a
-\texttt{native} Java method, automatically compute its C/C++ mangled
-name (e.g., following the \texttt{Java\_Package\_Class\_Method}
-convention), and dispatch a resolution query directly to the C/C++
-namespace within the same IR. Similar bridging logic could be applied
-to Foreign Function Interface (FFI) bindings between Python and Rust.
-
-Beyond direct FFI, modern microservice architectures often
-communicate via Remote Procedure Calls (RPC) defined by Interface
-Definition Languages (IDLs), such as Protocol Buffers for gRPC or
-OpenAPI specifications. By writing an extraction heuristic for these
-interface files, the analyzer could use the IDL as a central
-contract, automatically generating dependency edges between a Go
-backend serving a request and a Python client invoking it. Extending
-the resolution engine to bridge these language boundaries would allow
-the extraction of a truly global architectural dependency graph. This
-offers unprecedented visibility into complex polyglot architectures,
-enabling system-wide refactoring and deep security auditing that
-traditional single-language analyzers cannot provide.
-
-\section{Alternative Programming Paradigms}
-
-The empirical validation and heuristic design of the current
-framework have primarily targeted procedural and object-oriented
-programming paradigms (C-like languages, Java, Python, Rust). These
-languages share foundational architectural concepts such as modules,
-classes, structs, and explicitly invoked functions.
-
-Although the Intermediate Representation ($\mathcal{D}_{IR}$) was
-designed mathematically to be as agnostic as possible, extending the
-framework to support entirely different programming paradigms
-represents a significant future challenge. Future research should
-evaluate and expand the model's capability to capture architectural
-dependencies in \textbf{Functional} languages (e.g., Lisp, Haskell,
-Clojure), which heavily rely on higher-order functions and closures,
-or in \textbf{Logic} programming languages (e.g., Prolog).
-Incorporating these paradigms will likely require introducing new
-heuristic classifiers in the extraction phase and refining the query
-algebra to accommodate exotic scoping rules and
-pattern-matching-based execution semantics.
+Beyond scalability and cross-language boundaries, several architectural refinements
+to the extraction and resolution algorithms warrant future investigation:
+\begin{itemize}
+  \item \textbf{Automated Discovery of Primitive Types}: OmniDeps currently maintains
+    explicit per-language catalogs to identify built-in and primitive types (e.g.,
+    \texttt{int}, \texttt{size\_t}, \texttt{i32}) and synthesize terminal
+    \texttt{Primitive} endpoints. Future work could explore automated primitive type
+    identification—such as statistical frequency heuristics across AST type nodes or
+    automated scraping of language specification headers—eliminating the need for
+    manual list configuration when onboarding new languages.
+  \item \textbf{Unified Receiver Feature Modeling}: The handling of object-oriented
+    receivers (such as explicit keywords \texttt{this} and \texttt{self}, Python's
+    positional first parameter, or languages without implicit receiver binding) is
+    currently parameterized across separate configuration flags. Future versions can
+    formalize this as a unified three-state language feature (\texttt{Keyword},
+    \texttt{FirstParam}, or \texttt{None}), simplifying configuration schemas and
+    intermediate serialization.
+  \item \textbf{Early Query Resolution for Superclasses}: Currently, resolving calls
+    delegated via \texttt{super} or \texttt{Self} is executed entirely during Phase~2
+    against the global Scope Tree. An optimization avenue involves pre-resolving
+    direct superclass bindings during Phase~1 (query building), rewriting \texttt{super}
+    invocations into scoped queries before global execution to reduce query traversal
+    depth.
+  \item \textbf{Link-Time Symbol Deduplication for C and C++}: When analyzing
+    preprocessed translation units in procedural C and C++, types declared in shared
+    headers are replicated across compilation units. Future iterations should introduce
+    an intermediate deduplication layer analogous to a systems linker: identifying
+    struct and class declarations with matching signatures originating from shared
+    headers, and consolidating them into unified logical nodes in the Scope Tree.
+    This would eliminate node inflation artifacts and align graph density with
+    compiler-based tools without requiring build-system coupling.
+\end{itemize}

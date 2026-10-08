@@ -32,44 +32,43 @@ This research delivered three primary contributions:
     (\texttt{Find}, \texttt{Extract}, and \texttt{Call}). This formalization
     abstracts structural declarations, modular scoping, and behavioral
     invocations away from idiosyncratic language grammars.
-  \item \textbf{A Deterministic, High-Throughput Functional Pipeline}:
-    We engineered an arena-allocated, parallel analysis pipeline implemented
-    in native Rust. Leveraging Tree-sitter's incremental C parsers and Rayon's
-    work-stealing concurrency, the architecture achieves single-pass CST
+  \item \textbf{A Deterministic Multi-Language Functional Pipeline}:
+    We engineered a modular analysis pipeline implemented in native Rust.
+    Leveraging Tree-sitter parsers, the architecture achieves single-pass CST
     extraction and deterministic two-phase symbol resolution across five
     diverse programming languages: C, C++, Java, Python, and Rust.
   \item \textbf{Rigorous Empirical Validation and Graph Harmonization}:
     To overcome the fundamental challenge of comparing heterogeneous static
-    analyzers, we formulated a mathematical Graph Alignment and Harmonization
-    Framework based on canonical entity identification, semantic entity
-    lifting ($\lambda$), intermediate package synthesis, and unified edge
-    taxonomies. Using this framework, OmniDeps was validated against formal
-    micro-benchmark oracles and benchmarked against three state-of-the-art
-    analyzers (\textit{Arcan}, \textit{Depends}, and \textit{Entangle}) across
-    an extensive corpus of \textbf{156 open-source repositories} comprising over
-    45 million lines of code.
+    analyzers, we formulated a Graph Harmonization Framework based on
+    canonical entity identification, semantic entity lifting ($\lambda$),
+    intermediate package synthesis, and unified edge taxonomies. Using this
+    framework, OmniDeps was validated against synthetic benchmark oracles
+    and benchmarked against three established analyzers (\textit{Arcan},
+    \textit{Depends}, and \textit{Entangle}) across a dataset of \textbf{156
+    open-source repositories} comprising nearly 98 million lines of code.
 \end{enumerate}
 
 The empirical evaluation provided decisive validation of the proposed model:
 \begin{itemize}
-  \item \textbf{Fidelity}: On hand-crafted semantic ground truth, OmniDeps
-    achieved \textbf{100\% precision, 100\% recall, and an $F_1$-score of
-    1.000} across all supported languages, verifying the formal correctness of
-    its scope climbing and query evaluation algorithms.
+  \item \textbf{Correctness on Benchmarks}: On hand-crafted synthetic benchmarks,
+    OmniDeps successfully recovered the expected entities and dependencies across
+    all five supported languages, verifying the baseline behavior of the extraction
+    heuristics and query resolution engine.
   \item \textbf{Parity}: In structured object-oriented ecosystems (Java),
     OmniDeps recovered approximately \textbf{98\% of architectural entities}
     identified by full compiler symbol tables, with edge Jaccard similarity
     converging to $\approx 0.58$--$0.60$ across independent baseline tools.
-  \item \textbf{Operational Feasibility}: While compiler-coupled tools suffered
-    severe attrition due to missing build configurations (Arcan completing only
-    54.0\% of projects), OmniDeps achieved an overall completion rate of
-    \textbf{99.4\%} (155 out of 156 repositories), demonstrating radical
-    practical robustness.
-  \item \textbf{Scalability}: Sustaining an average throughput of \textbf{74,445
-    lines of code per second}, OmniDeps yielded speedups of \textbf{13.2x over
-    Depends}, \textbf{48.2x over Arcan}, and \textbf{4.0x over Entangle},
-    enabling near-instantaneous architectural extraction on systems with
-    hundreds of thousands of lines of code.
+  \item \textbf{Operational Reliability}: While compiler-coupled tools suffered
+    severe attrition due to missing build configurations or execution errors
+    (Arcan completing only 49.2\% of projects, Entangle completing 29.7\%,
+    and Depends completing 92.7\%), OmniDeps achieved an overall completion
+    rate of \textbf{99.4\%} (155 out of 156 repositories), demonstrating high
+    practical reliability without requiring build-system setup.
+  \item \textbf{Scalability}: OmniDeps scales predictably with codebase size,
+    completing analysis in the order of seconds across repositories and sustaining
+    an average throughput of \textbf{74,445 lines of code per second}. It yielded
+    average speedups of \textbf{13.2x over Depends}, \textbf{48.2x over Arcan},
+    and \textbf{4.0x over Entangle}.
 \end{itemize}
 
 In conclusion, this work proves that language-agnostic architectural dependency

@@ -615,65 +615,6 @@ spring-electric forces. Key parameters configured in the application include:
     disconnected graph components.
 \end{itemize}
 
-\subsubsection{Node and Edge Visual Encoding}
-
-Each node type is rendered with a distinct color, border style, and
-geometric shape to enable immediate visual identification:
-\begin{itemize}
-  \item \textbf{Modules}: Orange (\texttt{\#d35400}), dashed border,
-    rendered as compound bounding boxes.
-  \item \textbf{Classes and Structs}: Blue (\texttt{\#2980b9}), solid
-    border, rendered as compound containers when containing methods or fields.
-  \item \textbf{Interfaces and Traits}: Green (\texttt{\#27ae60},
-    border \texttt{\#2ecc71}), distinguishing abstract contracts from
-    concrete types.
-  \item \textbf{Enums and Variants}: Magenta/pink
-    (\texttt{\#e84393}), rendered as compound containers for their
-    variants (\texttt{EnumVariant}).
-  \item \textbf{Functions and Constructors}: Purple
-    (\texttt{\#8e44ad}), rendered as ellipses. Functions marked with
-    $\mathbb{B}_{ctor} = \text{true}$ receive the specialized type
-    tag \texttt{Constructor}.
-  \item \textbf{Fields}: Teal (\texttt{\#16a085}), rendered as
-    rounded rectangles.
-  \item \textbf{Static Variables}: Yellow (\texttt{\#f1c40f}) with
-    dark text, differentiating module-level free variables from
-    structured fields.
-  \item \textbf{Type Aliases}: Violet (\texttt{\#9b59b6}), rendered as diamonds.
-  \item \textbf{Primitive Types}: Turquoise (\texttt{\#1abc9c}),
-    rendered as hexagons (hidden by default to avoid visual clutter).
-  \item \textbf{External Types}: Slate grey (\texttt{\#34495e}),
-    rendered with reduced opacity (0.7) and thin border.
-\end{itemize}
-
-Edge styling similarly encodes the dependency category through color,
-thickness, and line dashing:
-\begin{itemize}
-  \item \textbf{Inheritance} (\texttt{IsA}): Solid red line (3px,
-    \texttt{\#e74c3c}).
-  \item \textbf{Implementation} (\texttt{Implements}): Dashed orange
-    line (3px, \texttt{\#f39c12}).
-  \item \textbf{Calls} (\texttt{Calls}): Solid green line (2px,
-    \texttt{\#2ecc71}).
-  \item \textbf{Instantiation} (\texttt{Instantiates}): Dashed blue
-    line (2px, \texttt{\#3498db}).
-  \item \textbf{Field Access} (\texttt{AccessesField}): Dashed amber
-    line (2px, \texttt{\#e67e22}).
-  \item \textbf{Imports} (\texttt{Imports}): Solid purple line (2px,
-    \texttt{\#8e44ad}, opacity 0.8).
-  \item \textbf{Auxiliary Annotations and Aliasing}
-    (\texttt{AnnotatedWith}, \texttt{Aliases}): Dotted magenta line
-    (2px, \texttt{\#ff00ff}).
-  \item \textbf{Type Casts} (\texttt{CastsTo}): Dashed cyan line
-    (2px, \texttt{\#00a8ff}).
-  \item \textbf{Type Usage} (\texttt{UsesFieldType},
-      \texttt{UsesLocalType}, \texttt{UsesParamType},
-    \texttt{UsesReturnType}): Dotted grey line (\texttt{\#95a5a6}, opacity 0.7).
-  \item \textbf{Containment} (\texttt{ModuleContainment},
-    \texttt{NestedIn}): Thin grey line (1px, \texttt{\#7f8c8d},
-    opacity 0.5), shown only when compound container grouping is toggled off.
-\end{itemize}
-
 \subsubsection{Interactive Features}
 
 To facilitate software architecture exploration and mitigate the
@@ -701,9 +642,10 @@ implements interactive exploration and filtering techniques
     \begin{itemize}
       \item \textit{Structural filters}: \texttt{IsA},
         \texttt{Implements}, \texttt{Imports},
-        \texttt{UsesFieldType}, \texttt{UsesParamType},
+        \texttt{UsesFieldType},\\ \texttt{UsesParamType},
         \texttt{UsesReturnType}, \texttt{UsesLocalType},
-        \texttt{NestedIn}, \texttt{ModuleContainment}, \texttt{AnnotatedWith}.
+        \texttt{NestedIn}, \\ \texttt{ModuleContainment},
+        \texttt{AnnotatedWith}.
       \item \textit{Behavioral filters}: \texttt{Calls},
         \texttt{Instantiates}, \texttt{AccessesField}.
     \end{itemize}

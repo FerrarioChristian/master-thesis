@@ -65,6 +65,42 @@ Research Questions (RQs):
     to multi-million-line codebases?}
 \end{itemize}
 
+\paragraph{Motivation and Rationale.}
+These research questions systematically evaluate whether a
+lightweight, syntax-query static analyzer can serve as an effective
+alternative to traditional compiler-coupled tools:
+\begin{itemize}
+  \item \textbf{RQ1} verifies the baseline soundness of our
+    extraction heuristics in a controlled setting before scaling to
+    complex repositories. Answering this question establishes
+    whether Concrete Syntax Tree queries are sufficiently
+    expressive to capture core language constructs across diverse
+    programming paradigms.
+  \item \textbf{RQ2} evaluates real-world applicability, as
+    synthetic benchmarks cannot capture the architectural
+    complexity of realistic software. Answering this question
+    demonstrates whether the language-agnostic extraction strategy
+    generalizes to large repositories and yields dependency graphs
+    comparable to mature, compiler-based analyzers.
+  \item \textbf{RQ3} examines the nature of discrepancies, as
+    global similarity metrics hide where and why tools disagree. By
+    isolating divergences across containment, inheritance, call
+    dependencies, and imports, this question reveals where syntax
+    queries match compiler precision and where compiler-level type
+    checking remains necessary.
+  \item \textbf{RQ4} assesses operational viability for continuous
+    integration pipelines, where analysis must scale predictably.
+    Answering this question determines whether bypassing heavy
+    compiler frontends and build-system configurations delivers
+    measurable runtime speedups and linear scalability across
+    codebases of varying size.
+\end{itemize}
+Together, answering these questions allows us to evaluate the
+central hypothesis of this thesis: that syntax-directed queries
+combined with decoupled name resolution can deliver reliable
+architectural dependency graphs with high throughput and minimal
+operational overhead.
+
 % ==============================================================================
 % 1. GROUND-TRUTH VALIDATION
 % ==============================================================================
@@ -382,7 +418,7 @@ tool-specific labels to this unified taxonomy.
       references, type usage in signatures, instantiations). \\ \hline
     \end{tabular}
   \end{adjustbox}
-  \caption{Ontological mapping of heterogeneous tool edge labels into
+  \caption{Mapping of heterogeneous tool edge labels into
   the unified architectural taxonomy $\mathcal{R}_{\text{unified}}$.}
   \label{tab:edge_taxonomy_mapping}
 \end{table}
@@ -393,7 +429,7 @@ tool-specific labels to this unified taxonomy.
 
 With all graphs mapped to canonical, lifted representations $G = (V,
 E)$, structural concordance and divergence are quantified through
-set-theoretic and statistical indices.
+set-based and statistical indices.
 
 \subsubsection{Graph Similarity via Smoothed Jaccard Index}
 \label{subsec:jaccard_similarity}
@@ -417,7 +453,8 @@ with empty edge sets, or boundary components, we employ
   Let each edge $e \in E$ be uniquely indexed by the tuple $\langle
   \text{source}, \text{target} \rangle$ (for unlabelled structural
   comparison) or $\langle \text{source}, \text{target}, \text{label}
-  \rangle$ (for typed relational comparison). The edge agreement is defined as:
+  \rangle$ (for typed relational comparison). The edge agreement is
+  defined as:
   \begin{equation}
     J_{\text{edges}}(G_A, G_B) = \frac{|E_A \cap E_B| + 1}{|E_A \cup E_B| + 1}
   \end{equation}
@@ -569,11 +606,10 @@ languages supported by each tool in this evaluation.
     \textbf{Arcan} & \checkmark &
     \checkmark & \checkmark & \checkmark & --- \\ \hline
     \textbf{Entangle} & --- & --- & \checkmark &
-    --- & \checkmark$^\dagger$ \\ \hline
+    --- & \checkmark \\ \hline
   \end{tabular}
   \caption{Declared language support across evaluated static analysis
-    tools (*Arcan models C and C++ at file level;
-  $^\dagger$experimental support).}
+  tools.}
   \label{tab:tool_language_support}
 \end{table}
 
@@ -699,7 +735,8 @@ representation (Chapter \ref{ch:ir_formalization}) and the scoped query
 resolution engine (Chapter \ref{ch:name_resolution}) are sound and
 operate correctly in a controlled, isolated testing environment.
 
-However, synthetic tests isolate specific language constructs in minimal files,
+However, synthetic tests isolate specific language constructs in
+minimal files,
 and do not guarantee that the behavior will generalize to arbitrary,
 large-scale software projects. This limitation motivates the
 empirical evaluation on real-world repositories presented in the
@@ -755,7 +792,8 @@ Baseline analyzers exhibited lower completion rates:
     (115/124 projects). Most of its failures were caused by the one-hour
     execution timeout on large repositories (such as \texttt{tensorflow},
     \texttt{ClickHouse}, and \texttt{mongodb}), while on one project
-    (\texttt{checkstyle} in Java) the tool halted due to a syntax parsing error.
+    (\texttt{checkstyle} in Java) the tool halted due to a syntax
+    parsing error.
   \item \textbf{Arcan} completed 61 out of 124 evaluated projects (49.2\%),
     succeeding on 27/31 projects in C, 16/31 in C++, and 18/32 in Java, but
     producing no deliverables on Python (0/30). None of these failures were
@@ -772,48 +810,91 @@ Baseline analyzers exhibited lower completion rates:
 
 To address \textbf{RQ2}, we evaluated the pairwise structural
 concordance between OmniDeps and the comparator baseline analyzers
-across the real-world software dataset. Table
-\ref{tab:pairwise_jaccard_summary} summarizes the mean and median
+across the real-world software dataset. Tables
+\ref{tab:results_depends}, \ref{tab:results_arcan}, and
+\ref{tab:results_entangle} summarize the mean and median
 smoothed Jaccard similarity indices for nodes ($J_{\text{nodes}}$)
-and edges ($J_{\text{edges}}$).
+and edges ($J_{\text{edges}}$), alongside directional discordance
+rates ($\text{Sup}$, $\text{Inf}$) against Depends, Arcan, and Entangle, respectively.
 
 \begin{table}[htpb]
   \centering
   \small
-  \begin{adjustbox}{max width=\textwidth}
-    \begin{tabular}{|l|c|c|c|c|c|c|}
-      \hline
-      \textbf{Language / Tool Pair} &
-      \multicolumn{2}{c|}{\textbf{OmniDeps vs. Depends}} &
-      \multicolumn{2}{c|}{\textbf{OmniDeps vs. Arcan}} &
-      \multicolumn{2}{c|}{\textbf{OmniDeps vs. Entangle}} \\ \cline{2-7}
-      & $J_{\text{nodes}}$ & $J_{\text{edges}}$ & $J_{\text{nodes}}$
-      & $J_{\text{edges}}$ & $J_{\text{nodes}}$ & $J_{\text{edges}}$ \\ \hline
-      \textbf{Java}     & 0.814 (0.849) & 0.587 (0.609) & 0.630
-      (0.693) & 0.580 (0.575) & 0.770 (0.782) & 0.600 (0.598) \\ \hline
-      \textbf{Python}   & 0.740 (0.801) & 0.296 (0.279) & ---
-      & ---           & ---           & ---           \\ \hline
-      \textbf{C (Raw)}  & 0.191 (0.167) & 0.115 (0.042) & ---
-      & ---           & ---           & ---           \\ \hline
-      \textbf{C (Preprocessed)} & 0.204 (0.158) & 0.136 (0.083) & ---
-      & ---           & ---           & ---           \\ \hline
-      \textbf{C++ (Raw)}        & 0.143 (0.127) & 0.081 (0.039) & ---
-      & ---           & ---           & ---           \\ \hline
-      \textbf{C++ (Preprocessed)} & 0.192 (0.151) & 0.165 (0.083) & ---
-      & ---           & ---           & ---           \\ \hline
-      \textbf{Rust}     & ---           & ---           & ---
-      & ---           & ---           & ---           \\ \hline
-    \end{tabular}
-  \end{adjustbox}
-  \caption{Pairwise structural similarity (mean and median Smoothed
-  Jaccard Index) across language datasets.}
+  \caption{Pairwise structural similarity and discordance: OmniDeps vs. Depends.}
+  \label{tab:results_depends}
   \label{tab:pairwise_jaccard_summary}
   \label{tab:results_summary_rq2}
+  \label{tab:preprocessing_c_cpp_comparison}
+  \vspace{0.4em}
+  \begin{adjustbox}{max width=\textwidth}
+    \begin{tabular}{lccccccr}
+      \toprule
+      \textbf{Language / Target} & $N$ & $J_{\text{nodes}}$ & $\text{Sup}_{\text{nodes}}$ & $\text{Inf}_{\text{nodes}}$ & $J_{\text{edges}}$ & $\text{Sup}_{\text{edges}}$ & $\text{Inf}_{\text{edges}}$ \\
+      \midrule
+      \textbf{Java}                   & 31 & 0.814 (0.849) & 0.286  & 0.021 & 0.587 (0.609) & 0.406  & 0.345 \\
+      \textbf{Python}                 & 29 & 0.852 (0.882) & 0.161  & 0.048 & 0.323 (0.300) & 1.474  & 0.805 \\
+      \textbf{Python (Excl. imports)} & 29 & 0.852 (0.882) & 0.161  & 0.048 & 0.368 (0.387) & 1.017  & 0.834 \\
+      \textbf{C (Raw)}                & 30 & 0.191 (0.167) & 14.017 & 0.619 & 0.115 (0.042) & 44.307 & 1.636 \\
+      \textbf{C (Preprocessed)}   & 31 & 0.204 (0.158) & 7.218  & 0.733 & 0.136 (0.083) & 37.777 & 3.993 \\
+      \textbf{C++ (Raw)}          & 25 & 0.143 (0.127) & 12.493 & 2.969 & 0.081 (0.039) & 58.836 & 4.769 \\
+      \textbf{C++ (Preprocessed)} & 22 & 0.192 (0.151) & 4.911  & 3.229 & 0.165 (0.083) & 9.962  & 8.320 \\
+      \bottomrule
+    \end{tabular}
+  \end{adjustbox}
+  \vspace{0.2em}
+  \footnotesize
+  Values report means (medians in parentheses for Jaccard indices).
 \end{table}
 
-The empirical results in Table \ref{tab:pairwise_jaccard_summary} and
-Figure \ref{fig:jaccard_similarity_comparison} highlight three main
-trends across languages:
+\begin{table}[htpb]
+  \centering
+  \small
+  \caption{Pairwise structural similarity and discordance: OmniDeps vs. Arcan.}
+  \label{tab:results_arcan}
+  \vspace{0.4em}
+  \begin{adjustbox}{max width=\textwidth}
+    \begin{tabular}{lccccccr}
+      \toprule
+      \textbf{Language / Target} & $N$ & $J_{\text{nodes}}$ & $\text{Sup}_{\text{nodes}}$ & $\text{Inf}_{\text{nodes}}$ & $J_{\text{edges}}$ & $\text{Sup}_{\text{edges}}$ & $\text{Inf}_{\text{edges}}$ \\
+      \midrule
+      \textbf{Java}                 & 18 & 0.630 (0.693) & 0.796   & 0.003  & 0.580 (0.575) & 0.759   & 0.092 \\
+      \textbf{C (Raw)}$^*$          & 27 & 0.012 (0.005) & 124.745 & 55.130 & 0.004 (0.000) & 189.370 & 1713.444 \\
+      \textbf{C (Preprocessed)}$^*$ & 27 & 0.012 (0.005) & 120.744 & 56.049 & 0.004 (0.000) & 1.000   & 1.000 \\
+      \textbf{C++ (Raw)}$^*$        & 16 & 0.008 (0.004) & 323.708 & 230.044 & 0.000 (0.000) & 620.438 & 526.854 \\
+      \bottomrule
+    \end{tabular}
+  \end{adjustbox}
+  \vspace{0.2em}
+  \footnotesize
+  Values report means (medians in parentheses for Jaccard indices).\\
+  $^*$In procedural C and C++, Arcan models dependencies at the file and header level (\texttt{IMPL\_FILE}, \texttt{HEADER}), whereas OmniDeps extracts user-defined types, resulting in disjoint entity sets.
+\end{table}
+
+\begin{table}[htpb]
+  \centering
+  \small
+  \caption{Pairwise structural similarity and discordance: OmniDeps vs. Entangle.}
+  \label{tab:results_entangle}
+  \vspace{0.4em}
+  \begin{adjustbox}{max width=\textwidth}
+    \begin{tabular}{lccccccr}
+      \toprule
+      \textbf{Language / Target} & $N$ & $J_{\text{nodes}}$ & $\text{Sup}_{\text{nodes}}$ & $\text{Inf}_{\text{nodes}}$ & $J_{\text{edges}}$ & $\text{Sup}_{\text{edges}}$ & $\text{Inf}_{\text{edges}}$ \\
+      \midrule
+      \textbf{Java}           & 19     & 0.770 (0.782) & 0.199 & 0.196 & 0.600 (0.598) & 0.359 & 0.366 \\
+      \textbf{Rust}$^\dagger$ & 0 (32) & ---           & ---   & ---   & ---           & ---   & ---   \\
+      \bottomrule
+    \end{tabular}
+  \end{adjustbox}
+  \vspace{0.2em}
+  \footnotesize
+  Values report means (medians in parentheses for Jaccard indices).\\
+  $^\dagger$Entangle encountered unhandled runtime exceptions on all 32 Rust repositories, producing no valid dependency output.
+\end{table}
+
+The empirical results in Tables \ref{tab:results_depends}, \ref{tab:results_arcan}, and
+\ref{tab:results_entangle}, alongside Figure \ref{fig:jaccard_similarity_comparison},
+highlight three main trends across languages:
 
 \paragraph{Structural Agreement in Java.}
 In Java, OmniDeps exhibits consistent structural alignment across all
@@ -833,56 +914,92 @@ comparable dependency graphs despite differences in the underlying parsers.
 
 \paragraph{Entity Alignment and Call Resolution in Python.}
 On Python repositories ($N = 29$), OmniDeps and Depends attain an
-average node Jaccard similarity of 0.740 (median 0.801). Several projects
-exceed 0.85 in node agreement, including \texttt{networkx} (0.943),
-\texttt{flair} (0.924), and \texttt{fastapi} (0.921), while others show
-moderate agreement (such as \texttt{requests} at 0.832 and \texttt{django} at
-0.707). Conversely, edge agreement averages 0.296 (median 0.279). As
-analyzed in Section \ref{subsec:results_rq3}, this gap reflects the
-challenges of static analysis in dynamic languages: while module and
-class declarations can be identified syntactically, inferring inter-module
-call targets without runtime type information or type annotations leads
-to divergent approximations between tools.
+average node Jaccard similarity of 0.852 (median 0.882), with an entity
+omission rate of just $\text{Inf}_{\text{nodes}} = 0.048$. Several projects
+exceed 0.90 in node agreement, including \texttt{uvicorn} (0.973),
+\texttt{networkx} (0.970), \texttt{requests} (0.958), \texttt{fastapi} (0.952),
+\texttt{celery} (0.949), and \texttt{sqlalchemy} (0.946). This high concordance
+reflects the harmonization of method-local test fixtures, which in dynamic testing
+frameworks declare throwaway mock classes within test methods. When evaluating all
+extracted dependency edges, edge agreement averages 0.323 (median 0.300); when
+isolating purely behavioral relations by excluding unmodeled syntactic import
+statements, edge agreement reaches an average of 0.368 (median 0.387), with median
+edge superiority dropping below parity to 0.889. As analyzed in Section
+\ref{subsec:results_rq3}, the remaining divergence reflects the inherent boundaries
+of static analysis in dynamically typed languages without pervasive type hints.
+
+\paragraph{Deconstructing Edge Superiority in Python: Genuine Dependencies vs. Import Asymmetry.}
+A noticeable pattern in the Python evaluation is the elevated edge superiority
+index ($\text{Sup}_{\text{edges}} = 1.473$ mean, reaching $3.498$ on \texttt{sympy},
+$3.146$ on \texttt{scikit-learn}, and $2.461$ on \texttt{pydantic}), indicating that
+OmniDeps captures substantially more dependency edges than Depends. A systematic
+structural diff between the extracted graphs clarifies that these additional edges
+are not extraction hallucinations, but represent genuine dependencies stemming from
+two distinct sources:
+\begin{enumerate}
+  \item \textbf{Categorical Import Asymmetry}: The largest component of unique edges
+    in OmniDeps ($A \setminus B$) is syntactic module inclusion. OmniDeps extracts every
+    explicit syntactic \texttt{import} and \texttt{from ... import ...} directive as a
+    typed \texttt{includes} edge, capturing thousands of dependencies on large codebases
+    (18,494 in \texttt{sympy}, 8,901 in \texttt{django}, and 5,982 in \texttt{scikit-learn}).
+    In contrast, Depends Python omits module-level import statements entirely, emitting only
+    a negligible number of coarse package-level relations (only 47 in \texttt{sympy} and
+    22 in \texttt{scikit-learn}). Because the unweighted Jaccard denominator pools all
+    relation types, this asymmetry alone constitutes $50.6\%$ of all unique edges in
+    \texttt{sympy} and $59.4\%$ in \texttt{scikit-learn}.
+  \item \textbf{High-Fidelity Inheritance Resolution}: The remaining excess edges
+    represent legitimate behavioral and subtyping relationships where OmniDeps exhibits
+    higher recall than Depends. In \texttt{scikit-learn}, OmniDeps identifies 1,041
+    subtyping edges (\texttt{isChildOf}) compared to only 491 identified by Depends
+    (+636 genuine edges). These encompass foundational architectural patterns such as
+    estimator mixins:
+    \texttt{QuantileTransformer $\to$ BaseEstimator},
+    \texttt{QuantileRegressor $\to$ BaseEstimator},
+    \texttt{LatentDirichletAllocation $\to$ BaseEstimator},
+    \texttt{DictVectorizer $\to$ TransformerMixin},
+    \texttt{GradientBoostingRegressor $\to$ RegressorMixin}, and
+    \texttt{ColumnTransformer $\to$ \_BaseComposition}.
+    Depends misses these relationships because relative imports (\texttt{from ..base import BaseEstimator})
+    without static type annotations are frequently classified as speculative
+    \texttt{CandidateTypes} and discarded. OmniDeps resolves relative modules deterministically
+    via Scope Tree traversal. Similarly, in \texttt{sympy}, OmniDeps captures 604 additional
+    inheritance edges linking mathematical function hierarchies (\texttt{TrigonometricFunction},
+    \texttt{HyperbolicFunction}, \texttt{catalan}, \texttt{bernoulli}, \texttt{LeviCivita},
+    \texttt{erfinv}, \texttt{expint}) back to their root class \texttt{DefinedFunction}.
+\end{enumerate}
+
+\paragraph{The Polyglot Workspace Traversal Effect across the Benchmark.}
+A broader architectural factor contributing to elevated superiority across the
+entire 156-project evaluation is OmniDeps' language-agnostic workspace traversal.
+Traditional static analysis tools operate as single-language silos governed by
+build-system configurations: Depends Python parses only \texttt{.py} files, Arcan parses
+only \texttt{.java} files within Maven/Gradle targets, and Entangle parses only Cargo crates.
+In contrast, OmniDeps recursively traverses the entire repository workspace, parsing
+all source files that match any supported grammar (C, C++, Java, Python, Rust) without
+relying on build-system manifests.
+
+Real-world software repositories are frequently polyglot. Modern Python packages
+regularly incorporate native extensions for performance: in \texttt{pydantic}, OmniDeps
+recursively parses the compiled Rust core (\texttt{pydantic-core/src/}), extracting native
+structs, validators, and serializers that the Python-only analyzer in Depends completely
+ignores. Similarly, C and C++ repositories frequently contain auxiliary Python build
+scripts, code generators, and test harnesses (as in \texttt{redis}, \texttt{git}, and
+\texttt{FFmpeg}), while Java projects contain native JNI C/C++ bindings. Because OmniDeps
+faithfully extracts entities and dependencies across all languages present in the repository,
+whereas single-language baselines restrict extraction strictly to primary source trees,
+the multi-language components appear exclusively in OmniDeps' graph ($A \setminus B$).
+This structural scope difference naturally inflates the superiority metric ($\text{Sup}$)
+across all 156 projects in the dataset, reflecting OmniDeps' holistic polyglot coverage
+rather than false-positive over-extraction.
 
 \paragraph{Impact of Translation-Unit Preprocessing in C and C++.}
 In C and C++, analyzing raw source code without macro expansion and
 header resolution makes it difficult to link types across files.
-Table \ref{tab:preprocessing_c_cpp_comparison} compares raw analysis
-against per-translation-unit preprocessed analysis (\texttt{clang -E})
-for both languages.
-
-\begin{table}[htpb]
-  \centering
-  \small
-  \begin{adjustbox}{max width=\textwidth}
-    \begin{tabular}{|l|l|c|c|c|c|c|c|}
-      \hline
-      \textbf{Language} & \textbf{Analysis Mode} & \textbf{Mean
-      $J_{\text{nodes}}$} & \textbf{Mean $J_{\text{edges}}$} &
-      \textbf{Mean $\text{Sup}_{\text{nodes}}$} & \textbf{Mean
-      $\text{Inf}_{\text{nodes}}$} & \textbf{Mean
-      $\text{Sup}_{\text{edges}}$} & \textbf{Mean
-      $\text{Inf}_{\text{edges}}$} \\ \hline
-      \multirow{2}{*}{\textbf{C}}
-      & Raw Analysis          & 0.191 & 0.115 & 14.017 & 0.619 &
-      44.307 & 1.636 \\ \cline{2-8}
-      & Preprocessed Analysis & \textbf{0.204} & \textbf{0.136} &
-      \textbf{7.218} & 0.733 & \textbf{37.777} & 3.993 \\ \hline
-      \multirow{2}{*}{\textbf{C++}}
-      & Raw Analysis          & 0.143 & 0.081 & 12.493 & 2.969 &
-      58.836 & 4.769 \\ \cline{2-8}
-      & Preprocessed Analysis & \textbf{0.192} & \textbf{0.165} &
-      \textbf{4.911} & 3.229 & \textbf{9.962} & 8.320 \\ \hline
-    \end{tabular}
-  \end{adjustbox}
-  \caption{Impact of translation-unit preprocessing on C and C++
-  graph concordance (OmniDeps vs. Depends).}
-  \label{tab:preprocessing_c_cpp_comparison}
-\end{table}
-
-Preprocessing translation units improves alignment in both languages. In C,
-node superiority ($\text{Sup}_{\text{nodes}}$) decreases from 14.017 to
-7.218, while edge Jaccard similarity increases from 0.115 to 0.136. On small,
+As reported in Table \ref{tab:results_depends}, preprocessing translation
+units (\texttt{clang -E}) substantially improves concordance compared to raw
+source analysis in both languages. In C, node superiority
+($\text{Sup}_{\text{nodes}}$) decreases from 14.017 to 7.218, while edge
+Jaccard similarity increases from 0.115 to 0.136. On small,
 self-contained libraries such as \texttt{antirez/sds}, both tools extract
 identical graphs ($J_{\text{nodes}} = J_{\text{edges}} = 1.0$). On larger
 systems, preprocessing provides moderate agreement: \texttt{sqlite}
@@ -919,7 +1036,8 @@ agreement is observed on projects with clean modular boundaries, such as
   \label{fig:jaccard_similarity_comparison}
 \end{figure}
 
-\subsubsection{File-Level vs. Type-Level Analysis: Arcan vs. OmniDeps in C and C++}
+\subsubsection{File-Level vs. Type-Level Analysis: Arcan vs. OmniDeps
+in C and C++}
 \label{subsubsec:arcan_c_cpp_divergence}
 
 Comparing OmniDeps and Arcan directly on C and C++ repositories results in
@@ -929,7 +1047,7 @@ errors, but to different architectural modeling choices:
 
 In Java, both tools analyze code at the class and package level. Because
 both tools represent classes and interfaces as nodes, their graphs align
-well (Table \ref{tab:pairwise_jaccard_summary}).
+well (Table \ref{tab:results_arcan}).
 
 In C and C++, however, the tools work at different levels of granularity.
 Arcan focuses on detecting architectural smells (such as circular
@@ -943,132 +1061,143 @@ functions under their enclosing types.
 
 Because Arcan outputs file paths while OmniDeps outputs type names, their
 node sets do not intersect ($V_{\text{Arcan}} \cap V_{\text{OmniDeps}} =
-\emptyset$). For this reason, Arcan is marked as not comparable
-(\texttt{---}) for C and C++ in Table \ref{tab:pairwise_jaccard_summary}.
+\emptyset$). For this reason, direct pairwise comparison yields near-zero
+Jaccard overlap in Table \ref{tab:results_arcan} ($J_{\text{nodes}} \le 0.012$,
+$J_{\text{edges}} \le 0.004$).
 This difference illustrates how tools designed for smell detection often
 prioritize file-level organization over type hierarchies when analyzing
 procedural code.
 
-\subsection{RQ3: Typological Discordance and Semantic Discrepancies}
+\subsection{RQ3: Discrepancy Analysis Across Dependency Types}
 \label{subsec:results_rq3}
 \label{subsec:rq3_discordance}
 
-To address \textbf{RQ3}, we decomposed graph discrepancies across the
-five unified relationship classes in $\mathcal{R}_{\text{unified}}$:
+To address \textbf{RQ3}, we analyze how graph discrepancies are
+distributed across the
+five relationship types in our unified taxonomy:
 structural containment (\texttt{belongsTo}), type inheritance
-(\texttt{isChildOf}), contract realization
-(\texttt{isImplementationOf}), file/module inclusion
-(\texttt{includes}), and behavioral coupling (\texttt{dependsOn}).
-Table \ref{tab:categorical_discordance_java} presents the empirical
-discordance rates $\Delta(\kappa)$ evaluated on Java repositories.
+(\texttt{isChildOf}),
+interface implementation (\texttt{isImplementationOf}), behavioral
+coupling (\texttt{dependsOn}),
+and module inclusion (\texttt{includes}).
+Table \ref{tab:categorical_discordance_java} presents the shared
+edges and directional
+discrepancy rates evaluated across Java repositories for the two
+baseline tools providing
+fine-grained edge classifications (Depends and Arcan).
 
 \begin{table}[htpb]
   \centering
   \small
+  \caption{Categorical edge discrepancy rates across relationship
+    types between OmniDeps ($A$) and baseline analyzers ($B$) on Java
+  repositories.}
+  \label{tab:categorical_discordance_java}
+  \vspace{0.4em}
   \begin{adjustbox}{max width=\textwidth}
-    \begin{tabular}{|l|r|r|r|r|r|r|}
-      \hline
-      \textbf{Relation Class ($\kappa$)} &
-      \multicolumn{3}{c|}{\textbf{OmniDeps vs. Depends ($N=31$)}} &
-      \multicolumn{3}{c|}{\textbf{OmniDeps vs. Arcan ($N=18$)}} \\ \cline{2-7}
-      & Shared $|A \cap B|$ & $\Delta_{A \setminus B}(\kappa)$ &
-      $\Delta_{B \setminus A}(\kappa)$ & Shared $|A \cap B|$ &
-      $\Delta_{A \setminus B}(\kappa)$ & $\Delta_{B \setminus
-      A}(\kappa)$ \\ \hline
-      \texttt{belongsTo}          & 6,419 & 17.0\% & \textbf{1.8\%} &
-      3,296 & 36.7\% & \textbf{0.3\%} \\ \hline
-      \texttt{isChildOf}          & 3,115 & 24.9\% & \textbf{8.7\%} &
-      880   & 61.3\% & \textbf{2.4\%} \\ \hline
-      \texttt{isImplementationOf} & 0     & 100\%  & 0.0\%          &
-      0     & 11.8\% & 100\%          \\ \hline
-      \texttt{dependsOn}          & 27,891 & 26.1\% & 26.1\%        &
-      11,374 & 43.4\% & 29.9\%         \\ \hline
-      \texttt{includes}           & 0.6   & 100\%  & 100\%          &
-      0     & 100\%  & 0.0\%          \\ \hline
+    \begin{tabular}{lrrrrrr}
+      \toprule
+      \textbf{Relation Class} &
+      \multicolumn{3}{c}{\textbf{OmniDeps vs. Depends ($N=31$)}} &
+      \multicolumn{3}{c}{\textbf{OmniDeps vs. Arcan ($N=18$)}} \\
+      \cmidrule(lr){2-4} \cmidrule(lr){5-7}
+      & Shared $|A \cap B|$ & $\Delta_{A \setminus B}$ & $\Delta_{B
+      \setminus A}$
+      & Shared $|A \cap B|$ & $\Delta_{A \setminus B}$ & $\Delta_{B
+      \setminus A}$ \\
+      \midrule
+      \texttt{belongsTo}          &  6,419.1 & 17.0\% &
+      \textbf{1.8\%} &  3,295.7 & 36.7\% & \textbf{0.3\%} \\
+      \texttt{isChildOf}          &  3,115.1 & 24.9\% &
+      \textbf{8.7\%} &    880.1 & 61.3\% & \textbf{2.4\%} \\
+      \texttt{isImplementationOf} &      0.0 & 100.0\% & 0.0\%
+      &      0.0 & 11.8\% & 100.0\%        \\
+      \texttt{dependsOn}          & 27,890.7 & 26.1\% & 26.1\%
+      & 11,374.1 & 43.4\% & 29.9\%         \\
+      \texttt{includes}           &      0.6 & 100.0\% & 100.0\%
+      &      0.0 & 100.0\% & 0.0\%          \\
+      \bottomrule
     \end{tabular}
   \end{adjustbox}
-  \caption{Categorical edge discordance rates $\Delta(\kappa)$
-  between OmniDeps ($A$) and baseline analyzers ($B$) on Java.}
-  \label{tab:categorical_discordance_java}
 \end{table}
 
-Analyzing the categorical decomposition reveals the exact semantic
-drivers of agreement and divergence:
-\begin{enumerate}
-  \item \textbf{Near-Perfect Containment Agreement
-    (\texttt{belongsTo})}: OmniDeps exhibits extraordinary structural
-    fidelity with baseline tools on package and class hierarchy.
-    Omission rates are negligible: Depends contains only
-    \textbf{1.8\%} of containment edges not found by OmniDeps
-    ($\Delta_{B \setminus A} = 0.018$, with a median of just 0.4\%),
-    and Arcan contains only \textbf{0.3\%} ($\Delta_{B \setminus A} =
-    0.003$). OmniDeps discovers additional containment edges
-    ($\Delta_{A \setminus B} = 17.0\%$ vs Depends, $36.7\%$ vs Arcan)
-    because it enforces complete intermediate namespace synthesis
-    (Section \ref{subsec:structural_closure}) down to inner classes
-    and static member types, whereas Arcan and Depends omit synthetic
-    intermediate packages when no explicit declarations exist.
+The breakdown by relationship type highlights the main sources of
+agreement and divergence between the tools:
 
-  \item \textbf{Subtype and Interface Realization Hierarchies}: When
-    evaluating inheritance and contracts (\texttt{isChildOf} and
-    \texttt{isImplementationOf}), OmniDeps recovers \textbf{91.3\%}
-    of Depends' edges ($\Delta_{B \setminus A} = 8.7\%$) and
-    \textbf{97.6\%} of Arcan's edges ($\Delta_{B \setminus A} =
-    2.4\%$). The discrepancy in $\texttt{isImplementationOf}$
-    reflects an ontological taxonomy choice: Arcan strictly
-    segregates class extension (\texttt{extend}) into
-    $\texttt{isChildOf}$ and interface contract realization
-    (\texttt{implement}) into $\texttt{isImplementationOf}$
-    (averaging 702 edges per project). Conversely, both OmniDeps and
-    Depends unify type hierarchy edges under generalized subtyping
-    ($\texttt{isChildOf}$), resulting in zero direct
-    $\texttt{isImplementationOf}$ matches but complete subtyping capture.
+\paragraph{Structural Containment (\texttt{belongsTo}).}
+In Java, OmniDeps shows strong agreement with baseline tools on
+package and class containment hierarchies.
+The omission rate of OmniDeps is low: Depends contains only 1.8\% of
+containment edges not found by OmniDeps
+($\Delta_{B \setminus A} = 1.8\%$, median 0.4\%), and Arcan contains
+only 0.3\% ($\Delta_{B \setminus A} = 0.3\%$).
+OmniDeps identifies additional containment edges ($\Delta_{A
+\setminus B} = 17.0\%$ vs Depends, $36.7\%$ vs Arcan)
+because it synthesizes intermediate packages (Section
+\ref{subsec:structural_closure}) and links inner classes and
+static member types hierarchically, whereas Arcan and Depends do not
+generate synthetic intermediate package nodes
+when explicit package declarations are absent.
 
-  \item \textbf{Symmetric Behavioral Coupling Concordance
-    (\texttt{dependsOn})}: On behavioral and call-graph dependencies,
-    OmniDeps and Depends exhibit an average intersection of
-    \textbf{27,891 shared edges per project}. Remarkably, their
-    discordance rates are perfectly symmetric: $\Delta_{A \setminus
-    B} = \mathbf{26.1\%}$ and $\Delta_{B \setminus A} =
-    \mathbf{26.1\%}$. Detailed inspection shows that OmniDeps
-    captures field-level type references and constructor
-    instantiations that Depends misses, while Depends (utilizing a
-    multi-pass AST symbol table) resolves chained method calls and
-    statically imported member invocations that OmniDeps abstracts
-    over during single-pass CST query matching.
+\paragraph{Subtyping and Interface Implementation (\texttt{isChildOf}
+and \texttt{isImplementationOf}).}
+For inheritance and interface implementation, OmniDeps captures most
+of the hierarchy edges extracted by Depends
+(omission rate $\Delta_{B \setminus A} = 8.7\%$) and Arcan
+($\Delta_{B \setminus A} = 2.4\%$).
+The discrepancy observed for \texttt{isImplementationOf} stems from
+taxonomy mapping differences:
+Arcan separates class extension (\texttt{extend}, mapped to
+\texttt{isChildOf}) from interface implementation
+(\texttt{implement}, mapped to \texttt{isImplementationOf}). In
+contrast, both OmniDeps and Depends group class
+inheritance and interface implementation under a unified subtyping
+relation (\texttt{isChildOf}).
+As a result, OmniDeps does not emit edges labeled
+\texttt{isImplementationOf}, but captures interface contracts under
+\texttt{isChildOf}.
 
-  \item \textbf{Import Directives (\texttt{includes})}: In Java,
-    Arcan strips file-level \texttt{import} statements entirely
-    ($\Delta_{B \setminus A} = 0$, $|B| = 0$), modeling only semantic
-    type usages. Depends exports imports under file-level nodes,
-    which, upon semantic lifting to enclosing classes, map to
-    package-level or class-level inclusions.
-\end{enumerate}
+\paragraph{Behavioral Coupling and Method Calls (\texttt{dependsOn}).}
+For behavioral and call-graph dependencies, OmniDeps and Depends
+share an average of 27,891 edges per project in Java.
+The discrepancy rates between the two tools are balanced: $\Delta_{A
+\setminus B} = 26.1\%$ and $\Delta_{B \setminus A} = 26.1\%$.
+OmniDeps extracts field-level type references and constructor
+instantiations that Depends omits, while Depends
+(which incorporates compiled classpath dependencies and standard library symbol tables)
+resolves chained method calls traversing standard library or external types,
+where OmniDeps deliberately bounds extraction to source code without loading
+external binaries.
 
-\subsubsection{C/C++ Header Inlining vs. Incomplete Type Requirements}
-In procedural C and C++, typological discordance is governed by
-header file semantics. When translation units are preprocessed via
-\texttt{clang -E}, header files are inlined into every including
-compilation unit. Consequently, any data structure declared in a
-shared header (e.g., \texttt{struct sockaddr} in
-  \texttt{sys/socket.h} or \texttt{struct Buffer} in an internal
-header) is parsed and instantiated as an AST node in every
-translation unit that includes it. This multiplies the apparent
-vertex count in Tree-sitter, increasing node superiority
-($\text{Sup}_{\text{nodes}}$).
+\paragraph{Import Directives (\texttt{includes}).}
+In Java, Arcan removes file-level \texttt{import} statements entirely
+($\Delta_{B \setminus A} = 0.0\%$), retaining only
+resolved type references. Depends retains imports at the file level;
+when these are lifted to their enclosing classes
+during graph harmonization, they appear as package- or class-level inclusions.
 
-To test whether this duplication could be eliminated, we investigated
-stripping inlined header lines based on preprocessor linemarkers
-(\texttt{\# 1 "header.h"}). However, this experiment revealed an
-important architectural insight: compiler-based static analysis
-frontends (such as Eclipse CDT in Depends) require complete type
-definitions within each compilation unit to perform symbol
-resolution. Stripping header contents produced incomplete type syntax
-errors, causing Depends to fail on compilation units and collapsing
-graph intersections to zero on projects like \texttt{curl} and
-\texttt{nginx}. Thus, translation-unit preprocessing without an
-external cross-TU linker represents an unavoidable trade-off between
-type visibility and vertex duplication in single-pass analyzers.
+\paragraph{Header Inlining and Type Visibility in C and C++.}
+\label{subsubsec:header_inlining}
+In C and C++, differences between extractors are strongly influenced
+by header inclusion.
+When translation units are preprocessed (\texttt{clang -E}), headers
+are expanded directly into each source file.
+Any type defined in an included header (such as a shared struct) is
+parsed in every translation unit where it appears,
+increasing the number of duplicate nodes extracted by OmniDeps.
+
+To test whether this duplication could be eliminated, we evaluated
+stripping inlined header lines based on preprocessor
+linemarkers (\texttt{\# 1 "header.h"}). However, compiler-based
+static analysis tools (such as Eclipse CDT in Depends)
+require complete type definitions within each compilation unit to
+perform symbol resolution. Stripping header contents
+led to incomplete type syntax errors in Depends, causing analysis
+failures and reducing graph overlap to zero on projects
+such as \texttt{curl} and \texttt{nginx}. As a result, in single-pass
+analysis, translation-unit preprocessing involves
+an inherent trade-off between complete type resolution and duplicate
+node declarations across translation units.
 
 \subsection{RQ4: Runtime Scalability, Throughput, and Speedup}
 \label{subsec:results_rq4}
@@ -1247,3 +1376,56 @@ suitable for real-world software analysis pipelines.
   on semi-log scale for C and C++.}
   \label{fig:runtime_scalability_c_cpp}
 \end{figure}
+
+\section{Summary of Answers to Research Questions}
+\label{sec:answers_to_rqs}
+
+This section summarizes the experimental findings by providing
+direct answers to the four research questions guiding this evaluation:
+
+\begin{itemize}[leftmargin=2.0em]
+  \item \textbf{RQ1 (Language Construct Coverage):}
+    \textit{OmniDeps successfully captures the foundational
+      structural constructs and dependencies across all five
+    supported languages in controlled benchmarks.}
+    The synthetic test suite confirms that Concrete Syntax Tree
+    queries correctly identify modular containers, structured
+    types, inheritance links, and method calls in isolated test
+    cases, providing a verified baseline for real-world analysis.
+
+  \item \textbf{RQ2 (Cross-Tool Structural Alignment):}
+    \textit{OmniDeps demonstrates high structural alignment with
+      established analyzers in structured object-oriented codebases,
+      with lower edge overlap in dynamically typed languages and
+    procedural code.}
+    In Java, OmniDeps aligns closely with all three comparators
+    ($J_{\text{nodes}} = 0.814$, $J_{\text{edges}} = 0.587$, and
+    only 2.1\% entity omission against Depends). In Python, entity
+    alignment achieves $J_{\text{nodes}} = 0.852$ (median $0.882$) with an entity
+    omission rate of just $4.8\%$, while edge agreement reaches $0.323$ overall
+    and $0.368$ (median $0.387$) when isolating behavioral interactions. In C and C++,
+    translation-unit preprocessing substantially improves edge
+    agreement with Depends (from $0.081$ to $0.165$ in C++).
+
+  \item \textbf{RQ3 (Discrepancy Analysis Across Dependency Types):}
+    \textit{Discrepancies concentrate in behavioral call-graph
+      resolution and in differences of representation granularity,
+    while containment hierarchies show near-complete agreement.}
+    On Java, containment hierarchies exhibit low omission rates
+    ($\le 1.8\%$), whereas behavioral call edges reflect the
+    trade-off between source-level syntax extraction and compiler-backed
+    resolution of standard library and external classpath types.
+    Furthermore, tools designed for smell
+    detection (like Arcan in C/C++) model code at the file level,
+    producing disjoint vertex sets compared to type-level graphs.
+
+  \item \textbf{RQ4 (Computational Scalability and Throughput):}
+    \textit{OmniDeps achieves substantial speedups over existing
+      tools, scaling essentially linearly with codebase size and
+      completing execution in the order of seconds across the vast
+    majority of repositories.}
+    OmniDeps sustains an average throughput of 74,445 LOC/s,
+    yielding average speedups of 13.2x over Depends, 48.2x over
+    Arcan, and 4.0x over Entangle, while avoiding runtime
+    explosions even on codebases exceeding one million lines of code.
+\end{itemize}
