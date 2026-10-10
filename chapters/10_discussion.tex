@@ -69,8 +69,8 @@ isomorphism:
 
 Because compilation units in Java cannot inject arbitrary global preprocessor
 macros or alias global namespaces dynamically, OmniDeps' two-phase algebraic
-query model---resolving lexical scopes upward via \texttt{Find} and descending
-inheritance graphs via \texttt{Extract}---successfully resolves approximately
+query model (resolving lexical scopes upward via \texttt{Find} and descending
+inheritance graphs via \texttt{Extract}) successfully resolves approximately
 $98\%$ of compiler-resolved architectural entities without requiring access to
 external JAR dependencies or a live Java Virtual Machine (JVM).
 
@@ -82,6 +82,50 @@ references rather than missed architectural components. This confirms that
 for high-level architectural static analysis (e.g., architectural smell
 detection, module cohesion, package cycle identification), syntax-directed
 querying matches the fidelity of complete compiler symbol tables.
+
+\paragraph{The Granularity Dilemma of Import Directives in Java.}
+\label{par:discussion_java_imports}
+The categorical discordance analysis in Section~\ref{subsec:rq3_discordance}
+revealed an apparent anomaly in Java: despite both OmniDeps and Depends extracting
+thousands of import statements per project (e.g., 2,060 and 918 respectively in
+\texttt{junit4}, and 13,257 and 3,153 in \texttt{junit5}), their shared
+\texttt{includes} edges average just 0.6 per repository. This near-total divergence
+is not an omission failure, but a fundamental methodological disagreement regarding
+the architectural ownership of import directives.
+
+In the Java Language Specification (JLS), import declarations belong strictly to
+the lexical scope of an individual compilation unit (a single \texttt{.java}
+source file). An import statement in one file is never inherited or shared by
+other files, even within the identical package. When abstracting file-level source
+artifacts into an architectural graph where vertices are types and packages, two
+competing harmonization strategies arise:
+\begin{enumerate}
+  \item \textbf{Type-Level Attribution (OmniDeps)}: OmniDeps distributes file-scoped
+    imports to the top-level structured types (classes and interfaces) defined
+    within that compilation unit. This establishes explicit edges from the
+    declaring class to the imported target (\texttt{class $\to$ target}). This
+    design preserves high relational precision: if a single auxiliary class in a
+    package imports a testing utility or a third-party parser, that dependency
+    remains strictly localized to that specific class. Furthermore, type-level
+    inclusions can always be aggregated upward into package dependencies using the
+    structural containment tree (\texttt{belongsTo}).
+  \item \textbf{Package-Level Coarsening (Depends)}: In contrast, Depends
+    processes imports at the compilation-unit header before descending into AST
+    class visitors, and during graph harmonization its adapter lifts the source
+    of every \texttt{includes} edge to the enclosing package (\texttt{package $\to$ target}).
+    While this strategy aligns with coarse-grained architectural recovery tools
+    that analyze Dependency Structure Matrices (DSMs) strictly at the package tier,
+    it produces irreversible information loss: once an import is collapsed onto a
+    package, it becomes impossible to determine which underlying class induced the
+    coupling. Furthermore, it introduces artificial package-level coupling for all
+    peer classes within the same package that never reference the imported symbol.
+\end{enumerate}
+Because a class identifier never equals a package identifier in pairwise graph
+intersection, the two representations remain mathematically disjoint. This finding
+underscores an important principle for software architecture recovery:
+\textbf{type-level dependency modeling preserves fine-grained architectural fidelity
+without sacrificing the ability to aggregate upward, whereas premature package-level
+lifting obscures intra-package coupling and prevents cross-tool consensus}.
 
 \subsection{The Resolution Ceiling in Dynamically Typed Languages}
 \label{subsec:discussion_dynamic_languages}
@@ -200,23 +244,16 @@ three distinct architectural and methodological factors:
   \item \textbf{High-Fidelity Cross-Module Inheritance Resolution}: In subtyping hierarchies
     (\texttt{isChildOf}), OmniDeps exhibits significantly higher recall than Depends. In
     \texttt{scikit-learn}, OmniDeps identifies 1,041 inheritance arcs compared to just 491
-    identified by Depends (+636 genuine edges). These encompass ubiquitous architectural
-    patterns such as estimator mixins and composition abstractions:
-    \texttt{QuantileTransformer $\to$ BaseEstimator},
-    \texttt{QuantileRegressor $\to$ BaseEstimator},
-    \texttt{LatentDirichletAllocation $\to$ BaseEstimator},
-    \texttt{DictVectorizer $\to$ TransformerMixin},
-    \texttt{GradientBoostingRegressor $\to$ RegressorMixin}, and
-    \texttt{ColumnTransformer $\to$ \_BaseComposition}.
-    Depends misses these foundational relationships because relative imports
-    (\texttt{from ..base import BaseEstimator}) lacking static type annotations are frequently
-    classified by Depends' heuristic resolver as speculative \texttt{CandidateTypes} and discarded.
-    OmniDeps, using its hierarchical Scope Tree index, resolves relative import targets
-    deterministically. Similarly, in \texttt{sympy}, OmniDeps captures 604 additional
-    inheritance edges, successfully linking the entire hierarchy of mathematical functions
-    (\texttt{TrigonometricFunction}, \texttt{HyperbolicFunction}, \texttt{catalan},
-    \texttt{bernoulli}, \texttt{LeviCivita}, \texttt{erfinv}, \texttt{expint}, \texttt{multigamma})
-    back to their abstract base class \texttt{DefinedFunction}.
+    identified by Depends, recovering 636 genuine subtyping relationships. In large Python
+    libraries, inheritance hierarchies frequently rely on relative module imports to compose
+    mixins and base abstractions; for instance, estimator classes such as
+    \texttt{QuantileTransformer} inherit from \texttt{BaseEstimator} via relative imports
+    (\texttt{from ..base import BaseEstimator}). Because these relative imports lack static
+    type annotations, Depends treats them as ambiguous symbols and discards them as speculative
+    candidate types. In contrast, OmniDeps deterministically resolves relative import paths
+    across the file system using its hierarchical Scope Tree, successfully capturing core
+    architectural contracts (such as estimator mixins in \texttt{scikit-learn} and mathematical
+    function hierarchies rooted in \texttt{DefinedFunction} in \texttt{sympy}).
   \item \textbf{Language-Agnostic Polyglot Workspace Traversal}: Modern software projects
     are increasingly polyglot. While traditional static analyzers enforce a strict
     single-language filter (Depends Python parses only \texttt{.py} files within declared roots),
@@ -258,8 +295,8 @@ The resulting alignment confirms the hypothesis:
     \texttt{networkx}, edge Jaccard reaches \textbf{0.563} ($\text{Sup}_{\text{edges}} = \textbf{0.285}$).
 \end{itemize}
 This controlled measurement proves that once the evaluation is aligned to identical
-semantic planes---comparing purely behavioral dependencies without penalizing
-first-class module import extraction---syntactic static analysis in dynamically
+semantic planes by comparing purely behavioral dependencies without penalizing
+first-class module import extraction, syntactic static analysis in dynamically
 typed languages achieves nearly $40\%$ behavioral concordance with compiler-grade
 analyzers, approaching the fidelity observed in compiled languages.
 Table~\ref{tab:python_harmonization_ablation} summarizes the progressive impact
@@ -303,7 +340,7 @@ macros (\texttt{\#define}) fundamentally obscures the underlying syntax.
 Macros are routinely used to declare function wrappers, synthesize struct
 typedefs, declare interface dispatch tables, and implement conditional
 compilation (\texttt{\#ifdef}). As shown in Table~\ref{tab:results_summary_rq2},
-analyzing raw C code yields a modest edge Jaccard similarity of $0.115$. Tree-sitter
+analyzing raw C code produces a modest edge Jaccard similarity of $0.115$. Tree-sitter
 parsers, encountering macro invocations that do not conform to standard C
 grammar, frequently classify complex macro statements as generic call
 expressions or syntax errors, causing referenced structs and typedefs to remain
@@ -489,8 +526,8 @@ The performance dividends of this architectural trade-off are profound:
 What is sacrificed in exchange for this $48\times$ speedup? As our Java
 experiments demonstrated, OmniDeps incurs an entity omission rate of just
 $2.1\%$ against Depends and $0.3\%$ against Arcan. For macro-architectural
-analyses---such as detecting Cyclic Dependencies, Hub-Like Components, or
-Unstable Interfaces---a 2\% difference in fine-grained call edges does not
+analyses (such as detecting Cyclic Dependencies, Hub-Like Components, or
+Unstable Interfaces), a 2\% difference in fine-grained call edges does not
 alter the identified architectural topology. Consequently, the trade-off
 between exhaustive compiler verification and high-throughput AST querying is
 pragmatically optimal for architectural analysis.
@@ -634,7 +671,7 @@ extraction fidelity rather than superficial artifacts of representation.
     user-defined types (structs, unions, classes), Arcan models procedural C/C++
     primarily at the physical file and header level for architectural smell detection.
     \textit{Threat}: Directly computing overlap between file-based and type-based
-    graphs yields an empty intersection ($V_{\text{Arcan}} \cap V_{\text{OmniDeps}} = \emptyset$),
+    graphs produces an empty intersection ($V_{\text{Arcan}} \cap V_{\text{OmniDeps}} = \emptyset$),
     which would falsely suggest zero extraction capability.
     \textit{Mitigation}: We explicitly diagnosed this divergence as a structural
     granularity mismatch rather than an extraction failure, marking Arcan as

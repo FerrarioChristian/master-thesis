@@ -19,35 +19,30 @@ The following subsections outline the primary directions for future work.
 \label{subsec:future_performance}
 
 Throughout the development of this thesis, the primary objective was ensuring
-the correctness, sound formalization, and baseline algorithmic
-scalability of the
-intermediate representation and algebraic query engine. Consequently, minimal
-effort was directed toward low-level execution tuning, and the current research
-prototype operates sequentially. While the algorithmic complexity remains well
-bounded—sustaining high throughput on modern hardware—real-world continuous
-integration (CI) pipelines and large enterprise monorepos can benefit from
-explicit concurrency.
+the correctness, sound formalization, and baseline algorithmic scalability of the
+intermediate representation and algebraic query engine. While the algorithmic
+complexity remains well bounded, sustaining high throughput on modern hardware,
+large-scale enterprise monorepos and continuous integration (CI) pipelines can
+benefit from deeper concurrency across the analysis pipeline.
 
-Future iterations of the framework can introduce parallelism at multiple stages:
+Currently, OmniDeps leverages data-parallelism during the extraction phase
+(Phase 1), parsing individual source files concurrently across CPU cores via
+Rust's \texttt{rayon} work-stealing thread pool. However, the subsequent symbol
+resolution phase (Phase 2), which evaluates queries against the global Scope
+Tree and constructs the output multigraph, currently executes sequentially on
+the unified memory arena.
+
+Future iterations of the framework can extend parallelism into these subsequent stages:
 \begin{itemize}
-  \item \textbf{Data-Parallel Syntactic Extraction}: The extraction
-    phase (Phase 1)
-    is embarrassingly parallel, as Tree-sitter parsing and CST
-    traversal operate on
-    individual source files without requiring mutable shared state.
-    Processing files
-    concurrently across available CPU cores (for instance, via a
-      work-stealing thread
-    pool such as Rust's \texttt{rayon}) would scale extraction throughput almost
-    linearly with core count, bounded primarily by disk I/O.
-  \item \textbf{Concurrent Query Resolution}: In the resolution phase (Phase 2),
-    evaluating self-contained queries against the global Scope Tree presents
-    opportunities for read-concurrency. Independent symbol queries
-    originating from
-    different function bodies can be evaluated in parallel using concurrent data
-    structures or fine-grained reader-writer locks (\texttt{RwLock}),
-    while batching
-    graph vertex and edge insertions to minimize contention.
+  \item \textbf{Concurrent Scope Tree Resolution}: In the resolution phase (Phase 2),
+    independent symbol queries originating from different method bodies can be
+    evaluated in parallel against an immutable snapshot of the global Scope Tree.
+    Employing lock-free concurrent collections or reader-writer synchronization
+    (\texttt{RwLock}) will allow query evaluation to scale across multi-core systems.
+  \item \textbf{Partitioned Graph Construction}: Constructing the final graph edges
+    can be parallelized by batching edge insertions per compilation unit or module,
+    merging thread-local edge sets into the final multigraph in a lightweight reduce
+    phase to eliminate lock contention on shared graph data structures.
 \end{itemize}
 
 \subsection{Inter-Language Dependency Detection}
@@ -127,8 +122,8 @@ to the extraction and resolution algorithms warrant future investigation:
     explicit per-language catalogs to identify built-in and primitive types (e.g.,
     \texttt{int}, \texttt{size\_t}, \texttt{i32}) and synthesize terminal
     \texttt{Primitive} endpoints. Future work could explore automated primitive type
-    identification—such as statistical frequency heuristics across AST type nodes or
-    automated scraping of language specification headers—eliminating the need for
+    identification (such as statistical frequency heuristics across AST type nodes or
+    automated scraping of language specification headers), eliminating the need for
     manual list configuration when onboarding new languages.
   \item \textbf{Unified Receiver Feature Modeling}: The handling of object-oriented
     receivers (such as explicit keywords \texttt{this} and \texttt{self}, Python's
