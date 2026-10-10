@@ -1,149 +1,126 @@
 \section{Future Work}
 \label{ch:future_work}
 
-The work presented in this thesis establishes a scalable and language-agnostic
-framework for architectural dependency extraction. By abstracting extraction
-logic through syntax-directed queries on Concrete Syntax Trees (CSTs) and
-formalizing a flexible Intermediate Representation ($\mathcal{D}_{IR}$), the
-system addresses the configuration and scalability bottlenecks of traditional
-compiler-coupled front-ends. The empirical evaluation demonstrated the
-practical viability of the approach across five programming languages,
-resolving nested scopes, qualified paths, and cross-module dependencies.
+While the primary focus of this thesis was the formalization and empirical
+validation of the intermediate representation, extraction heuristics, and
+resolution pipeline, the modular architecture of OmniDeps opens several avenues
+for future research and engineering extensions. The remainder of this section
+outlines the primary directions for future work.
 
-However, because the primary focus of this research was the conceptualization,
-formalization, and empirical validation of the intermediate representation model
-and extraction heuristics, several avenues remain open for future research.
-The following subsections outline the primary directions for future work.
-
-\subsection{Performance and Concurrency Optimizations}
+\subsubsection{Performance and Concurrency Optimizations}
 \label{subsec:future_performance}
 
 Throughout the development of this thesis, the primary objective was ensuring
-the correctness, sound formalization, and baseline algorithmic scalability of the
-intermediate representation and algebraic query engine. While the algorithmic
+the correctness, sound formalization, and baseline algorithmic scalability of
+the intermediate representation and analysis pipeline. While the algorithmic
 complexity remains well bounded, sustaining high throughput on modern hardware,
-large-scale enterprise monorepos and continuous integration (CI) pipelines can
-benefit from deeper concurrency across the analysis pipeline.
+large-scale enterprise monorepos and continuous integration pipelines can
+benefit from deeper concurrency across all stages of the pipeline.
 
-Currently, OmniDeps leverages data-parallelism during the extraction phase
-(Phase 1), parsing individual source files concurrently across CPU cores via
-Rust's \texttt{rayon} work-stealing thread pool. However, the subsequent symbol
-resolution phase (Phase 2), which evaluates queries against the global Scope
-Tree and constructs the output multigraph, currently executes sequentially on
-the unified memory arena.
+Currently, OmniDeps exploits data-parallelism during both syntactic extraction,
+where source files are parsed concurrently across CPU cores, and graph
+synthesis, where dependency edges are extracted and deduplicated in parallel
+across workspace modules. However, the intermediate name resolution phase still
+executes sequentially on a single thread.
 
-Future iterations of the framework can extend parallelism into these subsequent stages:
+Future iterations of the framework can extend multi-core parallelism to the two
+sub-stages of name resolution:
 \begin{itemize}
-  \item \textbf{Concurrent Scope Tree Resolution}: In the resolution phase (Phase 2),
-    independent symbol queries originating from different method bodies can be
-    evaluated in parallel against an immutable snapshot of the global Scope Tree.
-    Employing lock-free concurrent collections or reader-writer synchronization
-    (\texttt{RwLock}) will allow query evaluation to scale across multi-core systems.
-  \item \textbf{Partitioned Graph Construction}: Constructing the final graph edges
-    can be parallelized by batching edge insertions per compilation unit or module,
-    merging thread-local edge sets into the final multigraph in a lightweight reduce
-    phase to eliminate lock contention on shared graph data structures.
+  \item \textbf{Parallel Query Building}: During lexical substitution, the
+    resolver currently traverses modules sequentially using a single shared
+    symbol stack. Because lexical scope substitution within a top-level
+    compilation unit is independent of sibling modules, maintaining an isolated
+    symbol stack per module would allow query construction to execute in
+    parallel across the module hierarchy.
+  \item \textbf{Concurrent Query Execution}: During global query evaluation,
+    all queries inspect a read-only global Scope Tree and a static primitive
+    registry, while sharing a mutable cache of resolved inheritance
+    hierarchies. Pre-computing superclass scope mappings during Scope Tree
+    construction, or adopting a concurrent caching strategy, would allow
+    independent queries to be evaluated in parallel across all modules.
 \end{itemize}
 
-\subsection{Inter-Language Dependency Detection}
-\label{subsec:future_inter_language}
-
-Currently, while OmniDeps parses multi-language repositories into a unified
-intermediate representation within a single workspace, dependency resolution
-remains confined within each language's individual boundaries. For
-example, a native
-Java method call is recorded as an external reference, but it is not
-linked to its
-corresponding C or C++ implementation.
-
-In modern systems, cross-language interactions are ubiquitous. A
-compelling future
-direction is extending the resolution engine with bridging heuristics capable of
-identifying and resolving these \textbf{inter-language dependencies}:
-\begin{itemize}
-  \item \textbf{Foreign Function Interfaces (FFI)}: For conventions such as the
-    Java Native Interface (JNI), the framework could identify \texttt{native}
-    declarations, compute their standard C/C++ mangled symbols (e.g.,
-      following the
-    \texttt{Java\_Package\_Class\_Method} scheme), and resolve the
-    link directly to
-    the matching C/C++ definition in the workspace. Similar bridging
-    logic can be
-    applied to Rust-Python bindings via PyO3 or C foreign function
-    calls in Python.
-  \item \textbf{Interface Definition Languages (IDLs)}: In
-    distributed architectures
-    communicating via Remote Procedure Calls (such as gRPC Protocol
-      Buffers or OpenAPI
-    specifications), extracting interface schemas would allow the
-    analyzer to use the
-    IDL contract as an architectural bridge, linking services implemented in
-    different languages (e.g., a Go server and a Python client) into a coherent,
-    end-to-end dependency graph.
-\end{itemize}
-
-\subsection{Alternative Programming Paradigms}
+\subsubsection{Alternative Programming Paradigms}
 \label{subsec:future_paradigms}
 
 The design and empirical validation of OmniDeps have thus far focused on
-procedural and object-oriented languages within the broader C-family
-(C, C++, Java,
-Python, and Rust). These languages share foundational architectural
-concepts, such
-as explicit file and package modules, structured types (classes,
-structs, interfaces),
-and identifiable function or method declarations.
+procedural and object-oriented languages. These languages share
+foundational architectural concepts, such as explicit file and
+package modules, structured types, and identifiable function or
+method declarations.
 
-Although the Intermediate Representation ($\mathcal{D}_{IR}$) was designed to be
-language-agnostic, extending it to support non-imperative paradigms represents a
-meaningful research opportunity:
+Although the Intermediate Representation was designed to be language-agnostic,
+extending it to support non-imperative paradigms represents a meaningful
+research opportunity:
 \begin{itemize}
-  \item \textbf{Functional Languages}: In languages such as Haskell, OCaml, or
-    Clojure, software architecture relies heavily on higher-order functions,
-    currying, closures, and algebraic module systems (e.g., ML
-    functors). Capturing
+  \item \textbf{Functional Languages}: In functional languages such as Haskell,
+    OCaml, or Clojure, software architecture relies heavily on higher-order
+    functions, currying, closures, and algebraic module systems. Capturing
     architectural coupling in these ecosystems will require refining the query
-    algebra to track function composition and lexical binding without relying on
-    class-like encapsulation.
-  \item \textbf{Declarative and Logic Paradigms}: In declarative systems (such as SQL
-    transformations or Prolog rule bases), dependencies manifest as relational
-    derivations and predicate unification rather than procedural call hierarchies.
-    Expanding the relational taxonomy to represent declarative data-flow and rule
-    dependencies would further broaden the applicability of the framework.
+    algebra to track function composition and lexical binding without relying
+    on class-like encapsulation.
+  \item \textbf{Declarative and Logic Paradigms}: In declarative systems such
+    as SQL transformations or Prolog rule bases, dependencies manifest as
+    relational derivations and predicate unification rather than procedural
+    call hierarchies. Expanding the relational taxonomy to represent
+    declarative data-flow and rule dependencies would further broaden the
+    applicability of the framework.
 \end{itemize}
 
-\subsection{Analysis Engine and Modeling Refinements}
+\subsubsection{Analysis Engine and Modeling Refinements}
 \label{subsec:future_engine_refinements}
 
-Beyond scalability and cross-language boundaries, several architectural refinements
+Beyond concurrency and paradigm extensions, several architectural refinements
 to the extraction and resolution algorithms warrant future investigation:
 \begin{itemize}
-  \item \textbf{Automated Discovery of Primitive Types}: OmniDeps currently maintains
-    explicit per-language catalogs to identify built-in and primitive types (e.g.,
-    \texttt{int}, \texttt{size\_t}, \texttt{i32}) and synthesize terminal
-    \texttt{Primitive} endpoints. Future work could explore automated primitive type
-    identification (such as statistical frequency heuristics across AST type nodes or
-    automated scraping of language specification headers), eliminating the need for
-    manual list configuration when onboarding new languages.
-  \item \textbf{Unified Receiver Feature Modeling}: The handling of object-oriented
-    receivers (such as explicit keywords \texttt{this} and \texttt{self}, Python's
-    positional first parameter, or languages without implicit receiver binding) is
-    currently parameterized across separate configuration flags. Future versions can
-    formalize this as a unified three-state language feature (\texttt{Keyword},
-    \texttt{FirstParam}, or \texttt{None}), simplifying configuration schemas and
-    intermediate serialization.
-  \item \textbf{Early Query Resolution for Superclasses}: Currently, resolving calls
-    delegated via \texttt{super} or \texttt{Self} is executed entirely during Phase~2
-    against the global Scope Tree. An optimization avenue involves pre-resolving
-    direct superclass bindings during Phase~1 (query building), rewriting \texttt{super}
-    invocations into scoped queries before global execution to reduce query traversal
-    depth.
+  \item \textbf{Automated Discovery of Primitive Types}: OmniDeps currently
+    maintains explicit per-language catalogs to identify built-in and primitive
+    types and synthesize terminal primitive endpoints. Future work could
+    explore automated primitive type identification through statistical
+    frequency heuristics across syntax nodes or automated scraping of language
+    specification headers, eliminating the need for manual list configuration
+    when onboarding new languages.
+  \item \textbf{Early Query Resolution for Superclasses}: Currently, resolving
+    calls delegated to a superclass is executed entirely during the global
+    query evaluation stage against the Scope Tree. An optimization avenue
+    involves pre-resolving direct superclass bindings during the query building
+    stage, rewriting superclass invocations into scoped queries before global
+    execution to reduce query traversal depth.
   \item \textbf{Link-Time Symbol Deduplication for C and C++}: When analyzing
-    preprocessed translation units in procedural C and C++, types declared in shared
-    headers are replicated across compilation units. Future iterations should introduce
-    an intermediate deduplication layer analogous to a systems linker: identifying
-    struct and class declarations with matching signatures originating from shared
-    headers, and consolidating them into unified logical nodes in the Scope Tree.
-    This would eliminate node inflation artifacts and align graph density with
-    compiler-based tools without requiring build-system coupling.
+    preprocessed translation units in procedural C and C++, types declared in
+    shared headers are replicated across compilation units. Future iterations
+    should introduce an intermediate deduplication layer analogous to a systems
+    linker: identifying struct and class declarations with matching signatures
+    originating from shared headers, and consolidating them into unified
+    logical nodes in the Scope Tree. This would eliminate node inflation
+    artifacts and align graph density with compiler-based tools without
+    requiring build-system coupling.
+  \item \textbf{Simplified Self-Reference Configuration}: In the current
+    configuration schema, how a language refers to the current instance inside
+    a method is split across separate settings: one for fixed keywords such as
+    \texttt{this} or \texttt{self}, and another for conventions where the
+    instance is passed as the first method parameter, as in Python. Since these
+    mechanisms are mutually exclusive, they can be consolidated into a single
+    configuration setting.
 \end{itemize}
+
+\subsubsection{Inter-Language Dependency Detection}
+\label{subsec:future_inter_language}
+
+Finally, a more speculative direction emerged as a reflection on
+the architecture of the framework. Although cross-language interaction was
+never investigated or addressed during the course of this thesis, the fact that
+OmniDeps already projects source files written in different programming
+languages into a single intermediate representation and shared Scope Tree
+suggests an intriguing long-term research opportunity.
+
+Currently, even when analyzing polyglot repositories, dependency resolution
+remains strictly confined within the boundaries of each individual language,
+meaning that calls crossing language boundaries are treated simply as unresolved
+external references. Future research could explore whether lightweight bridging
+heuristics can be layered on top of the unified representation to connect
+definitions and references across different languages. Such bridges could, for
+instance, link Foreign Function Interface calls such as the Java Native
+Interface or Python native bindings to their underlying C, C++, or Rust
+implementations, or connect distributed services through shared Remote Procedure
+Call and Interface Definition Language schemas.
