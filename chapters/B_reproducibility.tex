@@ -1,7 +1,7 @@
 \chapter{Source Code and Reproducibility}
 \label{app:reproducibility}
 
-The complete source code of the \textit{Omnideps} framework,
+The complete source code of the \textit{OmniDeps} framework,
 including the heuristic extraction engine, the resolution algebra,
 the embedded web visualizer, and the experimental benchmark suite
 developed for this thesis, is open-source and publicly available.
@@ -13,7 +13,7 @@ The project repository can be accessed at the following URL:
 \end{center}
 
 \section{Installation for End Users}
-\textit{Omnideps} is distributed as a single standalone binary. The
+\textit{OmniDeps} is distributed as a single standalone binary. The
 web visualizer (SvelteKit) is pre-compiled and embedded directly
 inside the Rust executable. To use the tool, it is not necessary to
 install Node.js, npm, or Rust.
@@ -38,7 +38,6 @@ omnideps analyze /path/to/project --output graph.json
 This command parses the codebase, executes the extraction heuristics, runs
 the name resolution engine, and outputs the final dependency graph directly
 in standard Cytoscape.js JSON format.
-
 
 \subsection*{Custom Configuration}
 To initialize a default configuration file (\texttt{omnideps.json})
@@ -80,7 +79,7 @@ built from source. This requires both \textbf{Node.js} and the
 \textbf{Rust Toolchain} (\texttt{cargo} and \texttt{rustc}).
 
 First, build the SvelteKit frontend, which generates static files in
-the \texttt{visualizer-svelte/build} directory:
+the \\ \texttt{visualizer-svelte/build} directory:
 \begin{verbatim}
 cd visualizer-svelte
 npm install
@@ -103,3 +102,36 @@ logic. To execute the test suite, run:
 \begin{verbatim}
 cargo test
 \end{verbatim}
+
+\section{Benchmarking Pipeline}
+To orchestrate multi-tool executions and evaluate graph similarity across the
+dataset, the companion benchmarking framework \textit{Graph-Synchron} is
+open-source and available at:
+\begin{center}
+  \url{https://github.com/FerrarioChristian/graph-synchron}
+\end{center}
+
+\subsection*{Automated Benchmarking}
+The \texttt{measurer.py} script coordinates the execution of static analysis
+tools across target repositories, recording runtimes and storing extracted
+graphs into a shared evaluation archive:
+\begin{verbatim}
+python3 measurer.py -l Java -t omnideps depends
+\end{verbatim}
+A specific project can be targeted by specifying the repository name (e.g.,
+\texttt{-p junit4}).
+
+\subsection*{Similarity Evaluation and Pairwise Diffing}
+To compute the harmonized Jaccard similarity, superiority, and inferiority
+metrics across a language corpus, \texttt{main.py} provides the \texttt{score}
+subcommand:
+\begin{verbatim}
+python3 main.py score -f omnideps -s depends -l Java
+\end{verbatim}
+To inspect set-theoretic structural differences and categorical edge agreement
+rates between two extractors, use the \texttt{diff pairwise} subcommand:
+\begin{verbatim}
+python3 main.py diff pairwise -f omnideps -s depends -l Java
+\end{verbatim}
+Both subcommands can also be restricted to an individual project using the
+\texttt{-p <project>} flag.
