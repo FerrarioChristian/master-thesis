@@ -19,7 +19,8 @@ structured around four primary themes:
     syntax-directed dependency extraction interacts with different type systems
     and compilation models across object-oriented, dynamic, procedural, and
     systems programming languages.
-  \item \textbf{Efficacy of the Language-Agnostic Approach}: We evaluate the
+  \item \textbf{Efficacy of the Language-Agnostic Approach}:\ We evaluate
+    the\linebreak
     trade-offs between decoupling the analyzer from native build toolchains and
     relying on compiler-coupled semantic resolution.
   \item \textbf{Practical Implications}: We discuss how software engineering
@@ -129,7 +130,7 @@ coupling and prevents cross-tool consensus.
 \label{subsec:discussion_dynamic_languages}
 
 In contrast to object-oriented environments, evaluating Python codebases
-demonstrates how graph harmonization reconciles divergent extraction scopes
+dem\-on\-strates how graph harmonization reconciles divergent extraction scopes
 in dynamic ecosystems: while entity identification attains high concordance
 ($J_{\text{nodes}} = 0.852$) with an entity omission rate of just $4.8\%$,
 call-level dependency alignment achieves $J_{\text{edges}} = 0.323$, rising to
@@ -236,7 +237,7 @@ methodological factors:
     software projects are increasingly polyglot. While Depends Python parses
     only \texttt{.py} files within declared roots, OmniDeps recursively
     analyzes all source files matching any supported grammar across the
-    repository workspace. For instance, in \texttt{pydantic}, OmniDeps also
+    repository work\-space. For instance, in \texttt{pydantic}, OmniDeps also
     parses the native Rust core, extracting its struct definitions, validators,
     and serializers, whereas single-language Python analyzers treat compiled
     extensions as opaque external binaries.
@@ -343,7 +344,7 @@ tree.
 
 \paragraph{System Headers and Enum Granularity.}
 An empirical inspection of node-level discrepancies between OmniDeps and Depends
-reveals the exact root causes of this elevated node superiority across both raw
+reveals the exact root caus\-es of this elevated node superiority across both raw
 and preprocessed configurations:
 \begin{itemize}
   \item \textbf{Standard Library and POSIX Header Inlining}: Under
@@ -417,7 +418,7 @@ compiler-level fidelity while completely bypassing compiler toolchain overhead.
 % ==============================================================================
 % 2. ARCHITECTURAL EFFICACY ASSESSMENT
 % ==============================================================================
-\section{Efficacy of the Language-Agnostic Approach}
+\section[Efficacy of the Language-Agnostic Approach]{Efficacy of the Language-Agnostic\\Approach}
 \label{sec:discussion_efficacy}
 
 A central question guiding this thesis is whether developing a
@@ -523,9 +524,9 @@ before changes are merged.
 \label{subsec:implications_smell_detection}
 
 Architectural analysis platforms such as \textit{Arcan}
-\cite{fontana_arcan_2017}, \textit{DV8} \cite{xiao_design_2014}, and
+\cite{fontana_arcan_2017}, \textit{DV8} \cite{cai_dv8_2019}, and
 \textit{SonarQube} invest considerable effort in developing and maintaining
-language-specific parsers and extractors. OmniDeps' Intermediate Representation
+lan\-guage-specific parsers and extractors. OmniDeps' Intermediate Representation
 and normalized dependency graph exports can serve as a \textbf{universal
 ingestion frontend} for these downstream tools, allowing smell detectors to
 extend their coverage across C, C++, Java, Python, and Rust without maintaining
@@ -534,13 +535,13 @@ separate compiler-coupled pipelines.
 \subsubsection{Polyglot Monorepo Governance}
 \label{subsec:implications_monorepos}
 
-Modern software systems increasingly adopt polyglot repository structures,
+Modern software systems increasingly adopt polyglot repository structures,\linebreak
 where services, native extensions, and shared libraries written in different
 languages coexist within a single workspace. While traditional analyzers
 operate within single-language silos, OmniDeps projects components from all
 supported languages into a single language-neutral Intermediate Representation
 with canonical qualified naming, providing a unified foundation for inspecting
-multi-language repositories within a single dependency multigraph.
+mul\-ti-lan\-guage repositories within a single dependency multigraph.
 
 % ==============================================================================
 % 4. THREATS TO VALIDITY
@@ -550,8 +551,7 @@ multi-language repositories within a single dependency multigraph.
 
 To ensure sound interpretation and generalizability of our findings, potential
 threats to validity must be recognized and addressed. Following established
-guidelines for empirical software engineering
-\cite{wohlin_experimentation_2012, runeson_guidelines_2009}, we discuss
+guidelines for empirical software engineering, we discuss
 limitations across construct, internal, and external validity dimensions.
 
 \subsubsection{Construct Validity}
@@ -669,7 +669,7 @@ other programming paradigms and software systems.
     unification rather than structured types and procedural call graphs.
 
   \item \textbf{Dataset Representativeness}:
-    The 156 evaluated repositories were sourced exclusively from open-source
+    The 156 evaluated repositories were\linebreak sourced exclusively from open-source
     projects hosted on GitHub, which may not fully reflect proprietary
     enterprise codebases with unconventional layouts. To mitigate selection
     bias, the benchmark corpus was curated to span nearly 98 million lines of

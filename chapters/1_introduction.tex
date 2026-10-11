@@ -63,9 +63,10 @@ inherently language-agnostic.
 \begin{figure}[H]
   \centering
   % (a) Rust Syntax Tree
-  \begin{subfigure}[t]{0.5\textwidth}
+  \begin{subfigure}[t]{0.53\textwidth}
     \centering
     \small{(a) Rust Syntax Tree}\\[0.5em]
+    \begin{adjustbox}{max width=\linewidth}
     \begin{forest}
       cst tree
       [call\_expression
@@ -88,12 +89,14 @@ inherently language-agnostic.
         [argument]
       ]
     \end{forest}
+    \end{adjustbox}
   \end{subfigure}%
-  \hfill
+  \hfill%
   % (b) Python Syntax Tree
-  \begin{subfigure}[t]{0.5\textwidth}
+  \begin{subfigure}[t]{0.45\textwidth}
     \centering
     \small{(b) Python Syntax Tree}\\[0.5em]
+    \begin{adjustbox}{max width=\linewidth}
     \begin{forest}
       cst tree
       [call
@@ -116,6 +119,7 @@ inherently language-agnostic.
         [argument\_list]
       ]
     \end{forest}
+    \end{adjustbox}
   \end{subfigure}
   \caption{Rust and Python CST comparison from the code \textit{a.b.c().d.e()}}
   \label{fig:cst_comparison}

@@ -227,7 +227,7 @@ evaluation dataset and baseline tools.
 State-of-the-art analyzers conceptualize software structure at
 differing levels of abstraction:
 \begin{itemize}
-  \item \textbf{Granularity Divergence}: Analyzers operate at different
+  \item \textbf{Granularity Divergence}:\ Analyzers operate at different
     structural granularities. Fine-grained tools (such as \textit{Depends}
     \cite{depends_github} and \textit{Entangle} \cite{teruzzi_2024})
     extract individual members within types (such as methods, functions,
@@ -392,7 +392,7 @@ tool-specific labels to this unified taxonomy.
   \centering
   \small
   \begin{adjustbox}{max width=\textwidth}
-    \begin{tabular}{|l|l|p{7.5cm}|}
+    \begin{tabular}{|l|l|L{7.5cm}|}
       \hline
       \textbf{Unified Relation ($\mathcal{R}_{\text{unified}}$)} &
       \textbf{Tool-Specific Source Labels} & \textbf{Architectural
@@ -442,24 +442,23 @@ ensure numerical stability when evaluating sparse graphs, submodules
 with empty edge sets, or boundary components, we employ
 \textbf{Laplace-smoothed} Jaccard formulations:
 
-\begin{definition}[Smoothed Node Jaccard Similarity]
-  The structural agreement between the extracted vertex sets $V_A$
-  and $V_B$ is defined as:
-  \begin{equation}
-    J_{\text{nodes}}(G_A, G_B) = \frac{|V_A \cap V_B| + 1}{|V_A \cup V_B| + 1}
-  \end{equation}
-\end{definition}
-
-\begin{definition}[Smoothed Edge Jaccard Similarity]
-  Let each edge $e \in E$ be uniquely indexed by the tuple $\langle
-  \text{source}, \text{target} \rangle$ (for unlabelled structural
-  comparison) or $\langle \text{source}, \text{target}, \text{label}
-  \rangle$ (for typed relational comparison). The edge agreement is
-  defined as:
-  \begin{equation}
-    J_{\text{edges}}(G_A, G_B) = \frac{|E_A \cap E_B| + 1}{|E_A \cup E_B| + 1}
-  \end{equation}
-\end{definition}
+\begin{itemize}
+  \item \textbf{Smoothed Node Jaccard Similarity}:
+    The structural agreement between the extracted vertex sets $V_A$
+    and $V_B$ is defined as:
+    \begin{equation}
+      J_{\text{nodes}}(G_A, G_B) = \frac{|V_A \cap V_B| + 1}{|V_A \cup V_B| + 1}
+    \end{equation}
+  \item \textbf{Smoothed Edge Jaccard Similarity}:
+    Let each edge $e \in E$ be uniquely indexed by the tuple $\langle
+    \text{source}, \text{target} \rangle$ (for unlabelled structural
+    comparison) or $\langle \text{source}, \text{target}, \text{label}
+    \rangle$ (for typed relational comparison). The edge agreement is
+    defined as:
+    \begin{equation}
+      J_{\text{edges}}(G_A, G_B) = \frac{|E_A \cap E_B| + 1}{|E_A \cup E_B| + 1}
+    \end{equation}
+\end{itemize}
 
 \noindent
 \textbf{Properties of the Metric}:
@@ -485,32 +484,31 @@ extracted a richer architectural graph or identify the nature of
 missing dependencies. To measure directional asymmetry, we define two
 complementary discrepancy metrics normalized by the shared agreement space:
 
-\begin{definition}[Superiority Index (Relative Novelty)]
-  The degree to which analyzer $A$ discovers entities or dependencies
-  that are absent in analyzer $B$, relative to their shared
-  intersection, is given by:
-  \begin{equation}
-    \text{Sup}(A, B) =
-    \begin{cases}
-      \frac{|A \setminus B|}{|A \cap B|} & \text{if } |A \cap B| > 0 \\
-      1.0 & \text{if } |A \cap B| = 0 \text{ and } |A \setminus B| > 0 \\
-      0.0 & \text{otherwise}
-    \end{cases}
-  \end{equation}
-\end{definition}
-
-\begin{definition}[Inferiority Index (Relative Omission)]
-  Conversely, the degree to which analyzer $A$ fails to discover
-  entities or dependencies that are successfully extracted by analyzer $B$ is:
-  \begin{equation}
-    \text{Inf}(A, B) = \text{Sup}(B, A) =
-    \begin{cases}
-      \frac{|B \setminus A|}{|A \cap B|} & \text{if } |A \cap B| > 0 \\
-      1.0 & \text{if } |A \cap B| = 0 \text{ and } |B \setminus A| > 0 \\
-      0.0 & \text{otherwise}
-    \end{cases}
-  \end{equation}
-\end{definition}
+\begin{itemize}
+  \item \textbf{Superiority Index (Relative Novelty)}:
+    The degree to which analyzer $A$ discovers entities or dependencies
+    that are absent in analyzer $B$, relative to their shared
+    intersection, is given by:
+    \begin{equation}
+      \text{Sup}(A, B) =
+      \begin{cases}
+        \frac{|A \setminus B|}{|A \cap B|} & \text{if } |A \cap B| > 0 \\
+        1.0 & \text{if } |A \cap B| = 0 \text{ and } |A \setminus B| > 0 \\
+        0.0 & \text{otherwise}
+      \end{cases}
+    \end{equation}
+  \item \textbf{Inferiority Index (Relative Omission)}:
+    Conversely, the degree to which analyzer $A$ fails to discover
+    entities or dependencies that are successfully extracted by analyzer $B$ is:
+    \begin{equation}
+      \text{Inf}(A, B) = \text{Sup}(B, A) =
+      \begin{cases}
+        \frac{|B \setminus A|}{|A \cap B|} & \text{if } |A \cap B| > 0 \\
+        1.0 & \text{if } |A \cap B| = 0 \text{ and } |B \setminus A| > 0 \\
+        0.0 & \text{otherwise}
+      \end{cases}
+    \end{equation}
+\end{itemize}
 
 \noindent
 These indices provide intuitive diagnostic semantics:
@@ -581,7 +579,7 @@ to contrast different parsing and extraction strategies:
     C/C++), providing semantic type resolution at the cost of strong
     language coupling and high runtime overhead.
   \item \textbf{Depends} \cite{depends_github}: A multi-language
-    dependency analyzer that employs ANTLR-generated grammar parsers
+    dependency analyzer that employs\linebreak ANTLR-generated grammar parsers
     for C/C++, Java, and Python, emitting Dependency Structure
     Matrices (DSM) and fine-grained call and usage dependencies.
   \item \textbf{Entangle} \cite{teruzzi_2024}: A direct predecessor
@@ -1023,7 +1021,7 @@ within test methods.
 When evaluating all extracted dependency edges, edge agreement
 averages 0.323. This metric is heavily influenced by syntactic import
 asymmetry: OmniDeps captures module-level \texttt{import} directives
-as typed \texttt{includes} edges, whereas Depends Python omits them
+as typed \texttt{includes} edges,\linebreak whereas Depends Python omits them
 entirely. When isolating purely behavioral relations by excluding
 unmodeled import statements, edge agreement reaches an average of
 0.368, with edge superiority dropping to 1.017 (down from 1.474). A
@@ -1039,7 +1037,7 @@ tools: the impact of translation-unit preprocessing when comparing
 against Depends, and a fundamental granularity mismatch when
 comparing against Arcan.
 
-When compared against \textbf{Depends}, analyzing raw source code without macro
+When compared against \textbf{Depends}, analyzing raw source code without mac\-ro
 expansion and header inclusion makes it difficult to link types across files.
 As reported in Table~\ref{tab:results_depends}, preprocessing translation units
 (\texttt{clang -E}) substantially improves concordance in both languages:
@@ -1049,7 +1047,7 @@ As reported in Table~\ref{tab:results_depends}, preprocessing translation units
     to 7.218, while edge Jaccard similarity increases from 0.115 to
     0.136. On small,
     self-contained libraries such as \texttt{antirez/sds}, both tools extract
-    identical graphs ($J_{\text{nodes}} = J_{\text{edges}} = 1.0$). On larger
+    identical\linebreak graphs ($J_{\text{nodes}} = J_{\text{edges}} = 1.0$). On larger
     systems, preprocessing achieves moderate agreement: \texttt{sqlite} reaches
     $J_{\text{nodes}} = 0.399$ and $J_{\text{edges}} = 0.340$, \texttt{redis}
     achieves $0.311$ and $0.157$, and \texttt{FFmpeg} attains $0.308$
@@ -1143,7 +1141,7 @@ analysis is provided in Section~\ref{subsec:discussion_rust_modularity}.
   \label{fig:jaccard_similarity_comparison}
 \end{figure}
 
-\subsection{RQ3: Discrepancy Analysis Across Dependency Kinds}
+\subsection[RQ3: Discrepancy Analysis Across Dependency Kinds]{RQ3: Discrepancy Analysis Across Dependency\linebreak Kinds}
 \label{subsec:results_rq3}
 \label{subsec:rq3_discordance}
 
@@ -1151,13 +1149,13 @@ To address \textbf{RQ3}, we analyze how graph discrepancies are
 distributed across the five relationship types in our unified
 taxonomy: structural containment (\texttt{belongsTo}), type
 inheritance (\texttt{isChildOf}), interface implementation
-(\texttt{isImplementationOf}), behavioral coupling
-(\texttt{dependsOn}), and module inclusion (\texttt{includes}). Table
+(\texttt{isImp}\-\texttt{lemen}\-\texttt{tation}\-\texttt{Of}), behavioral coupling
+(\texttt{dependsOn}), and module inclusion (\texttt{in}\-\texttt{cludes}). Table
 \ref{tab:categorical_discordance_java} presents the shared edges and
 directional discrepancy rates evaluated across Java repositories for
 the two baseline tools providing fine-grained edge classifications
-(Depends and Arcan). In addition, Table
-\ref{tab:categorical_discordance_python} presents the corresponding
+(Depends and Arcan).\ In addition, Table
+\ref{tab:categorical_discordance_python} pre\-sents the corresponding
 categorical breakdown for Python against Depends, evaluated under the
 harmonized extraction model that accounts for method-local test
 closures and import asymmetries.
@@ -1260,7 +1258,7 @@ majority of hierarchy edges extracted by baseline tools:
 
 Against \textbf{Depends in Java}, OmniDeps achieves an omission rate of
 $\Delta_{B \setminus A} = 8.7\%$, with class inheritance and interface
-implementation unified under \texttt{isChildOf}.
+implementation unified under \texttt{is}-\linebreak\texttt{ChildOf}.
 
 Against \textbf{Arcan in Java}, the omission rate drops to $\Delta_{B
 \setminus A} = 2.4\%$.
@@ -1357,7 +1355,7 @@ breakdown of preprocessor macro masking, header inlining, and the
 limitations of linemarker-based header stripping is presented in
 Section \ref{subsec:discussion_procedural_dilemma}.
 
-\subsection{RQ4: Runtime Scalability, Throughput, and Speedup}
+\subsection[RQ4: Runtime Scalability, Throughput, and Speedup]{RQ4: Runtime Scalability, Throughput, and Speed\-up}
 \label{subsec:results_rq4}
 
 To answer \textbf{RQ4}, we evaluated the execution runtimes,
@@ -1467,7 +1465,7 @@ Runtime speedup varies depending on the baseline tool and the target language:
 
 \paragraph{Runtime Scaling Trends.}
 Figures \ref{fig:runtime_scalability_java_python} and
-\ref{fig:runtime_scalability_c_cpp} plot execution runtimes against
+\ref{fig:runtime_scalability_c_cpp} plot execution runtimes\linebreak against
 codebase size (CLOC) on a semi-log scale across the four comparative
 languages. Across all languages, OmniDeps exhibits predictable,
 near-linear scaling with respect to the number of lines of code. Even on
@@ -1582,7 +1580,7 @@ direct answers to the four research questions guiding this evaluation:
     producing disjoint vertex sets compared to type-level graphs.
 
   \item \textbf{RQ4 (Computational Scalability and Throughput):}
-    \textit{OmniDeps achieves substantial speedups over existing
+    \textit{OmniDeps\linebreak achieves substantial speedups over existing
       tools, scaling essentially linearly with codebase size and
       completing execution in the order of seconds across the vast
     majority of repositories.}

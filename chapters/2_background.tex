@@ -37,7 +37,7 @@ implication. They can be broadly categorized as shown in Table
   \centering
   % "1\textwidth"
   \renewcommand{\arraystretch}{1.5}
-  \begin{tabularx}{\textwidth}{|p{0.2\textwidth}|X|}
+  \begin{tabularx}{\textwidth}{|L{0.2\textwidth}|X|}
     \hline
     \textbf{Category} & \textbf{Examples and Architectural Implications} \\
     \hline
@@ -184,7 +184,7 @@ a multigraph:
 The set $E_d$ contains all the logical dependencies extracted from
 the code. A dependency fundamentally exists whenever a piece of code
 (Component A) cannot function, compile, or execute without the
-presence of another (Component B). \cite{parnas79dependencies}
+presence of another (Component B). \cite{parnas_designing_1979}
 
 \begin{figure}[htpb]
   \centering
@@ -332,7 +332,7 @@ fast, robust CSTs. It generates parsers from formal grammars written
 in a Domain Specific Language (DSL) based on JavaScript.
 
 One of the most defining characteristics of Tree-sitter is its vibrant,
-community-driven ecosystem. Rather than relying on a centralized team
+comm\-unity-driven ecosystem. Rather than relying on a centralized team
 to build and maintain parsers, the ecosystem is heavily supported by
 the open-source community. Today, there are robust, production-ready
 parsers available for virtually all production grade programming languages.
@@ -412,7 +412,7 @@ through all components of a file. At any position, the cursor exposes
 the current \texttt{Node}, allowing the analyzer to extract structural
 metadata (via \texttt{node.kind()}) or the raw source string (via
 \texttt{node.utf8\_text()}).
-\\\\
+
 Listing \ref{lst:tree_sitter_parsing} illustrates the complete pipeline:
 from parser initialization to the stateful traversal of the resulting
 tree, mimicking the pattern used heavily during the analysis phase of
@@ -461,7 +461,7 @@ architectural reasons:
 \begin{itemize}
   \item \textbf{Performance and Algorithm:} Tree-sitter uses a
     \textbf{Generalized LR (GLR)} parsing algorithm. Being a
-    bottom-up parser (specifically LR(1)), it is generally faster and
+    bottom-up parser, it is generally faster and
     more efficient than top-down parsers like ANTLR's Adaptive LL(*).
     The time complexity for parsing is primarily bounded to $O(n)$,
     making it highly suitable for analyzing massive codebases.

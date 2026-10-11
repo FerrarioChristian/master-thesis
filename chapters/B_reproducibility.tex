@@ -65,9 +65,11 @@ The project includes custom benchmarks to accurately measure false
 positives and false negatives on the AST abstraction across the
 supported languages.
 To run a specific benchmark:
+{\small
 \begin{verbatim}
 omnideps benchmark run tests/benchmarks/benchmark-rust -o /output_dir
 \end{verbatim}
+}
 To execute the entire suite and generate the aggregated CSV report:
 \begin{verbatim}
 omnideps benchmark all -o /output_dir
@@ -106,7 +108,7 @@ cargo test
 \section{Benchmarking Pipeline}
 To orchestrate multi-tool executions and evaluate graph similarity across the
 dataset, the companion benchmarking framework \textit{Graph-Synchron} is
-open-source and available at:
+open-\linebreak source and available at:
 \begin{center}
   \url{https://github.com/FerrarioChristian/graph-synchron}
 \end{center}
@@ -114,7 +116,7 @@ open-source and available at:
 \subsection*{Automated Benchmarking}
 The \texttt{measurer.py} script coordinates the execution of static analysis
 tools across target repositories, recording runtimes and storing extracted
-graphs into a shared evaluation archive:
+graphs into a\linebreak shared evaluation archive:
 \begin{verbatim}
 python3 measurer.py -l Java -t omnideps depends
 \end{verbatim}

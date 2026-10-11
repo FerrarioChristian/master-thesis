@@ -16,7 +16,7 @@ comprising five homogeneous symbol families, summarized in Table
   \centering
   \small
   \begin{adjustbox}{max width=\textwidth}
-    \begin{tabular}{|l|l|l|p{5.5cm}|}
+    \begin{tabular}{|l|l|l|L{5.5cm}|}
       \hline
       \textbf{Conceptual Family} & \textbf{Typographic Style} &
       \textbf{Primary Symbols} & \textbf{Semantics and Scope} \\ \hline
@@ -51,7 +51,7 @@ comprising five homogeneous symbol families, summarized in Table
 The model relies on the following standard algebraic and set theory conventions:
 \begin{itemize}
   \item \textbf{Tuples (Cartesian Product)} $\langle x_1, x_2, \dots,
-    x_n \rangle$: Represent composite structures (corresponding to
+    x_n \rangle$:\ Represent composite\linebreak structures (corresponding to
     \texttt{structs} in the source code). Each element of the tuple
     defines an essential property of the entity.
   \item \textbf{Disjoint Union (Sum Type)} $A \mid B \mid C$:
@@ -105,7 +105,7 @@ formal Intermediate Representation (IR) and the analysis pipeline.
     from the implementing body.
   \item $\mathcal{B}$ (\textbf{Block}): A lexical execution block
     $\langle \vec{f}_{local}, \vec{\tau}_{calls}, \vec{\tau}_{inst},
-    \vec{\tau}_{accesses}, \vec{\tau}_{casts}, \vec{\mathcal{B}}_{sub} \rangle$.
+    \vec{\tau}_{accesses}, \vec{\tau}_{casts},$ $\vec{\mathcal{B}}_{sub} \rangle$.
   \item $\mathcal{F}$ (\textbf{Function}): A universal functional component
     $\langle \pi, \sigma, \vec{\theta}, \mathcal{B}^?,
     \mathbb{B}_{ctor}, \vec{\tau}_{ann} \rangle$,
@@ -151,14 +151,14 @@ formal Intermediate Representation (IR) and the analysis pipeline.
     containing a symbol table, supertype inheritance links, and imports.
   \item $\mathcal{E}$ (\textbf{Scope Tree}): The workspace-wide hierarchical
     tree of $\Sigma$ scopes, enabling lexical scope climbing.
-  \item $\Delta$ (\textbf{Symbol Stack}): The ephemeral stack of lexical frames
-    $\Delta = [s_1, \dots, s_n]$ where each frame $s_i : \mathcal{I}
+  \item $\Delta$ (\textbf{Symbol Stack}):\ The ephemeral stack of lexical frames
+    $\Delta\:{=}\:[s_1, \dots, s_n]$ where each frame $s_i : \mathcal{I}
     \to \mathcal{Q}$
     maps local identifiers to queries during Query Building.
   \item $\mathcal{P}$ (\textbf{Primitive Registry}): The language-specific table
     of built-in primitive type keywords.
   \item $\mathcal{K}$ (\textbf{Language Configuration}): The configuration tuple
-    governing language-specific semantic features (receiver keywords,
+    governing lan\-guage-specific semantic features (receiver keywords,
     transitive imports, type alias conventions).
   \item $\Gamma$ (\textbf{Execution Context}): The evaluation context
     $\Gamma = \langle \mathcal{E}, \mathcal{P}, \mathcal{K},

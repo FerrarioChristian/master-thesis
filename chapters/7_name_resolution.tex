@@ -5,7 +5,8 @@
 \label{sec:resolution_overview}
 
 The name resolution phase transforms the symbolic type references
-($\tau = \texttt{Unresolved}$) produced by the extraction phase into
+($\tau =$ \texttt{Un}\-\texttt{re}\-\texttt{solved}) produced by the
+extraction phase into
 semantically resolved pointers. Formally:
 $$\rho : \mathcal{D} \to \mathcal{D}_{\text{res}}$$
 where $\mathcal{D}$ is the domain of extracted component hierarchies
@@ -20,7 +21,7 @@ lowered through the Query Algebra ($\mathcal{Q}$) and evaluated into
 one of the six
 terminal or compound post-resolution states (as formalized in Chapter
   \ref{ch:ir_formalization}
-and Chapter \ref{ch:analysis_process}): \texttt{Resolved}, \texttt{External},
+and Chapter \ref{ch:analysis_pipeline}): \texttt{Resolved}, \texttt{External},
 \texttt{Primitive}, \texttt{Union}, \texttt{EvaluatedAccess}, or
 \texttt{Failed}.
 This phase operates entirely on the IR domain and is independent of
@@ -118,7 +119,8 @@ three navigation primitives:
     then search for member $\iota \in \mathcal{I}$ within that scope,
     including inherited
     members from super-types. This models qualified access paths such
-    as \texttt{obj.field}, \texttt{Module::Type}, or \texttt{package.Class}.
+    as \texttt{obj.field}, \texttt{Module::Type}, or
+    \texttt{pack}\-\texttt{age.}\-\texttt{Class}.
   \item $\texttt{Call}(q)$: \textbf{Transitive invocation / Return
     type evaluation}.
     Evaluate sub-query $q$ to obtain a callable symbol (function,
@@ -168,7 +170,7 @@ and \textit{type-level invocation queries}:
     (e.g., \texttt{validate()}) constitutes a control-flow coupling.
     Here, the target of the call
     must resolve to the \textbf{callable entity itself}
-    ($\texttt{Find}(\texttt{validate})$),
+    ($\texttt{Find}($\texttt{val}\-\texttt{i}\-\texttt{date}$)$),
     allowing OmniDeps to emit a direct $\texttt{Calls}$ edge between
     the caller and the callee.
     Wrapping such statements in $\texttt{Call}(\cdot)$ would evaluate
@@ -240,7 +242,7 @@ the builder proceeds as follows:
         targets} ($c \in b.\text{calls}$),
         \textit{instantiations} ($i \in b.\text{instantiates}$), and
         \textit{direct accesses}
-        ($a \in b.\text{accesses}$), the builder invokes
+        ($a \in b.\text{ac}$\-$\text{cesses}$), the builder invokes
         \texttt{substitute\_type} with $\texttt{is\_call} = \text{false}$.
         The query directly targets the callee symbol or accessed
         member, preserving the target's identity
@@ -249,7 +251,7 @@ the builder proceeds as follows:
         variable type inference
         (e.g., extracting the inferred type of an untyped local
           declaration $x = f()$ in
-        Section \ref{sec:heuristics}), the resulting query is wrapped
+        Section \ref{sec:classifiers}), the resulting query is wrapped
         in $\texttt{Call}(\cdot)$
         (i.e., $q \leftarrow \texttt{Call}(q)$), signaling the
         executor to unpack the callee's return type.
@@ -317,7 +319,8 @@ destroyed. Intra-procedural type references in the IR are now:
   \item \texttt{TypeRef::ResolutionQuery($q$)}: An algebraic
     expression ready for global evaluation against the Scope Tree.
   \item Composite type structures (\texttt{Generic}, \texttt{TypeVar},
-    \texttt{Union}, and \texttt{EvaluatedAccess}) whose constituent
+      \texttt{Union}, and
+    \texttt{Evaluated}\-\texttt{Ac}\-\texttt{cess}) whose constituent
     references contain substituted queries.
 \end{itemize}
 
@@ -447,7 +450,7 @@ memory references, this implicit pointer architecture provides key guarantees:
     primitive 64-bit integer,
     inherently immune to circular reference memory leaks;
   \item Traversal algorithms can simultaneously borrow the arena
-    immutably while traversing parent
+    immutably \linebreak while traversing parent
     and child indices freely, ensuring absolute compile-time memory
     safety without locks or runtime checks;
   \item Canonical path reconstruction (computing the fully qualified
@@ -522,7 +525,8 @@ from the workspace modules:
     type queries.
   \item \textbf{Type Parameters and Phantom Scopes}:
     When registering a generic structured type or function,
-    \texttt{register\_structured\_type} creates synthetic placeholder scopes,
+    \texttt{register\_structured\_type} creates syn\-thet\-ic
+    placeholder scopes,
     termed \textit{Phantom Scopes} ($\Sigma_{\text{phantom}}$), for
     each generic type
     parameter $\theta = \langle \iota, \vec{\tau}_{bounds} \rangle$.
@@ -697,7 +701,8 @@ $$\pi' = \pi \cup \langle \iota \rangle$$
 producing $\text{EvaluatedAccess}(\text{Base}(\pi), \text{Base}(\pi'))$.
 This conservative fallback guarantees that references to external
 library members
-(such as \texttt{requests.Session.get}) or unannotated dynamic attributes are
+(such as \texttt{requests.Ses}\-\texttt{sion.get}) or unannotated
+dynamic attributes are
 preserved, enabling Phase 3 to project valid architectural dependency
 edges toward
 external endpoints.
@@ -764,7 +769,7 @@ type-level queries and behavioral call targets:
     $\texttt{resolve\_type} = \text{true}$. The sub-query $q$ is
     evaluated to locate the callee's
     symbol in the Scope Tree. When a callable symbol is found
-    (represented as $\texttt{Symbol::Value}(\tau_{\text{ret}})$
+    (represented as \texttt{Symbol::}\-\texttt{Value}$(\tau_{\text{ret}})$
     carrying the declared or inferred return type), the executor
     unpacks and returns $\tau_{\text{ret}}$
     rather than the callee's own identifier path. If
@@ -807,12 +812,12 @@ the structured type itself:
 \end{itemize}
 
 During syntactic extraction (Phase 1), the expressions recorded in
-\texttt{Block::instantiates}
+\texttt{Block::}\-\texttt{instantiates}
 and \texttt{Block::calls} capture the nominal identifier of the
 target class (e.g.,
-$\text{Unresolved}(\langle \texttt{Car} \rangle)$). When Phase 2
+Un\-re\-solved$(\langle \texttt{Car} \rangle)$). When Phase 2
 evaluates this query,
-standard lexical lookup initially yields the structured type itself:
+standard lexical lookup initially yields the structured type itself:\
 $\text{Resolved}(\langle \texttt{models}, \texttt{Car} \rangle)$.
 
 However, from an architectural and behavioral standpoint, invoking an
@@ -848,10 +853,10 @@ all resolved references in \texttt{Block::calls} and
     is specialized
     by appending the constructor identifier:
     $$\pi_{\text{ctor}} = \pi \cup \langle \iota_{\text{ctor}} \rangle$$
-    transforming $\text{Resolved}(\langle \texttt{models},
-    \texttt{Car} \rangle)$ into
-    $\text{Resolved}(\langle \texttt{models}, \texttt{Car},
-    \texttt{\_\_init\_\_} \rangle)$.
+    transforming $\text{Resolved}(\langle \texttt{models},$
+    $\texttt{Car} \rangle)$ into
+    $\text{Resolved}(\langle \texttt{models},$ $\texttt{Car},$
+    \texttt{\_\_in}\-\texttt{it\_\_}$\rangle)$.
   \item If the reference is a compound
     $\text{EvaluatedAccess}(\tau_{\text{base}}, \tau_{\text{inner}})$,
     the redirection recursively applies to $\tau_{\text{inner}}$,
@@ -866,7 +871,8 @@ all resolved references in \texttt{Block::calls} and
 
 This mechanism allows Phase 3 to cleanly differentiate between pure type-level
 instantiations and explicit behavioral constructor calls, emitting
-\texttt{DependencyKind::ConstructorCall} whenever a dedicated
+\texttt{Depend}\-\texttt{ency}\-\texttt{Kind::}\-\texttt{ConstructorCall}
+whenever a dedicated
 constructor method is
 invoked.
 
@@ -927,9 +933,9 @@ be the active resolution configuration. The engine evaluates:
 \begin{equation}
   \text{is\_type\_or\_alias}(\tau) =
   \begin{cases}
-    \text{true} & \text{if } \tau \in \mathcal{P} \\
-    & \quad \lor \ \text{lookup}(\mathcal{E}, \tau) \in \{
-    \text{Symbol::Type}, \text{Symbol::TypeAlias} \} \\
+    \text{true} & \text{if } \tau \in \mathcal{P} \lor
+    \text{lookup}(\mathcal{E}, \tau) \in \\
+    & \quad \{ \text{Symbol::Type}, \text{Symbol::TypeAlias} \} \\
     \text{false} & \text{otherwise}
   \end{cases}
 \end{equation}
@@ -964,10 +970,10 @@ strictly language-agnostic.
 \label{sec:evaluated_access}
 
 A fundamental architectural challenge in static dependency extraction
-arises when
-resolving chained member expressions (such as field dereferences
+aris-\linebreak es when
+resolving chained member expressions (such as field dereferences \linebreak
   \texttt{order.customer.address}
-or method invocations \texttt{conn.getMetaData().getTables()}). Such
+or method invocations \texttt{conn.getMetaData().getTa}\-\texttt{bles()}). Such
 expressions impose
 a dual semantic requirement:
 
@@ -1010,14 +1016,15 @@ where:
   \item $\tau_{\text{path}}$ captures the accumulated qualified path
     of the concrete
     syntactic component accessed in the source code (e.g.,
-    $\text{Resolved}(\langle \texttt{Order}, \texttt{customer} \rangle)$);
+      $\text{Resolved}(\langle \texttt{Order},$
+    \texttt{cus}\-\texttt{tom}\-\texttt{er}$\rangle)$);
   \item $\tau_{\text{type}}$ captures the evaluated structural type
     of that component
-    (e.g., $\text{Resolved}(\langle \texttt{Customer} \rangle)$), supplying the
+    (e.g., Re\-solved$(\langle \texttt{Customer} \rangle)$), supplying the
     target scope for subsequent member resolution.
 \end{itemize}
 
-During query execution in \texttt{executor.rs},
+During query execution in \texttt{executor.rs},\,%
 \texttt{EvaluatedAccess} operates
 through an unwrapping and re-wrapping protocol:
 \begin{itemize}
@@ -1039,11 +1046,11 @@ through an unwrapping and re-wrapping protocol:
     chain, the parent
     itself is encapsulated as the base access.
   \item When resolving symbols in \texttt{symbol\_to\_typeref}, looking up a
-    \texttt{Symbol::Value} or \texttt{Symbol::TypeAlias} with
+    \texttt{Symbol::}\-\texttt{Value} or \texttt{Symbol::TypeAlias} with
     $\text{resolve\_type} =
     \text{true}$ automatically packages the symbol's declared path
     and its resolved
-    type into an \texttt{EvaluatedAccess} pair.
+    type into an \texttt{Eval}\-\texttt{u}\-\texttt{ated}\-\texttt{Access} pair.
   \item Global path resolution (\texttt{find\_global}) similarly
     encapsulates the
     final scope into $\text{EvaluatedAccess}(\text{Resolved}(\pi),
@@ -1064,7 +1071,8 @@ member access chain.
   \centering
   \includegraphics[width=\textwidth]{images/name_resolution/evaluated_access_tracking.png}
   \caption{Dual-tracking evaluation of chained member access
-    \texttt{user.address.zip}: maintaining the concrete syntactic
+    \texttt{user.ad}\protect\-\texttt{dress.}\protect\-\texttt{zip}:
+    maintaining the concrete syntactic
     access path alongside the resolved structural type for
   architectural dependency projection.}
   \label{fig:evaluated_access_tracking}
@@ -1109,7 +1117,8 @@ primary scenarios:
 \end{enumerate}
 
 During Phase 2a (Query Building), the substitution function
-\texttt{substitute\_type} applies intra-procedural lexical substitutions
+\texttt{substitute\_}\-\texttt{type} applies intra-procedural lexical
+substitutions
 recursively across each constituent member of the union.
 
 During Phase 2b (Query Execution), query evaluation distributes homomorphically
@@ -1124,7 +1133,8 @@ $\texttt{Resolved}$, $\texttt{Primitive}$, or $\texttt{External}$).
 Finally, during Phase 3 (Graph Construction, Chapter
 \ref{ch:graph_construction}),
 the dependency projector processes \texttt{TypeRef::Union} by flattening its
-underlying targets (\texttt{flat\_map}). Rather than heuristically selecting a
+underlying targets (\texttt{flat\_}\-\texttt{map}). Rather than
+heuristically selecting a
 single candidate or dropping ambiguous alternatives, OmniDeps emits dependency
 edges toward all resolved targets present within the union. This conservative
 strategy ensures that all potential behavioral and structural couplings induced
@@ -1161,10 +1171,10 @@ Constraint bounds undergo a two-phase evaluation lifecycle:
     $\vec{\tau}_{\text{bounds}}$
     are recorded as raw or locally substituted type references.
   \item \textbf{Bound Evaluation (Phase 2b)}: During query execution,
-    $\texttt{evaluate\_typeref\_inner}$ evaluates each bound $\tau
+    \texttt{evaluate\_}\-\texttt{typeref\_inner} evaluates each bound $\tau
     \in \vec{\tau}_{\text{bounds}}$
     against the Scope Tree. If a bound resolves to a known structured type
-    ($\text{Resolved}(\pi)$ or $\text{External}(\pi)$), the phantom scope
+    ($\text{Resolved}(\pi)$ or Ex\-ter\-nal$(\pi)$), the phantom scope
     inherits the member suite of that bound.
 \end{enumerate}
 
@@ -1208,8 +1218,9 @@ recursively across the member's return type or field type:
   \text{Generic}(\sigma(\tau_b), \vec{\sigma}(\vec{\tau}_a)) \\
   \sigma(\text{Union}(\vec{\tau})) &= \text{Union}(\vec{\sigma}(\vec{\tau}))
 \end{align*}
-Thus, if \texttt{Repository<T>} defines \texttt{find(id: ID) -> T}, evaluating
-\texttt{repo.find(1)} on a \texttt{Repository<User>} substitutes $T
+Thus, if \texttt{Repository<T>} defines \texttt{find(id:} \texttt{ID)
+-> T}, evaluating
+\texttt{repo.}\-\texttt{find(1)} on a \texttt{Repository<User>} substitutes $T
 \mapsto \text{User}$,
 resolving the invocation's return type directly to \texttt{User}.
 
@@ -1218,7 +1229,7 @@ resolving the invocation's return type directly to \texttt{User}.
 When evaluating multi-segment dot-accesses (e.g.,
 \texttt{user.profile.settings}),
 the intermediate structural transitions are preserved using
-$\text{TypeRef::EvaluatedAccess}(\tau_{\text{path}}, \tau_{\text{type}})$.
+TypeRef::Evaluated\-Access$(\tau_{\text{path}}, \tau_{\text{type}})$.
 This composite reference retains both the evaluated path and the resolved
 structural type, enabling Phase 3 to emit dependency edges for every
 intermediate component participating in the access chain.
@@ -1260,22 +1271,23 @@ The flattening algorithm operates as follows:
   \item \textbf{Trait Handling vs.\ Deref Coercion}:
     \begin{itemize}
       \item Standard trait implementations
-        (\texttt{ib.implements\_trait}) are \textit{not}
+        (\texttt{ib.implements\_trait}) are \textit{not} \linebreak
         treated as structural inheritance in the Scope Tree; instead,
         the trait reference is
         preserved directly on the IR \texttt{ImplBlock} node,
         resolved to its canonical symbol
-        during Phase 2b (\texttt{execute\_impl\_block}), and used in
+        during Phase 2b
+        (\texttt{execute\_}\-\texttt{impl\_}\-\texttt{block}), and used in
         Phase 3 (Chapter \ref{ch:graph_construction})
         to emit an explicit $\text{TargetType}
-        \xrightarrow{\text{Implements}} \text{Trait}$
+        \!\xrightarrow{\!\text{Implements}\!} \text{Trait}$
         architectural dependency.
       \item The sole exception is Rust's \texttt{Deref} trait: when
         an \texttt{ImplBlock}
         implements \texttt{Deref} and defines an associated type
         alias \texttt{type Target = U},
         the target type $U$ is appended to the implementing type's
-        \texttt{super\_types} list
+        \texttt{super\_}\-\texttt{types} list
         (Section \ref{sec:inheritance_resolution}). This allows the
         inheritance search algorithm
         to naturally traverse method dereferencing chains without
@@ -1303,6 +1315,7 @@ data-driven Primitive Registry. The registry is loaded from a JSON
 file (\texttt{primitives.json}) that maps language names to lists of
 primitive type identifiers:
 
+{\footnotesize
 \begin{verbatim}
 {
   "rust": ["i8", "i16", "i32", "i64", "u8", ..., "bool", "str", "String", ...],
@@ -1311,6 +1324,7 @@ primitive type identifiers:
   ...
 }
 \end{verbatim}
+}
 
 When analyzing a multi-language workspace, the registries for all
 encountered languages are merged into a single combined registry.
@@ -1334,7 +1348,7 @@ their effects.
 \begin{table}[htpb]
   \centering
   \small
-  \begin{tabularx}{\textwidth}{|l|l|X|}
+  \begin{tabularx}{\textwidth}{|l|l|Y|}
     \hline
     \textbf{Parameter} & \textbf{Type} & \textbf{Effect on Resolution} \\ \hline
     \texttt{transitive\_imports} & \texttt{bool} & Enables following
@@ -1414,7 +1428,7 @@ enforces convergence through four structural mechanisms:
     delegates recursively to $\text{parent}(\Sigma)$. This climbing traversal
     is strictly monotonic with respect to scope depth: each ascending step
     decreases depth by one ($\text{depth}(\text{parent}(\Sigma)) =
-    \text{depth}(\Sigma) - 1$).
+    \text{depth}(\Sigma)$ $- 1$).
     Because the Scope Tree has finite depth and terminates at the unique root
     scope $\Sigma_{\text{root}}$ (where
     $\text{parent}(\Sigma_{\text{root}}) = \texttt{None}$),

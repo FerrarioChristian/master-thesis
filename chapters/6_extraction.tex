@@ -37,7 +37,7 @@ and summarized in Table \ref{tab:extraction_layers}):
 \begin{table}[htpb]
   \centering
   \small
-  \begin{tabularx}{\textwidth}{|c|>{\raggedright\arraybackslash}p{4.2cm}|>{\raggedright\arraybackslash}X|}
+  \begin{tabularx}{\textwidth}{|c|L{4.5cm}|Y|}
     \hline
     \textbf{Layer} & \textbf{Module} & \textbf{Responsibility} \\ \hline
     1 (Top) & \texttt{extraction/mod.rs} & Orchestration: Tree-sitter
@@ -130,9 +130,9 @@ module vector is still empty, a temporary module named \texttt{"root"} is
 inserted to collect declarations before the Module Grouping Strategy organizes
 them into their final namespace paths.
 
-\paragraph{Pending Attributes Mechanism}
+\subsubsection{Pending Attributes Mechanism}
 
-Annotations, decorators or attributes (e.g., Python's \texttt{@staticmethod},
+Annotations, decorators or attributes (e.g., Python's \texttt{@static}\-\texttt{method},
 Rust's \texttt{\#[derive(Debug)]}, Java's \texttt{@Override}) are
 syntactically placed \textit{before} the component they annotate. The
 CST represents them as sibling nodes, not as children of the
@@ -175,7 +175,7 @@ precedence over their member declarations.
 The dispatcher's return type is a \texttt{ParsedItem} enum with four
 variants: \texttt{Component} (for modules, types, functions, fields,
 type aliases), \texttt{ImplBlock}, \texttt{Imports} (which may return
-multiple imports from a single node), and \texttt{Attribute}.
+multiple imports from a single node), and \texttt{Attri}\-\texttt{bute}.
 
 \subsection{Classification Heuristics}
 \label{sec:classifiers}
@@ -201,7 +201,7 @@ or syntactic context must \textit{not} indicate a different semantic role).
 \begin{table}[htpb]
   \centering
   \footnotesize
-  \begin{tabularx}{\textwidth}{|l|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|}
+  \begin{tabularx}{\textwidth}{|l|Y|Y|}
     \hline
     \textbf{Classifier} & \textbf{Positive Conditions} &
     \textbf{Negative Exclusions} \\ \hline
@@ -225,7 +225,7 @@ or syntactic context must \textit{not} indicate a different semantic role).
     \texttt{is\_closure} & \texttt{closure\_expression},
     \texttt{lambda\_expression}, \texttt{lambda}, \texttt{arrow\_function},
     \texttt{function\_expression}, \texttt{func\_literal},
-    \texttt{lambda\_literal}, \texttt{anonymous\_method\_expression}
+    \texttt{lambda\_literal}, \texttt{anonymous\_method\_}\-\texttt{expression}
     & None (exact match) \\ \hline
     \texttt{is\_import} & \texttt{use\_declaration},
     \texttt{import\_declaration},
@@ -234,7 +234,7 @@ or syntactic context must \textit{not} indicate a different semantic role).
     \texttt{is\_impl\_block} & \texttt{impl\_item},
     \texttt{impl\_block} & None \\ \hline
     \texttt{is\_free\_variable} & \texttt{static\_item}, \texttt{const\_item},
-    \texttt{global\_variable\_declaration}; or top-level \texttt{declaration},
+    \texttt{global\_variable\_}\-\texttt{declaration}; or top-level \texttt{declaration},
     \texttt{variable\_declaration} & Ancestor is function, method,
     body, or block scope;
     or contains nested \texttt{function\_declarator} \\ \hline
@@ -255,7 +255,7 @@ Some representative examples:
     field: value \}}), not a type definition. The exclusion of
     ``expression'' prevents this from being classified as a structured type.
   \item \texttt{constructor\_declaration} contains ``struct'' (via
-    ``con\textbf{struct}or'') and must be excluded.
+    ``con\textbf{struct}or'') and \linebreak must be excluded.
   \item \texttt{class\_body} contains ``class'' but is the body of a
     class, not the class declaration itself. The exclusion of
     ``body'' prevents this match.
@@ -279,7 +279,7 @@ ignored); if its parent is a \texttt{translation\_unit} or
 \texttt{declaration\_list}, it is classified as a global variable.
 
 A specialized helper, \texttt{has\_nested\_function\_declarator},
-unrolls nested declarators to disambiguate function
+unrolls nested de\-clar\-a\-tors to disambiguate function
 declarations from variable declarations that happen to contain
 function pointer syntax.
 
@@ -306,7 +306,7 @@ content of a class, struct, interface, trait, or enum definition:
   \item The \texttt{StructuredTypeKind} is determined by inspecting
     the node kind and its textual content (\texttt{Class},
       \texttt{Struct}, \texttt{Interface}, \texttt{Trait},
-    \texttt{Enum}, \texttt{EnumVariant}).
+    \texttt{Enum}, \texttt{EnumVari}\-\texttt{ant}).
   \item Fields, methods, super-types, nested types, and annotations
     are extracted using the respective extractors.
 \end{enumerate}
@@ -349,7 +349,7 @@ The \texttt{try\_parse\_function} function extracts:
   \item \textbf{Parameters}: Formal parameters extracted via
     \texttt{extract\_parameters}, including parameter names and type references.
   \item \textbf{Return Type}: The declared return type, extracted via
-    \texttt{extract\_return\_type}.
+    \texttt{extract\_ret}\-\texttt{urn\_type}.
   \item \textbf{Constructor Flag}: Marked as a constructor when the node kind
     indicates constructor semantics.
   \item \textbf{Annotations}: Metadata decorators or compiler attributes
@@ -375,7 +375,7 @@ into three categories:
   \item \textbf{Local Variable Declarations}: Nodes matching known
     declaration kinds (\texttt{let\_declaration},
       \texttt{local\_variable\_declaration},
-      \texttt{variable\_declaration}, \texttt{lexical\_declaration},
+      \texttt{variable\_declara}\-\texttt{tion}, \texttt{lexical\_declaration},
     etc.) are extracted as \texttt{Field} entries in the block's
     \texttt{declarations} vector. When a variable has no explicit
     type annotation, the function \texttt{infer\_variable\_type}
@@ -385,7 +385,7 @@ into three categories:
         is inferred as \texttt{Foo}.
       \item \texttt{Bar::new()} $\to$ the type is inferred as the
         return type of \texttt{Bar::new}, encoded as a
-        \texttt{ResolutionQuery(Call(Extract(Find(Bar), new)))}.
+        \texttt{ResolutionQuery(Call(Extract(Find(Bar),} \texttt{new)))}.
       \item In dynamically typed code lacking type annotations \cite{pep484},
         untyped assignments like \texttt{x = Admin()} produce a
         \texttt{Query::Call} to resolve the callable's return type.
@@ -435,8 +435,8 @@ into three categories:
         \end{itemize}
         When callable identifiers or expressions are enclosed in protective
         parentheses (e.g., \texttt{(func)()} or macro expansions), the
-        function \\ \texttt{extract\_call\_path} recursively unwraps
-        \texttt{parenthesized\_expression} CST nodes. This strips literal
+        function \texttt{extr}\-\texttt{act\_call\_path} recursively unwraps
+        \texttt{parenthesized\_expression} \linebreak CST nodes. This strips literal
         punctuation tokens and yields clean identifier sequences without
         attempting semantic resolution during syntactic extraction.
       \item \textbf{Field and Member Accesses}: Explicit property
@@ -448,7 +448,7 @@ into three categories:
 
 The behavioral dependency search \textbf{skips} nested block nodes to
 avoid double-counting: dependencies inside sub-blocks are captured by
-the recursive \texttt{extract\_block} call, not by
+the recursive \texttt{extr}\-\texttt{act\_block} call, not by
 \texttt{find\_behavioral\_deps}. This guarantees that each dependency
 is recorded at the exact lexical scope level where it occurs.
 
@@ -476,7 +476,7 @@ The \texttt{try\_parse\_impl\_block} function extracts:
 \begin{itemize}
   \item The target type (\texttt{impl\_for}), as a \texttt{TypeRef}.
   \item The optionally implemented trait
-    (\texttt{implements\_trait}), extracted by searching for the
+    (\texttt{implements\_trait}), extracted by \linebreak searching for the
     \texttt{for} keyword in the node text to distinguish \texttt{impl
     Type} from \texttt{impl Trait for Type}.
   \item Methods, nested types, and type aliases defined within the block.
@@ -541,7 +541,7 @@ functions that interact directly with CST nodes.
     (\texttt{name}, \texttt{type\_identifier}, \texttt{identifier}),
     with a fallback to the \texttt{declarator} field for C and C++
     declarations. The declarator fallback recursively descends nested
-    declarator nodes (\texttt{pointer\_declarator},
+    declarator nodes (\texttt{pointer\_decla}\-\texttt{rator},
     \texttt{function\_declarator}, \texttt{reference\_declarator}) to
     reach the base identifier. The declarator unwrapping accepts
     both normal identifiers and \texttt{destructor\_name} nodes, preserving
@@ -549,8 +549,8 @@ functions that interact directly with CST nodes.
     \texttt{\textasciitilde Server})
     to distinguish them from constructors and prevent naming collisions.
   \item \textbf{\texttt{extract\_qualified\_name}}: Extracts
-    multi-part names by first trying named fields and applying
-    \texttt{split\_qualified\_name}, then falling back to collecting
+    multi-part names by first trying \linebreak named fields and applying
+    \texttt{split\_quali}\-\texttt{fied\_name}, then falling back to collecting
     all child nodes of type \texttt{identifier} or
     \texttt{type\_identifier} into a vector.
 \end{itemize}
@@ -584,7 +584,7 @@ specific strategies:
     parameter is extracted as $\tau_i \in \vec{\tau}_{args}$, constructing
     $\text{TypeRef::Generic}(\tau_{base}, \vec{\tau}_{args})$.
   \item \textbf{Direct identifiers}: If the node itself is an
-    \texttt{identifier}, \texttt{type\_identifier},
+    \texttt{identifier}, \texttt{type\_identi}\-\texttt{fier},
     \texttt{scoped\_identifier}, \texttt{scoped\_type\_identifier},
     \texttt{field\_access}, \\ \texttt{field\_expression}, or
     \texttt{attribute}, its text is extracted directly and split into
@@ -640,8 +640,8 @@ The extraction pipeline operates in four coordinated steps:
     \texttt{parameters}) or child
     node kinds (\texttt{type\_parameter\_list},
     \texttt{template\_parameter\_list}).
-    For C++, if a class or function definition is enclosed within a
-    \texttt{template\_declaration} node, the template parameters are
+    For C++, if a \linebreak class or function definition is enclosed within a
+    \texttt{template\_decla}\-\texttt{ration} node, the template parameters are
     harvested from the
     parent container.
   \item \textbf{Parameter and Inline Bound Extraction}: Each child
@@ -662,7 +662,7 @@ The extraction pipeline operates in four coordinated steps:
     the specified trait bounds to the corresponding $\vec{\tau}_{bounds}$.
   \item \textbf{Generic Base Class Extraction}: Where type parameters
     on classes are declared by inheriting from \texttt{Generic[T, U]},
-    \texttt{extract\_generic\_base\_params} inspects the
+    \texttt{extract\_generic\_base\_}\-\texttt{params} inspects the
     superclass list to extract
     the type variables as formal type parameters on the structured type.
 \end{enumerate}

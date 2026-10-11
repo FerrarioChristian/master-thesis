@@ -318,7 +318,7 @@ operational contexts, and execution scopes.
 \begin{table}[htpb]
   \centering
   \small
-  \begin{tabularx}{\textwidth}{|l|l|X|l|}
+  \begin{tabularx}{\textwidth}{|l|l|Y|l|}
     \hline
     \textbf{Phase} & \textbf{Transformation} & \textbf{Context} &
     \textbf{Scope} \\ \hline
@@ -354,7 +354,7 @@ This pipeline architecture establishes several key guarantees:
     the environment.
     Consequently, evaluating type queries in any order yields identical results.
   \item \textbf{Guaranteed Termination}: The pipeline terminates for
-    any finite workspace:
+    any finite work\-space:
     the CST traversal is bounded by the finite node depth of parse
     trees, lexical scope climbing
     is bounded by the finite height of the Scope Tree $\mathcal{E}$,

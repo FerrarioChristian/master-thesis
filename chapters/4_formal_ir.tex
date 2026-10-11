@@ -524,12 +524,12 @@ active during extraction:
 \begin{itemize}
   \item \textbf{File-Level Package Declarations
     (\texttt{PackageDeclBased})}: In languages such as Java, the
-    compilation unit declares its enclosing namespace through a
+    compilation unit declares its enclosing namespace with a
     single statement at the top of the file (e.g., \texttt{package
     com.xmpl.service}). This statement assigns the entire file to
     the designated logical package without wrapping declarations in
     syntactic braces.
-  \item \textbf{Filesystem-Inferred Hierarchies (\texttt{FileBased},
+  \item \textbf{Filesystem-Inferred Hierarchy (\texttt{FileBased},
     \texttt{DirectoryBased})}: Languages like Python and Rust infer
     module namespaces directly from the filesystem layout.
     Directories represent parent packages or modules, while
@@ -560,16 +560,18 @@ across the supported languages.
 \begin{table}[htbp]
   \centering
   \small
-  \begin{tabular}{|l|c|c|c|c|c|}
-    \hline
-    \textbf{Language} & \textbf{FileBased} & \textbf{DirBased} &
-    \textbf{PkgDecl} & \textbf{Namespace} & \textbf{InlineMod} \\ \hline
-    \textbf{Java}     & False & False & True  & False & False \\ \hline
-    \textbf{Rust}     & True  & True  & False & False & True  \\ \hline
-    \textbf{Python}   & True  & True  & False & False & False \\ \hline
-    \textbf{C++}      & False & False & False & True  & False \\ \hline
-    \textbf{C}        & False & False & False & False & False \\ \hline
-  \end{tabular}
+  \begin{adjustbox}{max width=\textwidth}
+    \begin{tabular}{|l|c|c|c|c|c|}
+      \hline
+      \textbf{Language} & \textbf{FileBased} & \textbf{DirBased} &
+      \textbf{PkgDecl} & \textbf{Namespace} & \textbf{InlineMod} \\ \hline
+      \textbf{Java}     & False & False & True  & False & False \\ \hline
+      \textbf{Rust}     & True  & True  & False & False & True  \\ \hline
+      \textbf{Python}   & True  & True  & False & False & False \\ \hline
+      \textbf{C++}      & False & False & False & True  & False \\ \hline
+      \textbf{C}        & False & False & False & False & False \\ \hline
+    \end{tabular}
+  \end{adjustbox}
   \caption{Module organization strategies across supported languages.}
   \label{tab:lang_config_modules}
 \end{table}
@@ -586,8 +588,8 @@ transitively. Conversely, in Java and Rust, imports are file-local by
 default and require explicit re-export declarations (e.g., \texttt{pub use}).
 
 \paragraph{Assignment Type Aliases (\texttt{AssignmentTypeAliases})}
-In dynamically typed or scripting languages such as Python, type variables and
-type aliases are introduced through assignment expressions at module
+Dynamically typed or scripting languages such as Python introduce type variables and
+type aliases through assignment expressions at module
 or class scope
 (for instance, \texttt{T = TypeVar('T', bound=Entity)} or
 \texttt{Vector = list[float]}).
@@ -652,7 +654,7 @@ instance is referenced and how its members are declared within local scopes:
 
 \paragraph{Receiver Binding (\texttt{SelfKeyword},
 \texttt{ImplicitFirstParamAsSelf})}
-In Java and C++, \texttt{this} is a language-level keyword providing an
+In C++ and Java, \texttt{this} is a language-level keyword providing an
 implicit reference to the calling instance. In Rust, instance methods
 explicitly declare \texttt{self} as their first parameter. In Python,
 \texttt{self} is not a keyword, but a naming convention; Python instance

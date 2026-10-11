@@ -82,7 +82,7 @@ constructs extracted from the workspace:
     in the hierarchy becomes a vertex of type \texttt{Module}. Because
     Phase 1 extracts individual source files independently into modular
     trees, multiple compilation units within the same package or namespace
-    share common ancestor paths (e.g., \texttt{org.apache.flink}). During
+    share common ancestor paths (e.g., \texttt{org.a}\-\texttt{pache.flink}). During
     flattening, canonical module paths are deduplicated via a tracking set
     ($\textit{seen\_modules} \subseteq \Pi$) so that each logical module is
     emitted exactly once as a vertex in $V$, while structural parent-child
@@ -253,6 +253,7 @@ categories. Table \ref{tab:edge_taxonomy} provides a complete classification.
 \begin{table}[htpb]
   \centering
   \small
+  \begin{adjustbox}{max width=\textwidth}
   \begin{tabular}{|l|l|l|l|}
     \hline
     \textbf{Category} & \textbf{Edge Kind} & \textbf{Source} &
@@ -286,6 +287,7 @@ categories. Table \ref{tab:edge_taxonomy} provides a complete classification.
     & \texttt{CastsTo} & Function & Cast target type \\ \cline{2-4}
     & \texttt{AnnotatedWith} & Any component & Annotation type \\ \hline
   \end{tabular}
+  \end{adjustbox}
   \caption{Complete taxonomy of the 16 dependency edge kinds,
   organized by category.}
   \label{tab:edge_taxonomy}
@@ -316,7 +318,7 @@ implementation extensions:
     interface implementation (such as Java's \texttt{implements}), and
     trait super-traits into a single subtyping relation.
   \item \textbf{Implements}: Reserved for decoupled implementation blocks
-    (\texttt{ImplBlock}), such as Rust's \texttt{impl} blocks or out-of-line
+    (\texttt{Impl}-\linebreak\texttt{Block}), such as Rust's \texttt{impl} blocks or out-of-line
     type extensions. Because implementation blocks are dissolved during node
     flattening, two distinct edges model their semantic bindings:
     \begin{enumerate}
@@ -376,9 +378,9 @@ resulting fine-grained dependency graph
 members via \texttt{NestedIn} edges, while the type dependency
 \texttt{UsesFieldType} originates strictly from the field node
 \texttt{Car::engine} toward \texttt{Engine}. Concurrently, the method
-\texttt{Car::drive} exhibits an \texttt{AccessesField} dependency
+\texttt{Car::drive} exhibits an \texttt{Ac}\-\texttt{cess}\-\texttt{es}\-\texttt{Field} dependency
 toward \texttt{Car::engine} and a \texttt{Calls} dependency toward
-\texttt{Engine::start}.
+\texttt{En}\-\texttt{gine::}\-\texttt{start}.
 
 \begin{lstlisting}[language=Rust, caption={Example illustrating fine-grained field and call dependencies.}, label={lst:fine_grained_code}]
 struct Car {
@@ -416,7 +418,7 @@ enclosing function, regardless of the nesting depth of the block in
 which the dependency was found.
 
 \begin{itemize}
-  \item \textbf{Calls}: Generated for each resolved function
+  \item \textbf{Calls}:\ Generated for each resolved function
     invocation found in the block's $\vec{\tau}_{calls}$ vector.
   \item \textbf{Instantiates}: Generated for each resolved type
     instantiation (e.g., \texttt{new}, struct expressions) found in
@@ -439,7 +441,7 @@ which the dependency was found.
 
 \subsection{Edge Deduplication}
 During the edge generation pass, multiple identical dependencies may be
-recorded if a component references another entity repeatedly (e.g., a
+re\-cord\-ed if a component references another entity repeatedly (e.g., a
   function invoking the same method multiple times across different
 control-flow blocks).
 
@@ -477,7 +479,7 @@ syntactic debugging:
     it eliminates redundant visual edges while preserving full
     semantic fidelity.
   \item \textbf{Raw Dependency Graph Format}: A direct serialization of the
-    in-memory \texttt{DependencyGraph} multigraph $\mathcal{G} = (V,
+    in-memory \texttt{DependencyGraph} multigraph $\mathcal{G}\:{=}\:(V,
     E)$, retaining
     explicit structural containment edges and structured qualified name vectors
     ($\pi \in \Pi$) for automated architectural checking and formal
@@ -550,7 +552,7 @@ and behavioral dependencies.
 
 Each exported node carries the following data fields:
 \begin{itemize}
-  \item \texttt{id}: The fully qualified name, joined with
+  \item \texttt{id}:\ The fully qualified name, joined with
     \texttt{::} separators (e.g., \texttt{auth::User}).
   \item \texttt{label}: The last segment of the qualified name (e.g.,
     \texttt{User}).
@@ -620,7 +622,7 @@ spring-electric forces. Key parameters configured in the application include:
 To facilitate software architecture exploration and mitigate the
 visual clutter typical of large dependency networks, the visualizer
 implements interactive exploration and filtering techniques
-\cite{diehl_software_2007}:
+\cite{dielh_software_2007}:
 
 \begin{itemize}
   \item \textbf{Node Search}: A text input field filters the graph in
@@ -658,7 +660,7 @@ implements interactive exploration and filtering techniques
       nodes, all \texttt{External} nodes, all \texttt{Primitive}
     nodes). By default, \texttt{Primitive} nodes are hidden to reduce noise.
   \item \textbf{JSON Export}: Two export options are provided:
-    exporting the Cytoscape-formatted elements (for re-importing into
+    exporting the Cyto\-scape-formatted elements (for re-importing into
     visualization tools) and exporting the raw analyzer JSON output
     (for programmatic consumption).
 \end{itemize}
