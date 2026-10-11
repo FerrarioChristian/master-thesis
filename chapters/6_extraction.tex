@@ -297,7 +297,7 @@ signatures, and method bodies, assembling and returning the populated IR
 component. If the classifier returns false, the parser immediately returns
 \texttt{None}, prompting the dispatcher to evaluate the next candidate.
 
-\subsection{Structured Type Parsing}
+\subsubsection{Structured Type Parsing}
 
 The \texttt{try\_parse\_structured\_type} function extracts the full
 content of a class, struct, interface, trait, or enum definition:
@@ -340,7 +340,7 @@ the extractor deduplicates fields by name, favoring entries with more
 informative type references (resolved or inferred types over
 unresolved or failed ones).
 
-\subsection{Function Parsing}
+\subsubsection{Function Parsing}
 
 The \texttt{try\_parse\_function} function extracts:
 \begin{enumerate}
@@ -362,7 +362,7 @@ The \texttt{try\_parse\_function} function extracts:
     declarations), the body is recorded as \texttt{None}.
 \end{enumerate}
 
-\subsection{Structured Body Parsing}
+\subsubsection{Structured Body Parsing}
 \label{sec:body_parsing}
 \label{sec:body_extraction}
 
@@ -452,7 +452,7 @@ the recursive \texttt{extract\_block} call, not by
 \texttt{find\_behavioral\_deps}. This guarantees that each dependency
 is recorded at the exact lexical scope level where it occurs.
 
-\subsection{Import Parsing}
+\subsubsection{Import Parsing}
 
 The \texttt{try\_parse\_imports} function handles import statements
 across all supported languages. It returns a vector of
@@ -470,7 +470,7 @@ logical imports from a single CST node. The parser:
     \texttt{\#include} paths.
 \end{itemize}
 
-\subsection{Implementation Block Parsing}
+\subsubsection{Implementation Block Parsing}
 
 The \texttt{try\_parse\_impl\_block} function extracts:
 \begin{itemize}
@@ -482,7 +482,7 @@ The \texttt{try\_parse\_impl\_block} function extracts:
   \item Methods, nested types, and type aliases defined within the block.
 \end{itemize}
 
-\subsection{Type Alias and Free Variable Parsing}
+\subsubsection{Type Alias and Free Variable Parsing}
 
 Type aliases are extracted with their declared name and target type reference.
 For languages supporting explicit alias syntax (such as Rust
@@ -514,7 +514,7 @@ Free variables (global constants, static items) are extracted as
 The lowest layer of the extraction subsystem provides atomic
 functions that interact directly with CST nodes.
 
-\subsection{Text Extraction}
+\subsubsection{Text Extraction}
 
 \begin{itemize}
   \item \textbf{\texttt{node\_text}}: Extracts the raw source text
@@ -533,7 +533,7 @@ functions that interact directly with CST nodes.
     \texttt{extract\_type\_ref}.
 \end{itemize}
 
-\subsection{Identifier Extraction}
+\subsubsection{Identifier Extraction}
 
 \begin{itemize}
   \item \textbf{\texttt{extract\_identifier}}: Extracts the simple
@@ -555,7 +555,7 @@ functions that interact directly with CST nodes.
     \texttt{type\_identifier} into a vector.
 \end{itemize}
 
-\subsection{Type Reference Extraction}
+\subsubsection{Type Reference Extraction}
 
 The function \texttt{extract\_type\_ref} converts a CST node into a
 \texttt{TypeRef}. It operates through a cascade of progressively less
@@ -606,7 +606,7 @@ specific strategies:
     \texttt{TypeRef::Failed(vec![])} is returned.
 \end{enumerate}
 
-\subsection{Parameter Extraction}
+\subsubsection{Parameter Extraction}
 
 The function \texttt{extract\_parameters} locates the
 \texttt{parameters} named field and iterates over its children of
@@ -626,7 +626,7 @@ that the fallback captured the parameter name instead of a type, and
 replaces the result with \texttt{TypeRef::Failed}. This prevents
 untyped parameters from generating spurious dependencies.
 
-\subsection{Type Parameter and Constraint Extraction}
+\subsubsection{Type Parameter and Constraint Extraction}
 
 Generic type parameters and template variables are extracted by the function
 \texttt{extract\_type\_parameters}, constructing an ordered vector of
@@ -667,7 +667,7 @@ The extraction pipeline operates in four coordinated steps:
     the type variables as formal type parameters on the structured type.
 \end{enumerate}
 
-\subsection{Super-Type Extraction}
+\subsubsection{Super-Type Extraction}
 
 The function \texttt{extract\_super\_types} searches for inheritance
 references in a variety of named fields across languages:
@@ -684,7 +684,7 @@ For each found node, it traverses the children looking for
 \texttt{scoped\_type\_identifier}, and type lists, extracting each as
 a \texttt{TypeRef::Unresolved}.
 
-\subsection{The Generic List Combinator}
+\subsubsection{The Generic List Combinator}
 
 The function \texttt{extract\_list\_of<T, F>} is a higher-order
 combinator that takes a parser function \texttt{F} and applies it to

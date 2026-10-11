@@ -1,7 +1,5 @@
-\chapter{The Analysis Pipeline}
+\chapter{Analysis Pipeline Overview}
 \label{ch:analysis_pipeline}
-
-\section{Overview}
 \label{sec:pipeline_overview}
 
 The analysis system is modeled as a composition of sequential
@@ -51,13 +49,13 @@ parsers to identify and extract the relevant software components
 (modules, structured types, functions, fields, imports, and
 implementation blocks).
 
-\subsection{Input}
+\subsubsection{Input}
 
 The input is a \textbf{Workspace} $\mathcal{W}$: a directory tree
 containing source files in one or more of the supported languages (C,
 C++, Java, Python, Rust). Each file is independently parsed and extracted.
 
-\subsection{Process}
+\subsubsection{Process}
 
 The extraction operates through four logical layers:
 
@@ -88,7 +86,7 @@ supporting directory-based hierarchies (e.g., Python, Rust), explicit package
 declarations (e.g., Java), syntax-level namespace blocks (e.g., C++), or a
 flat root fallback (e.g., C).
 
-\subsection{Output}
+\subsubsection{Output}
 
 The output is a hierarchical forest of \textbf{component trees rooted
 in module instances} $\vec{\mathcal{M}} \in \mathcal{D}$,
@@ -105,7 +103,7 @@ disjunctions $\text{Union}(\vec{\tau})$ for dynamic typing (e.g.,
 Python type unions).
 No cross-component linking or primitive matching has taken place yet.
 
-\subsection{Key Properties}
+\subsubsection{Key Properties}
 \begin{itemize}
   \item This is the \textbf{only language-dependent} phase. The
     heuristic classifiers and extractors are the sole components that
@@ -134,13 +132,13 @@ phase that binds isolated structural components into a semantically
 connected architectural model by determining, for each type reference,
 which component in the workspace (or external library) it refers to.
 
-\subsection{Input}
+\subsubsection{Input}
 
 The input is the forest of component trees $\vec{\mathcal{M}} \in \mathcal{D}$
 produced by Phase 1, accompanied by the declarative Language Configuration
 $\mathcal{K}$ and the Primitive Registry $\mathcal{P}$.
 
-\subsection{Process}
+\subsubsection{Process}
 
 The resolution is decomposed into two sequential steps:
 $$\rho_{\text{build}} : \mathcal{D} \xrightarrow{\Delta}
@@ -187,7 +185,7 @@ The resolution is parameterized by a per-language
 such as transitive import visibility, implicit receiver parameter
 binding and instance keyword recognition.
 
-\subsection{Output}
+\subsubsection{Output}
 
 The output of Phase 2 is the resolved component forest
 $\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$. Structurally, it
@@ -205,7 +203,7 @@ lookup, preserving diagnostic context for downstream evaluation. At this stage,
 the codebase is represented as a fully linked architectural model ready for
 graph generation.
 
-\subsection{Key Properties}
+\subsubsection{Key Properties}
 \begin{itemize}
   \item The resolution engine is \textbf{language-agnostic}: the core
     resolution algorithm, Scope Tree traversal, and query evaluation
@@ -236,7 +234,7 @@ The graph construction phase projects the resolved IR into a flat
 directed dependency graph $\mathcal{G} = (V, E)$ suitable for
 architectural analysis and visualization.
 
-\subsection{Input}
+\subsubsection{Input}
 
 The input is the resolved component forest
 $\vec{\mathcal{M}}_{\text{res}} \in \mathcal{D}_{\text{res}}$
@@ -244,7 +242,7 @@ produced by Phase 2, in which all type references have been resolved to their
 corresponding internal declarations, external dependencies, or
 language primitives.
 
-\subsection{Process}
+\subsubsection{Process}
 
 The construction proceeds in two steps:
 
@@ -268,7 +266,7 @@ The construction proceeds in two steps:
     kind are deduplicated to prevent distorted coupling metrics.
 \end{enumerate}
 
-\subsection{Output}
+\subsubsection{Output}
 
 The output of Phase 3 is a unified \textbf{Dependency Graph}
 $\mathcal{G} = (V, E)$:
@@ -290,7 +288,7 @@ The graph is primarily serialized in a Cytoscape.js-compatible JSON format
 \cite{franz_cytoscapejs_2016} where structural containment is encoded as
 compound node nesting rather than explicit edges.
 
-\subsection{Key Properties}
+\subsubsection{Key Properties}
 \begin{itemize}
   \item This phase is \textbf{completely language-independent}. The lowering
     algorithm operates uniformly over the resolved IR without

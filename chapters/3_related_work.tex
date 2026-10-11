@@ -95,7 +95,7 @@ heterogeneous languages, without descending into low-level memory
 layouts, is the core theoretical foundation required to build a truly
 scalable, language-agnostic dependency extractor.
 
-\subsection{Language Server Protocol (LSP)}
+\subsubsection{Language Server Protocol (LSP)}
 \label{sec:ir_and_lsp}
 
 In recent years, protocols like the \textbf{Language Server Protocol
@@ -250,7 +250,7 @@ syntactic level by normalizing source code from different programming
 languages into unified tree representations, such as intermediate XML
 markup or universal abstract syntax trees.
 
-\subsection{Syntactic Wrapping: srcML}
+\subsubsection{Syntactic Wrapping: srcML}
 
 \textbf{srcML} \cite{collard_srcml_2016} is an infrastructure and
 XML-based format designed to represent source code by wrapping the
@@ -319,7 +319,7 @@ represent an interesting alternative for the extraction layer,
 significantly reducing the need for complex heuristics to recognize
 corresponding constructs across different parsing trees.
 
-\subsection{Universal ASTs: Babelfish}
+\subsubsection{Universal ASTs: Babelfish}
 
 A widely explored direction in multi-language analysis is
 transforming source code into a unified, language-agnostic tree
@@ -383,7 +383,7 @@ method calls, and type references) to their concrete definitions across complex,
 nested scopes. This section evaluates declarative and automaton-based graph
 models developed in the literature for reference resolution.
 
-\subsection{Path-Based Resolution: Scope Graphs}
+\subsubsection{Path-Based Resolution: Scope Graphs}
 \label{sec:scope_graphs}
 
 \textbf{Scope Graphs} \cite{zwaan_scope_2023}, developed by
@@ -405,7 +405,7 @@ parsed and translated into a single, massive graph in memory before
 resolution can begin. They struggle with incremental updates, making
 them computationally prohibitive for very large codebases.
 
-\subsection{Pushdown Navigation: Stack Graphs}
+\subsubsection{Pushdown Navigation: Stack Graphs}
 \label{sec:stack_graphs}
 
 \textbf{Stack Graphs} \cite{creager_stack_2023} are the direct

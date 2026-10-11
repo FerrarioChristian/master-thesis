@@ -5,9 +5,11 @@ The empirical evaluation presented in Chapter~\ref{ch:evaluation_results}
 answered the four research questions guiding this study, demonstrating the
 feasibility, structural concordance, and computational scalability of OmniDeps
 across 156 real-world software repositories and five programming languages.
-However, interpreting these quantitative findings requires stepping back from raw
+However, interpreting these quantitative findings requires stepping
+back from raw
 similarity metrics and runtime curves to examine the broader architectural,
-methodological, and practical implications of a language-agnostic approach to static
+methodological, and practical implications of a language-agnostic
+approach to static
 analysis.
 
 This chapter synthesizes the empirical outcomes into a cohesive discussion
@@ -33,7 +35,7 @@ structured around four primary themes:
 % ==============================================================================
 % 1. KEY EMPIRICAL FINDINGS
 % ==============================================================================
-\section{Key Empirical Findings and Paradigm Dynamics}
+\section{Empirical Findings Across Paradigms}
 \label{sec:discussion_findings}
 
 Our empirical findings uncover fundamental differences in how programming
@@ -42,7 +44,7 @@ Rather than reflecting uniform performance across the dataset, the results
 highlight distinct extraction dynamics across object-oriented, dynamic,
 procedural, and modern systems languages.
 
-\subsection{High Semantic Parity in Object-Oriented Ecosystems}
+\subsection{Object-Oriented Parity in Java}
 \label{subsec:discussion_oo_parity}
 
 The most prominent empirical finding in object-oriented environments (Java) is
@@ -54,8 +56,8 @@ Depends and $0.003$ against Arcan, while edge Jaccard similarity converged to
 $\approx 0.58$--$0.60$ across all three baseline tools.
 
 This convergence validates a foundational architectural hypothesis: \textbf{in
-explicitly typed, modular object-oriented languages, Concrete Syntax Trees
-contain virtually all structural information required for architectural
+  explicitly typed, modular object-oriented languages, Concrete Syntax Trees
+  contain virtually all structural information required for architectural
 dependency modeling}. Java source files exhibit an unambiguous syntactic
 isomorphism:
 \begin{itemize}[noitemsep]
@@ -83,75 +85,97 @@ for high-level architectural static analysis (e.g., architectural smell
 detection, module cohesion, package cycle identification), syntax-directed
 querying matches the fidelity of complete compiler symbol tables.
 
-\paragraph{The Granularity Dilemma of Import Directives in Java.}
+\paragraph{Import Granularity in Java.}
 \label{par:discussion_java_imports}
 The categorical discordance analysis in Section~\ref{subsec:rq3_discordance}
-revealed an apparent anomaly in Java: despite both OmniDeps and Depends extracting
+revealed an apparent anomaly in Java: despite both OmniDeps and
+Depends extracting
 thousands of import statements per project (e.g., 2,060 and 918 respectively in
 \texttt{junit4}, and 13,257 and 3,153 in \texttt{junit5}), their shared
-\texttt{includes} edges average just 0.6 per repository. This near-total divergence
-is not an omission failure, but a fundamental methodological disagreement regarding
+\texttt{includes} edges average just 0.6 per repository. This
+near-total divergence
+is not an omission failure, but a fundamental methodological
+disagreement regarding
 the architectural ownership of import directives.
 
 In the Java Language Specification (JLS), import declarations belong strictly to
 the lexical scope of an individual compilation unit (a single \texttt{.java}
 source file). An import statement in one file is never inherited or shared by
-other files, even within the identical package. When abstracting file-level source
+other files, even within the identical package. When abstracting
+file-level source
 artifacts into an architectural graph where vertices are types and packages, two
 competing harmonization strategies arise:
 \begin{enumerate}
-  \item \textbf{Type-Level Attribution (OmniDeps)}: OmniDeps distributes file-scoped
+  \item \textbf{Type-Level Attribution (OmniDeps)}: OmniDeps
+    distributes file-scoped
     imports to the top-level structured types (classes and interfaces) defined
     within that compilation unit. This establishes explicit edges from the
     declaring class to the imported target (\texttt{class $\to$ target}). This
     design preserves high relational precision: if a single auxiliary class in a
     package imports a testing utility or a third-party parser, that dependency
     remains strictly localized to that specific class. Furthermore, type-level
-    inclusions can always be aggregated upward into package dependencies using the
+    inclusions can always be aggregated upward into package
+    dependencies using the
     structural containment tree (\texttt{belongsTo}).
   \item \textbf{Package-Level Coarsening (Depends)}: In contrast, Depends
     processes imports at the compilation-unit header before descending into AST
     class visitors, and during graph harmonization its adapter lifts the source
-    of every \texttt{includes} edge to the enclosing package (\texttt{package $\to$ target}).
+    of every \texttt{includes} edge to the enclosing package
+    (\texttt{package $\to$ target}).
     While this strategy aligns with coarse-grained architectural recovery tools
-    that analyze Dependency Structure Matrices (DSMs) strictly at the package tier,
-    it produces irreversible information loss: once an import is collapsed onto a
-    package, it becomes impossible to determine which underlying class induced the
-    coupling. Furthermore, it introduces artificial package-level coupling for all
-    peer classes within the same package that never reference the imported symbol.
+    that analyze Dependency Structure Matrices (DSMs) strictly at the
+    package tier,
+    it produces irreversible information loss: once an import is
+    collapsed onto a
+    package, it becomes impossible to determine which underlying
+    class induced the
+    coupling. Furthermore, it introduces artificial package-level
+    coupling for all
+    peer classes within the same package that never reference the
+    imported symbol.
 \end{enumerate}
 Because a class identifier never equals a package identifier in pairwise graph
-intersection, the two representations remain mathematically disjoint. This finding
+intersection, the two representations remain mathematically disjoint.
+This finding
 underscores an important principle for software architecture recovery:
-\textbf{type-level dependency modeling preserves fine-grained architectural fidelity
-without sacrificing the ability to aggregate upward, whereas premature package-level
+\textbf{type-level dependency modeling preserves fine-grained
+  architectural fidelity
+  without sacrificing the ability to aggregate upward, whereas
+  premature package-level
 lifting obscures intra-package coupling and prevents cross-tool consensus}.
 
-\subsection{The Resolution Ceiling in Dynamically Typed Languages}
+\subsection{Resolution Limits in Dynamic Languages}
 \label{subsec:discussion_dynamic_languages}
 
 In contrast to object-oriented environments, evaluating Python codebases
 demonstrates how graph harmonization reconciles divergent extraction scopes
 in dynamic ecosystems: while entity identification attains high concordance
-($J_{\text{nodes}} = 0.852$, median $0.882$) with an entity omission rate of just
+($J_{\text{nodes}} = 0.852$, median $0.882$) with an entity omission
+rate of just
 $4.8\%$, call-level dependency alignment achieves $J_{\text{edges}} = 0.323$
 (median $0.300$), rising to $0.368$ (median $0.387$) when isolating behavioral
 relations from unmodeled syntactic imports.
 A systematic structural diff of the extracted graphs demonstrates that this
-outcome is governed by two distinct phenomena: an inherent dynamic typing ceiling
+outcome is governed by two distinct phenomena: an inherent dynamic
+typing ceiling
 at the call level, and an architectural scope mismatch concerning method-local
 test fixtures at the entity level.
 
-\paragraph{The Dynamic Typing Barrier and Heuristic Call Divergence.}
-At the relational tier, the moderate edge similarity reflects an \textbf{inherent
+\paragraph{Dynamic Typing and Call Divergence.}
+At the relational tier, the moderate edge similarity reflects an
+\textbf{inherent
 boundary of purely syntactic static analysis in dynamically typed languages}.
 In Python:
 \begin{itemize}
-  \item \textbf{Absence of Static Type Annotations}: In idiomatic Python codebases,
-    function arguments and local variables frequently omit type signatures (e.g.,
-    \texttt{def process(handler): handler.dispatch()}). Without dynamic execution
+  \item \textbf{Absence of Static Type Annotations}: In idiomatic
+    Python codebases,
+    function arguments and local variables frequently omit type
+    signatures (e.g.,
+    \texttt{def process(handler): handler.dispatch()}). Without
+    dynamic execution
     traces or computationally prohibitive whole-program flow-sensitive abstract
-    interpretation, a syntax-directed static analyzer cannot identify which concrete
+    interpretation, a syntax-directed static analyzer cannot identify
+    which concrete
     class instantiates \texttt{handler}.
   \item \textbf{Dynamic Module Mutation}: Python allows runtime modification
     of module symbol tables via \texttt{sys.modules}, dynamic imports
@@ -169,12 +193,15 @@ partially or inconsistently. In unannotated code, both OmniDeps and Depends
 inevitably arrive at divergent heuristics when resolving ambiguous method calls,
 naturally bounding edge Jaccard agreement to $\approx 0.30$--$0.33$.
 
-\paragraph{Deconstructing the Node Disparity: Architectural Types vs. Method-Local Test Closures.}
+\paragraph{Node Disparity and Method-Local Closures.}
 At the entity tier, the initial comparative evaluation indicated non-trivial
 node discrepancies on select repositories: \texttt{sqlalchemy} exhibited
-$J_{\text{nodes}} = 0.485$ with an entity inferiority of $\text{Inf}_{\text{nodes}} = 1.030$,
-\texttt{marshmallow} attained $J_{\text{nodes}} = 0.339$ ($\text{Inf}_{\text{nodes}} = 1.683$),
-and \texttt{pydantic} reached $J_{\text{nodes}} = 0.234$ ($\text{Inf}_{\text{nodes}} = 2.115$).
+$J_{\text{nodes}} = 0.485$ with an entity inferiority of
+$\text{Inf}_{\text{nodes}} = 1.030$,
+\texttt{marshmallow} attained $J_{\text{nodes}} = 0.339$
+($\text{Inf}_{\text{nodes}} = 1.683$),
+and \texttt{pydantic} reached $J_{\text{nodes}} = 0.234$
+($\text{Inf}_{\text{nodes}} = 2.115$).
 
 A fine-grained structural inspection of the discordant entity sets revealed the
 exact methodological root cause: \textbf{a fundamental scope disagreement
@@ -191,7 +218,8 @@ accounted for \textbf{70.9\% of all types extracted by Depends in Pydantic}
 and \textbf{61.2\% in Marshmallow}.
 
 In contrast, OmniDeps adheres to a strict macro-architectural boundary:
-type definitions are extracted at module and class scope, whereas function bodies
+type definitions are extracted at module and class scope, whereas
+function bodies
 are parsed strictly for behavioral call sites, instantiations, and attribute
 accesses (\texttt{body\_extraction.rs}). OmniDeps deliberately refrains from
 promoting method-local closures to architectural entities, as local test mocks
@@ -200,16 +228,20 @@ possess no visibility or lifecycle outside their enclosing function execution.
 To evaluate whether this scope divergence accounted for the observed node
 inferiority, we refined the graph harmonization adapter in accordance with the
 Semantic Lifting Operator ($\lambda$, Section~\ref{subsec:semantic_lifting}):
-method-local classes are classified as volatile entities (mirroring the treatment
+method-local classes are classified as volatile entities (mirroring
+  the treatment
 of local variables and statements), and any external references through them are
 lifted to the enclosing class or module. The empirical effect of this alignment
 is transformative:
 \begin{itemize}
   \item In \texttt{sqlalchemy}, node Jaccard similarity surges from $0.485$ to
-    \textbf{0.946}, while node inferiority collapses from $1.030$ to \textbf{0.024}.
-  \item In \texttt{marshmallow}, node Jaccard rises from $0.339$ to \textbf{0.782},
+    \textbf{0.946}, while node inferiority collapses from $1.030$ to
+    \textbf{0.024}.
+  \item In \texttt{marshmallow}, node Jaccard rises from $0.339$ to
+    \textbf{0.782},
     with node inferiority dropping from $1.683$ to \textbf{0.005}.
-  \item In \texttt{pydantic}, node Jaccard doubles from $0.234$ to \textbf{0.457},
+  \item In \texttt{pydantic}, node Jaccard doubles from $0.234$ to
+    \textbf{0.457},
     with node inferiority falling from $2.115$ to \textbf{0.066}.
   \item Across all 29 evaluated Python repositories, mean node Jaccard improves
     from $0.740$ to \textbf{0.852} (median from $0.801$ to \textbf{0.882}), and
@@ -217,136 +249,199 @@ is transformative:
     (from $0.332$ down to \textbf{0.048}).
 \end{itemize}
 This empirical confirmation demonstrates that OmniDeps successfully captures
-over $95\%$ of genuine architectural entities across Python systems, proving that
+over $95\%$ of genuine architectural entities across Python systems,
+proving that
 the initial entity gap was an artifact of test fixture scope rather than an
 omission of production architecture.
 
-\paragraph{Understanding Edge Superiority: Genuine Dependencies vs. Import Asymmetry.}
+\paragraph{Edge Superiority and Import Asymmetry.}
 A striking characteristic of the comparative edge metrics on Python repositories
-is the elevated edge superiority ($\text{Sup}_{\text{edges}} = 1.474$ mean, reaching
-$3.498$ on \texttt{sympy}, $3.146$ on \texttt{scikit-learn}, and $2.461$ on \texttt{pydantic}),
-indicating that OmniDeps extracts considerably more edges than Depends. A natural
-question is whether these extra dependencies reflect extraction hallucinations or
-genuine architectural couplings. A rigorous structural inspection of the pairwise edge
-diff listings reveals that these additional edges are entirely legitimate, driven by
+is the elevated edge superiority ($\text{Sup}_{\text{edges}} = 1.474$
+  mean, reaching
+  $3.498$ on \texttt{sympy}, $3.146$ on \texttt{scikit-learn}, and
+$2.461$ on \texttt{pydantic}),
+indicating that OmniDeps extracts considerably more edges than
+Depends. A natural
+question is whether these extra dependencies reflect extraction
+hallucinations or
+genuine architectural couplings. A rigorous structural inspection of
+the pairwise edge
+diff listings reveals that these additional edges are entirely
+legitimate, driven by
 three distinct architectural and methodological factors:
 \begin{itemize}
-  \item \textbf{Syntactic Import Asymmetry}: The largest single component of unique edges
-    in OmniDeps ($A \setminus B$) is syntactic module inclusion. OmniDeps extracts every
-    explicit syntactic \texttt{import} and \texttt{from ... import ...} statement as a
-    first-class \texttt{Imports} relation, harmonized into an explicit \texttt{includes}
-    edge (e.g., 18,494 in \texttt{sympy}, 8,901 in \texttt{django}, and 5,982 in \texttt{scikit-learn}).
-    In contrast, Depends Python bypasses file-level import statements entirely, generating only
-    a handful of coarse package-level edges (only 47 in \texttt{sympy} and 22 in \texttt{scikit-learn}).
-    Because the global edge Jaccard metric pools all relation categories into a single
-    unweighted set ($|E_A \cup E_B|$), this categorical asymmetry accounts for over half of
-    all edges unique to OmniDeps ($50.6\%$ in \texttt{sympy} and $59.4\%$ in \texttt{scikit-learn}).
-  \item \textbf{High-Fidelity Cross-Module Inheritance Resolution}: In subtyping hierarchies
-    (\texttt{isChildOf}), OmniDeps exhibits significantly higher recall than Depends. In
-    \texttt{scikit-learn}, OmniDeps identifies 1,041 inheritance arcs compared to just 491
-    identified by Depends, recovering 636 genuine subtyping relationships. In large Python
-    libraries, inheritance hierarchies frequently rely on relative module imports to compose
+  \item \textbf{Syntactic Import Asymmetry}: The largest single
+    component of unique edges
+    in OmniDeps ($A \setminus B$) is syntactic module inclusion.
+    OmniDeps extracts every
+    explicit syntactic \texttt{import} and \texttt{from ... import
+    ...} statement as a
+    first-class \texttt{Imports} relation, harmonized into an
+    explicit \texttt{includes}
+    edge (e.g., 18,494 in \texttt{sympy}, 8,901 in \texttt{django},
+    and 5,982 in \texttt{scikit-learn}).
+    In contrast, Depends Python bypasses file-level import statements
+    entirely, generating only
+    a handful of coarse package-level edges (only 47 in
+    \texttt{sympy} and 22 in \texttt{scikit-learn}).
+    Because the global edge Jaccard metric pools all relation
+    categories into a single
+    unweighted set ($|E_A \cup E_B|$), this categorical asymmetry
+    accounts for over half of
+    all edges unique to OmniDeps ($50.6\%$ in \texttt{sympy} and
+    $59.4\%$ in \texttt{scikit-learn}).
+  \item \textbf{High-Fidelity Cross-Module Inheritance Resolution}:
+    In subtyping hierarchies
+    (\texttt{isChildOf}), OmniDeps exhibits significantly higher
+    recall than Depends. In
+    \texttt{scikit-learn}, OmniDeps identifies 1,041 inheritance arcs
+    compared to just 491
+    identified by Depends, recovering 636 genuine subtyping
+    relationships. In large Python
+    libraries, inheritance hierarchies frequently rely on relative
+    module imports to compose
     mixins and base abstractions; for instance, estimator classes such as
-    \texttt{QuantileTransformer} inherit from \texttt{BaseEstimator} via relative imports
-    (\texttt{from ..base import BaseEstimator}). Because these relative imports lack static
-    type annotations, Depends treats them as ambiguous symbols and discards them as speculative
-    candidate types. In contrast, OmniDeps deterministically resolves relative import paths
-    across the file system using its hierarchical Scope Tree, successfully capturing core
-    architectural contracts (such as estimator mixins in \texttt{scikit-learn} and mathematical
+    \texttt{QuantileTransformer} inherit from \texttt{BaseEstimator}
+    via relative imports
+    (\texttt{from ..base import BaseEstimator}). Because these
+    relative imports lack static
+    type annotations, Depends treats them as ambiguous symbols and
+    discards them as speculative
+    candidate types. In contrast, OmniDeps deterministically resolves
+    relative import paths
+    across the file system using its hierarchical Scope Tree,
+    successfully capturing core
+    architectural contracts (such as estimator mixins in
+      \texttt{scikit-learn} and mathematical
     function hierarchies rooted in \texttt{DefinedFunction} in \texttt{sympy}).
-  \item \textbf{Language-Agnostic Polyglot Workspace Traversal}: Modern software projects
-    are increasingly polyglot. While traditional static analyzers enforce a strict
-    single-language filter (Depends Python parses only \texttt{.py} files within declared roots),
-    OmniDeps recursively analyzes all source files matching any supported grammar across the
-    entire repository workspace. In \texttt{pydantic}, OmniDeps recursively parses the native
-    Rust core (\texttt{pydantic-core/src/}), extracting struct definitions, validators
-    (\texttt{CombinedValidator}), serializers (\texttt{DataclassSerializer}), and enum markers
-    (\texttt{WhenUsed}, \texttt{EitherString}), whereas single-language Python analyzers treat
+  \item \textbf{Language-Agnostic Polyglot Workspace Traversal}:
+    Modern software projects
+    are increasingly polyglot. While traditional static analyzers
+    enforce a strict
+    single-language filter (Depends Python parses only \texttt{.py}
+    files within declared roots),
+    OmniDeps recursively analyzes all source files matching any
+    supported grammar across the
+    entire repository workspace. In \texttt{pydantic}, OmniDeps
+    recursively parses the native
+    Rust core (\texttt{pydantic-core/src/}), extracting struct
+    definitions, validators
+    (\texttt{CombinedValidator}), serializers
+    (\texttt{DataclassSerializer}), and enum markers
+    (\texttt{WhenUsed}, \texttt{EitherString}), whereas
+    single-language Python analyzers treat
     compiled extensions as opaque external binaries.
 \end{itemize}
 Consequently, the elevated edge superiority reflects OmniDeps' broader syntactic
-coverage, robust relative symbol resolution, and polyglot repository visibility rather
+coverage, robust relative symbol resolution, and polyglot repository
+visibility rather
 than spurious false-positive coupling.
 
-\paragraph{Behavioral Dependency Concordance: Isolating Calls and Subtyping from Import Statements.}
+\paragraph{Behavioral Concordance Without Imports.}
 To empirically substantiate that the aggregate edge metric is disproportionately
-distorted by the unmodeled import statements in Depends, we performed a controlled
-evaluation isolating purely behavioral interactions (invocations, type usage, and
+distorted by the unmodeled import statements in Depends, we performed
+a controlled
+evaluation isolating purely behavioral interactions (invocations,
+  type usage, and
 inheritance) by excluding syntactic \texttt{includes} edges across the entire
 Python dataset ($N = 29$).
 
 The resulting alignment confirms the hypothesis:
 \begin{itemize}
   \item \textbf{Metric Realignment}: Across all 29 repositories, the median edge
-    Jaccard similarity increases from $0.300$ to \textbf{0.387} (mean improves from
-    $0.323$ to \textbf{0.368}). Simultaneously, the median edge superiority index
-    drops below parity to \textbf{0.889} (mean falls from $1.474$ to \textbf{1.017}),
+    Jaccard similarity increases from $0.300$ to \textbf{0.387} (mean
+      improves from
+    $0.323$ to \textbf{0.368}). Simultaneously, the median edge
+    superiority index
+    drops below parity to \textbf{0.889} (mean falls from $1.474$ to
+    \textbf{1.017}),
     confirming that the perceived edge disparity was predominantly driven by
     import statements rather than unaligned behavioral call graphs.
-  \item \textbf{Project-Level Effects}: The realigning effect is especially pronounced
+  \item \textbf{Project-Level Effects}: The realigning effect is
+    especially pronounced
     in large libraries where OmniDeps captured extensive import graphs: in
-    \texttt{scikit-learn}, edge Jaccard rises from $0.209$ to \textbf{0.317} (+51.7\%)
+    \texttt{scikit-learn}, edge Jaccard rises from $0.209$ to
+    \textbf{0.317} (+51.7\%)
     while $\text{Sup}_{\text{edges}}$ drops from $3.146$ to \textbf{1.437}; in
     \texttt{django}, edge Jaccard improves from $0.289$ to \textbf{0.352} with
-    $\text{Sup}_{\text{edges}}$ dropping below 1.0 ($1.584 \to \textbf{0.951}$); in
-    \texttt{celery}, edge Jaccard advances from $0.329$ to \textbf{0.418} ($\text{Sup}_{\text{edges}}$
-    $1.468 \to \textbf{0.800}$); in \texttt{ansible}, edge Jaccard climbs from $0.335$
-    to \textbf{0.412} ($\text{Sup}_{\text{edges}}$ $1.303 \to \textbf{0.758}$); and in
-    \texttt{networkx}, edge Jaccard reaches \textbf{0.563} ($\text{Sup}_{\text{edges}} = \textbf{0.285}$).
+    $\text{Sup}_{\text{edges}}$ dropping below 1.0 ($1.584 \to
+    \textbf{0.951}$); in
+    \texttt{celery}, edge Jaccard advances from $0.329$ to
+    \textbf{0.418} ($\text{Sup}_{\text{edges}}$
+    $1.468 \to \textbf{0.800}$); in \texttt{ansible}, edge Jaccard
+    climbs from $0.335$
+    to \textbf{0.412} ($\text{Sup}_{\text{edges}}$ $1.303 \to
+    \textbf{0.758}$); and in
+    \texttt{networkx}, edge Jaccard reaches \textbf{0.563}
+    ($\text{Sup}_{\text{edges}} = \textbf{0.285}$).
 \end{itemize}
-This controlled measurement proves that once the evaluation is aligned to identical
+This controlled measurement proves that once the evaluation is
+aligned to identical
 semantic planes by comparing purely behavioral dependencies without penalizing
 first-class module import extraction, syntactic static analysis in dynamically
-typed languages achieves nearly $40\%$ behavioral concordance with compiler-grade
+typed languages achieves nearly $40\%$ behavioral concordance with
+compiler-grade
 analyzers, approaching the fidelity observed in compiled languages.
 Table~\ref{tab:python_harmonization_ablation} summarizes the progressive impact
-of method-local type scoping and behavioral edge isolation across the entire Python
+of method-local type scoping and behavioral edge isolation across the
+entire Python
 benchmark suite.
 
 \begin{table}[htpb]
   \centering
   \small
-  \caption{Ablation of graph harmonization and import filtering across Python repositories ($N=29$).}
+  \caption{Ablation of graph harmonization and import filtering
+  across Python repositories ($N=29$).}
   \label{tab:python_harmonization_ablation}
   \vspace{0.4em}
   \begin{adjustbox}{max width=\textwidth}
     \begin{tabular}{lcccccc}
       \toprule
-      \textbf{Harmonization Mode} & $J_{\text{nodes}}$ & $\text{Sup}_{\text{nodes}}$ & $\text{Inf}_{\text{nodes}}$ & $J_{\text{edges}}$ & $\text{Sup}_{\text{edges}}$ & $\text{Inf}_{\text{edges}}$ \\
+      \textbf{Harmonization Mode} & $J_{\text{nodes}}$ &
+      $\text{Sup}_{\text{nodes}}$ & $\text{Inf}_{\text{nodes}}$ &
+      $J_{\text{edges}}$ & $\text{Sup}_{\text{edges}}$ &
+      $\text{Inf}_{\text{edges}}$ \\
       \midrule
-      \textbf{1. Baseline (Raw Entities \& Edges)}          & 0.740 (0.801) & 0.159 & 0.332 & 0.296 (0.279) & 1.473 & 1.211 \\
-      \textbf{2. Scoped (Method-Local Types Filtered)}      & 0.852 (0.882) & 0.161 & 0.048 & 0.323 (0.300) & 1.474 & 0.805 \\
-      \textbf{3. Behavioral (Excluding Syntactic Imports)}  & 0.852 (0.882) & 0.161 & 0.048 & 0.368 (0.387) & 1.017 & 0.834 \\
+      \textbf{1. Baseline (Raw Entities \& Edges)}          & 0.740
+      (0.801) & 0.159 & 0.332 & 0.296 (0.279) & 1.473 & 1.211 \\
+      \textbf{2. Scoped (Method-Local Types Filtered)}      & 0.852
+      (0.882) & 0.161 & 0.048 & 0.323 (0.300) & 1.474 & 0.805 \\
+      \textbf{3. Behavioral (Excluding Syntactic Imports)}  & 0.852
+      (0.882) & 0.161 & 0.048 & 0.368 (0.387) & 1.017 & 0.834 \\
       \bottomrule
     \end{tabular}
   \end{adjustbox}
   \vspace{0.2em}
   \footnotesize
-  Values report arithmetic means across 29 Python repositories, with medians in parentheses for Jaccard indices.\\
-  Mode 2 prunes method-local test fixtures in Depends via Semantic Lifting ($\lambda$), dropping entity omission by 85.5\%.\\
-  Mode 3 evaluates purely behavioral dependencies (calls and inheritance), reducing median $\text{Sup}_{\text{edges}}$ from 1.338 to 0.889.
+  Values report arithmetic means across 29 Python repositories, with
+  medians in parentheses for Jaccard indices.\\
+  Mode 2 prunes method-local test fixtures in Depends via Semantic
+  Lifting ($\lambda$), dropping entity omission by 85.5\%.\\
+  Mode 3 evaluates purely behavioral dependencies (calls and
+  inheritance), reducing median $\text{Sup}_{\text{edges}}$ from 1.338 to 0.889.
 \end{table}
 
-\subsection{The Procedural Dilemma in C and C++: Headers, Macros, and Translation Units}
+\subsection{Preprocessing and Headers in C and C++}
 \label{subsec:discussion_procedural_dilemma}
 
 The empirical evaluation of C and C++ repositories revealed the most intricate
 architectural trade-offs of the entire study, governed by two intertwined
 factors: preprocessor macro expansion and header inlining.
 
-\paragraph{Preprocessor Macro Masking in Raw Sources.}
+\paragraph{Macro Masking in Raw Sources.}
 In raw, unprocessed C and C++ source code, extensive use of preprocessor
 macros (\texttt{\#define}) fundamentally obscures the underlying syntax.
 Macros are routinely used to declare function wrappers, synthesize struct
 typedefs, declare interface dispatch tables, and implement conditional
 compilation (\texttt{\#ifdef}). As shown in Table~\ref{tab:results_summary_rq2},
-analyzing raw C code produces a modest edge Jaccard similarity of $0.115$. Tree-sitter
+analyzing raw C code produces a modest edge Jaccard similarity of
+$0.115$. Tree-sitter
 parsers, encountering macro invocations that do not conform to standard C
 grammar, frequently classify complex macro statements as generic call
 expressions or syntax errors, causing referenced structs and typedefs to remain
 unlinked.
 
-\paragraph{Translation-Unit Expansion vs. Header Duplication.}
+\paragraph{Preprocessing vs. Header Duplication.}
 When translation units are preprocessed via the compiler frontend
 (\texttt{clang -E}), macros are fully expanded, conditional directives are
 evaluated, and all included header files are inlined directly into the source
@@ -361,41 +456,60 @@ and runtime type declarations into every single compilation unit}.
 This artifact, combined with fine-grained enum variant extraction and recursive
 traversal of vendored subtrees, artificially inflates node superiority
 ($\text{Sup}_{\text{nodes}} = 7.22$ in C and $4.91$ in C++), because OmniDeps
-extracts these external and fine-grained declarations directly from the syntax trees.
+extracts these external and fine-grained declarations directly from
+the syntax trees.
 
-\paragraph{Deconstructing the Node Disparity: System Headers, Vendored Trees, and Enum Granularity.}
+\paragraph{System Headers and Enum Granularity.}
 An empirical inspection of node-level discrepancies between OmniDeps and Depends
 reveals the exact root causes of this elevated node superiority across both raw
 and preprocessed configurations:
 \begin{itemize}
-  \item \textbf{Standard Library and POSIX Header Inlining}: Under translation-unit
-    preprocessing (\texttt{clang -E}), the compiler inlines not only local project
+  \item \textbf{Standard Library and POSIX Header Inlining}: Under
+    translation-unit
+    preprocessing (\texttt{clang -E}), the compiler inlines not only
+    local project
     headers, but the entire POSIX and C runtime library (\texttt{<stdio.h>},
-    \texttt{<sys/socket.h>}, \texttt{<time.h>}), injecting standard structs such as
+    \texttt{<sys/socket.h>}, \texttt{<time.h>}), injecting standard
+    structs such as
     \texttt{stat}, \texttt{timespec}, \texttt{sockaddr}, \texttt{sigaction},
-    \texttt{rusage}, and \texttt{termios}. OmniDeps faithfully extracts every syntax-level
+    \texttt{rusage}, and \texttt{termios}. OmniDeps faithfully
+    extracts every syntax-level
     struct definition from the CST, whereas Depends (leveraging Eclipse CDT's
     build-system configuration) filters out external system include paths.
-  \item \textbf{Enum Variant Harmonization Granularity}: In C, enumerations are ubiquitous.
-    In the graph harmonization model, OmniDeps preserves each individual enum variant
-    (e.g., \texttt{KEY\_ACTION.ENTER}, \texttt{RESERVED.TK\_AND}) as an architectural
-    component. In contrast, Depends models enum constants as scalar variables (\texttt{var}),
-    which the restricted harmonization filter prunes as volatile entities. In projects
-    like \texttt{redis}, this granularity difference alone accounts for roughly half of the
+  \item \textbf{Enum Variant Harmonization Granularity}: In C,
+    enumerations are ubiquitous.
+    In the graph harmonization model, OmniDeps preserves each
+    individual enum variant
+    (e.g., \texttt{KEY\_ACTION.ENTER}, \texttt{RESERVED.TK\_AND}) as
+    an architectural
+    component. In contrast, Depends models enum constants as scalar
+    variables (\texttt{var}),
+    which the restricted harmonization filter prunes as volatile
+    entities. In projects
+    like \texttt{redis}, this granularity difference alone accounts
+    for roughly half of the
     entire node divergence (673 out of 1,343 nodes missing in Depends).
-  \item \textbf{Vendored Directory Traversal}: While build-system-coupled analyzers
-    restrict extraction to targets declared in primary build scripts, OmniDeps performs
-    a recursive workspace walk, parsing vendored dependencies nested in subdirectories
-    (e.g., \texttt{deps/jemalloc} and \texttt{deps/lua} in Redis, adding 217 nodes)
+  \item \textbf{Vendored Directory Traversal}: While
+    build-system-coupled analyzers
+    restrict extraction to targets declared in primary build scripts,
+    OmniDeps performs
+    a recursive workspace walk, parsing vendored dependencies nested
+    in subdirectories
+    (e.g., \texttt{deps/jemalloc} and \texttt{deps/lua} in Redis,
+    adding 217 nodes)
     as well as anonymous typedefs (\texttt{unnamed\_type}, adding 91 nodes).
 \end{itemize}
-Crucially, despite this large set of additional nodes, entity omission remains low
+Crucially, despite this large set of additional nodes, entity
+omission remains low
 ($\text{Inf}_{\text{nodes}} = 0.057$ on \texttt{git}, $0.202$ on \texttt{redis},
-and $0.140$ on \texttt{curl}), confirming that OmniDeps captures virtually all core
-entities extracted by Depends. The moderate Jaccard similarity is therefore mathematically
-driven by denominator inflation ($|A \cup B|$) rather than unrecovered project architecture.
+and $0.140$ on \texttt{curl}), confirming that OmniDeps captures
+virtually all core
+entities extracted by Depends. The moderate Jaccard similarity is
+therefore mathematically
+driven by denominator inflation ($|A \cup B|$) rather than
+unrecovered project architecture.
 
-\paragraph{The Incomplete Type Trap in Header Stripping.}
+\paragraph{Incomplete Types in Header Stripping.}
 To address this duplication, our exploratory investigation evaluated
 stripping inlined header declarations using compiler linemarkers. However,
 this experiment exposed a fatal flaw in compiler-dependent baseline tools:
@@ -408,13 +522,13 @@ symbol exceptions across nearly every stripped project, proving that
 compiler-based frontends cannot function without complete header inlining.
 
 These empirical observations lead to a decisive conclusion: \textbf{in
-procedural C and C++, translation units cannot be treated as autonomous
+  procedural C and C++, translation units cannot be treated as autonomous
 modular components}. Bridging the gap between physical files and logical
 architecture requires an explicit, post-parse link-time deduplication layer
 that unifies identical struct declarations across translation units while
 preserving call edges.
 
-\subsection{Modern Modularity and Trait Systems in Rust}
+\subsection{Modularity and Traits in Rust}
 \label{subsec:discussion_rust_modularity}
 
 The evaluation of Rust repositories provides an instructive counterpoint to C
@@ -442,7 +556,7 @@ toolchain overhead.
 % ==============================================================================
 % 2. ARCHITECTURAL EFFICACY ASSESSMENT
 % ==============================================================================
-\section{Architectural Efficacy: Was the Agnostic Approach Worth It?}
+\section{Efficacy of the Language-Agnostic Approach}
 \label{sec:discussion_efficacy}
 
 A foundational question guiding this dissertation is whether developing a
@@ -453,12 +567,14 @@ compiler-coupled frontends.
 Based on our empirical findings across 156 repositories, the empirical evidence
 indicates that this design trade-off is clearly advantageous for architectural
 analysis. While compiler-coupled frontends provide deeper type resolution in
-specialized scenarios (such as complex C++ template metaprogramming), the benefits
-of the decoupled AST-query architecture provide substantial practical gains across
+specialized scenarios (such as complex C++ template metaprogramming),
+the benefits
+of the decoupled AST-query architecture provide substantial practical
+gains across
 three critical dimensions: operational reliability, computational throughput,
 and engineering maintainability.
 
-\subsection{The Build-System Decoupling Dividend}
+\subsection{Decoupling from Build Systems}
 \label{subsec:discussion_build_decoupling}
 
 The single most consequential finding of our comparative evaluation is the
@@ -497,11 +613,12 @@ deliberately decoupling syntax analysis from build-system bootstrapping.
 OmniDeps requires nothing more than raw source trees on disk. For empirical
 researchers analyzing hundreds of historical releases, or software architects
 evaluating multi-language enterprise monorepos, \textbf{an analyzer that
-extracts roughly 98\% of architectural dependencies with zero manual build
-configuration offers far greater practical utility than a compiler-based tool
-that fails on over half of the repositories due to build-environment prerequisites}.
+  extracts roughly 98\% of architectural dependencies with zero manual build
+  configuration offers far greater practical utility than a compiler-based tool
+  that fails on over half of the repositories due to build-environment
+prerequisites}.
 
-\subsection{Precision vs. Scalability: The Pragmatic Trade-off}
+\subsection{Precision Versus Scalability}
 \label{subsec:discussion_precision_tradeoff}
 
 Traditional compiler frontends dedicate immense computational resources to
@@ -532,7 +649,7 @@ alter the identified architectural topology. Consequently, the trade-off
 between exhaustive compiler verification and high-throughput AST querying is
 pragmatically optimal for architectural analysis.
 
-\subsection{Engineering Economy and Polyglot Extensibility}
+\subsection{Polyglot Extensibility}
 \label{subsec:discussion_engineering_economy}
 
 Maintaining a multi-language static analysis framework built on bespoke
@@ -550,27 +667,29 @@ to:
 Each of these compiler APIs evolves independently, introduces incompatible AST
 abstractions, and requires dedicated runtime environments.
 
-In contrast, OmniDeps provides a consistent and maintainable architecture across languages.
+In contrast, OmniDeps provides a consistent and maintainable
+architecture across languages.
 By utilizing Tree-sitter, language frontends are defined entirely through
 \textbf{declarative S-expression syntax queries} mapping concrete CST patterns
 to the strongly typed Universal Intermediate Representation. Adding support
 for a new programming language (e.g., Go, C\#, or TypeScript) requires writing
 a set of query definitions; the underlying algebraic query engine, Scope Tree
-indexing, and graph constructor remain completely unchanged and language-agnostic.
+indexing, and graph constructor remain completely unchanged and
+language-agnostic.
 This engineering economy ensures that OmniDeps can be maintained and extended
 by small research or engineering teams without polyglot compiler expertise.
 
 % ==============================================================================
 % 3. PRACTICAL IMPLICATIONS
 % ==============================================================================
-\section{Practical Implications for Software Engineering and Tool Design}
+\section{Practical Implications}
 \label{sec:discussion_implications}
 
 The findings of this thesis have immediate practical ramifications for software
 engineering practitioners, architectural tool vendors, and development
 workflows:
 
-\subsection{Continuous Integration and Pre-Commit Architectural Auditing}
+\subsection{Continuous Integration Auditing}
 \label{subsec:implications_ci_cd}
 
 Traditional architectural smell detection and dependency auditing tools are
@@ -585,7 +704,7 @@ violations, illegal cross-module dependencies, or cyclic component coupling) as
 mandatory pull-request checks, catching structural decay before it is merged
 into production branches.
 
-\subsection{Universal Ingestion Engine for Architectural Smell Detectors}
+\subsection{Universal Ingestion for Smell Detectors}
 \label{subsec:implications_smell_detection}
 
 State-of-the-art architectural analysis platforms such as \textit{Arcan}
@@ -639,39 +758,53 @@ extraction fidelity rather than superficial artifacts of representation.
 \begin{itemize}[leftmargin=2.5em]
   \item \textbf{Harmonization and Semantic Lifting Artifacts}:
     A fundamental threat in comparative static analysis is that baseline tools
-    model software at divergent abstraction levels (e.g., \textit{Depends} captures
-    statement-level variable accesses, while \textit{Arcan} captures class- and
+    model software at divergent abstraction levels (e.g.,
+      \textit{Depends} captures
+      statement-level variable accesses, while \textit{Arcan}
+      captures class- and
     package-level couplings). If compared directly, metric differences would
     reflect differing metamodels rather than extraction accuracy.
     \textit{Mitigation}: We defined the Semantic Lifting Operator ($\lambda$,
     Section~\ref{subsec:semantic_lifting}) and Explicit Containment Closure
     (Section~\ref{subsec:structural_closure}) to lift member-level interactions
-    to enclosing architectural types ($V_{\text{arch}}$) and synthesize intermediate
-    package nodes. While this ensures a fair comparison at the architectural tier,
+    to enclosing architectural types ($V_{\text{arch}}$) and
+    synthesize intermediate
+    package nodes. While this ensures a fair comparison at the
+    architectural tier,
     lifting intentionally collapses fine-grained intra-component interactions,
     which limits the evaluation to macro-architectural dependencies.
 
   \item \textbf{Manual Catalogs of Primitive and Built-in Types}:
-    In OmniDeps, primitive types (such as \texttt{int}, \texttt{char}, \texttt{size\_t},
+    In OmniDeps, primitive types (such as \texttt{int},
+      \texttt{char}, \texttt{size\_t},
     or \texttt{i32}) are recognized through predefined, per-language catalogs so
     that the framework can synthesize terminal \texttt{Primitive} endpoints
     rather than attempting workspace symbol resolution.
     \textit{Threat}: Maintaining manual catalogs introduces a potential risk of
     omission: uncommon built-in types or platform-specific aliases might fail
-    classification, leading to either unresolved symbols or discarded references.
-    \textit{Mitigation and Limitation}: We constructed comprehensive catalogs based
-    on official language specifications for all five target languages. Nonetheless,
-    relying on manual lists remains an engineering limitation; automating primitive
+    classification, leading to either unresolved symbols or discarded
+    references.
+    \textit{Mitigation and Limitation}: We constructed comprehensive
+    catalogs based
+    on official language specifications for all five target
+    languages. Nonetheless,
+    relying on manual lists remains an engineering limitation;
+    automating primitive
     type discovery (for example, through statistical occurrence heuristics or
-    automated specification extraction) represents an objective for future iterations.
+    automated specification extraction) represents an objective for
+    future iterations.
 
   \item \textbf{File-Level vs. Type-Level Granularity Mismatch in C and C++}:
-    In procedural languages, static analyzers often diverge on what constitutes a
+    In procedural languages, static analyzers often diverge on what
+    constitutes a
     fundamental architectural node. While OmniDeps and Depends extract
     user-defined types (structs, unions, classes), Arcan models procedural C/C++
-    primarily at the physical file and header level for architectural smell detection.
-    \textit{Threat}: Directly computing overlap between file-based and type-based
-    graphs produces an empty intersection ($V_{\text{Arcan}} \cap V_{\text{OmniDeps}} = \emptyset$),
+    primarily at the physical file and header level for architectural
+    smell detection.
+    \textit{Threat}: Directly computing overlap between file-based
+    and type-based
+    graphs produces an empty intersection ($V_{\text{Arcan}} \cap
+    V_{\text{OmniDeps}} = \emptyset$),
     which would falsely suggest zero extraction capability.
     \textit{Mitigation}: We explicitly diagnosed this divergence as a structural
     granularity mismatch rather than an extraction failure, marking Arcan as
@@ -680,38 +813,61 @@ extraction fidelity rather than superficial artifacts of representation.
 
   \item \textbf{Polyglot Traversal vs. Single-Language Baseline Silos}:
     A fundamental construct threat arises from the asymmetry between OmniDeps'
-    language-agnostic workspace traversal and the single-language scoping of baseline tools.
-    Traditional analyzers operate within single-language silos governed by build-system
-    targets: Depends Python analyzes exclusively \texttt{.py} files within declared module roots,
-    Arcan evaluates only \texttt{.java} files declared in build manifests, and Entangle
-    processes only Cargo packages. In contrast, OmniDeps is inherently polyglot: it
-    recursively scans the entire repository tree, extracting architectural entities and
-    dependencies across all five supported grammars (C, C++, Java, Python, Rust) without
+    language-agnostic workspace traversal and the single-language
+    scoping of baseline tools.
+    Traditional analyzers operate within single-language silos
+    governed by build-system
+    targets: Depends Python analyzes exclusively \texttt{.py} files
+    within declared module roots,
+    Arcan evaluates only \texttt{.java} files declared in build
+    manifests, and Entangle
+    processes only Cargo packages. In contrast, OmniDeps is
+    inherently polyglot: it
+    recursively scans the entire repository tree, extracting
+    architectural entities and
+    dependencies across all five supported grammars (C, C++, Java,
+    Python, Rust) without
     relying on build-system manifests.
-    \textit{Threat and Cross-Benchmark Impact}: Modern software repositories are predominantly
-    polyglot. Repositories categorized under a primary language routinely incorporate
-    secondary languages: Python packages include compiled native Rust or C extensions (such
-    as the Rust core in \texttt{pydantic} or Cython/C modules in \texttt{scikit-learn}), C and
-    C++ codebases embed Python automation scripts and test harnesses (e.g., in \texttt{redis},
-    \texttt{git}, and \texttt{FFmpeg}), and Java systems contain native JNI C/C++ bindings.
-    OmniDeps faithfully extracts all of these entities and dependencies into a unified
-    multigraph, whereas single-language baseline tools ignore non-target source trees entirely.
-    Because these valid multi-language components exist exclusively in OmniDeps' graph
-    ($A \setminus B$), this structural scope mismatch systematically inflates the superiority
+    \textit{Threat and Cross-Benchmark Impact}: Modern software
+    repositories are predominantly
+    polyglot. Repositories categorized under a primary language
+    routinely incorporate
+    secondary languages: Python packages include compiled native Rust
+    or C extensions (such
+      as the Rust core in \texttt{pydantic} or Cython/C modules in
+    \texttt{scikit-learn}), C and
+    C++ codebases embed Python automation scripts and test harnesses
+    (e.g., in \texttt{redis},
+    \texttt{git}, and \texttt{FFmpeg}), and Java systems contain
+    native JNI C/C++ bindings.
+    OmniDeps faithfully extracts all of these entities and
+    dependencies into a unified
+    multigraph, whereas single-language baseline tools ignore
+    non-target source trees entirely.
+    Because these valid multi-language components exist exclusively
+    in OmniDeps' graph
+    ($A \setminus B$), this structural scope mismatch systematically
+    inflates the superiority
     metric ($\text{Sup}$) across all 156 repositories in the benchmark.
-    \textit{Mitigation and Interpretation}: We explicitly clarify that elevated superiority
-    values do not indicate extraction hallucinations or false-positive couplings, but reflect
-    OmniDeps' comprehensive polyglot repository visibility compared to the restricted
+    \textit{Mitigation and Interpretation}: We explicitly clarify
+    that elevated superiority
+    values do not indicate extraction hallucinations or
+    false-positive couplings, but reflect
+    OmniDeps' comprehensive polyglot repository visibility compared
+    to the restricted
     single-language lens of traditional analyzers.
 
   \item \textbf{Metric Sensitivity and Smoothing}:
-    Standard Jaccard similarity evaluates to an indeterminate form ($\frac{0}{0}$)
+    Standard Jaccard similarity evaluates to an indeterminate form
+    ($\frac{0}{0}$)
     when comparing sparse subgraphs or projects with empty edge sets, and its
     symmetric nature cannot distinguish between under-approximation and
     over-approximation.
     \textit{Mitigation}: We adopted Laplace-smoothed Jaccard formulations
-    ($J_{\text{nodes}}$ and $J_{\text{edges}}$) to guarantee numerical stability,
-    paired with directional superiority ($\text{Sup}$) and inferiority ($\text{Inf}$)
+    ($J_{\text{nodes}}$ and $J_{\text{edges}}$) to guarantee
+    numerical stability,
+    paired with directional superiority ($\text{Sup}$) and
+    inferiority ($\text{Inf}$)
     indices (Section~\ref{subsec:discrepancy_indices}) to assess over-extraction
     and omission independently.
 \end{itemize}
@@ -725,52 +881,69 @@ the observed results.
 
 \begin{itemize}[leftmargin=2.5em]
   \item \textbf{C/C++ Preprocessing Trade-offs (Inlining vs. Incomplete Types)}:
-    In C and C++, macro expansion and header inlining introduce a major experimental
+    In C and C++, macro expansion and header inlining introduce a
+    major experimental
     trade-off. In raw source files, unexpanded preprocessor macros mask type
     declarations and function signatures. Conversely, preprocessing translation
     units via \texttt{clang -E} expands and inlines all included headers, which
     substantially improves symbol resolution but replicates shared struct
-    definitions across every translation unit, artificially inflating node superiority
+    definitions across every translation unit, artificially inflating
+    node superiority
     ($\text{Sup}_{\text{nodes}} = 7.22$ in C and $4.91$ in C++).
-    \textit{Threat}: Attempting to eliminate this duplication by stripping inlined
-    headers using linemarkers broke compiler-based frontends (such as Eclipse CDT in
+    \textit{Threat}: Attempting to eliminate this duplication by
+    stripping inlined
+    headers using linemarkers broke compiler-based frontends (such as
+      Eclipse CDT in
     Depends), which crashed due to incomplete type definitions.
-    \textit{Mitigation}: To avoid biasing the evaluation toward one specific mode,
-    we explicitly evaluated and reported both raw and preprocessed configurations,
+    \textit{Mitigation}: To avoid biasing the evaluation toward one
+    specific mode,
+    we explicitly evaluated and reported both raw and preprocessed
+    configurations,
     demonstrating the exact trade-offs of single-pass translation-unit analysis.
 
   \item \textbf{Unmodeled C-Style Variadic Functions}:
     Functions in C and C++ frequently employ variadic arguments via the untyped
     ellipsis construct (\texttt{...}), as exemplified by \texttt{printf}.
-    OmniDeps does not explicitly model C-style variadic signatures in its type system.
-    \textit{Threat}: Because the ellipsis construct does not specify parameter types,
+    OmniDeps does not explicitly model C-style variadic signatures in
+    its type system.
+    \textit{Threat}: Because the ellipsis construct does not specify
+    parameter types,
     syntax queries treat it as an anonymous parameter or ignore it, leaving
     variable-argument signatures unmodeled.
     \textit{Mitigation and Limitation}: In terms of type dependency extraction,
-    an untyped ellipsis does not introduce a named type reference, meaning that no
+    an untyped ellipsis does not introduce a named type reference,
+    meaning that no
     type-level dependency edge is lost in the architectural graph. However, we
     explicitly acknowledge that OmniDeps does not model C-style variadics, and
-    untyped arguments cannot be statically resolved to their concrete types at call
+    untyped arguments cannot be statically resolved to their concrete
+    types at call
     sites without interprocedural data-flow analysis.
 
   \item \textbf{Dynamic Features and Reflection in Dynamic Languages}:
-    In dynamically typed languages like Python, static analysis inherently cannot
+    In dynamically typed languages like Python, static analysis
+    inherently cannot
     observe runtime reflection, dynamic dispatch via \texttt{getattr}, runtime
     monkey-patching, or dynamically populated symbol tables.
-    \textit{Threat}: This creates an expected ceiling on edge recall, as syntax queries
-    cannot resolve call targets whose types exist only during interpreter execution.
-    \textit{Mitigation and Limitation}: We acknowledge this as a structural boundary
+    \textit{Threat}: This creates an expected ceiling on edge recall,
+    as syntax queries
+    cannot resolve call targets whose types exist only during
+    interpreter execution.
+    \textit{Mitigation and Limitation}: We acknowledge this as a
+    structural boundary
     of purely syntactic static analysis on dynamic languages, motivating future
     integration with gradual type annotations (PEP 484) or local type inference.
 
   \item \textbf{Runtime Measurement Variance and Execution Bias}:
     Comparing a native compiled binary (implemented in Rust) against JVM-based
-    analyzers (Arcan and Depends) introduces potential measurement bias due to JVM
+    analyzers (Arcan and Depends) introduces potential measurement
+    bias due to JVM
     startup overhead, JIT bytecode compilation, and garbage collection pauses.
-    \textit{Mitigation}: To ensure fair performance measurements, each project was
+    \textit{Mitigation}: To ensure fair performance measurements,
+    each project was
     analyzed in isolated process sessions with clean termination and a generous
     hard timeout ($T_{\max} = 1$ hour, $3600\,\text{s}$). Execution times were
-    averaged across multiple runs, and both arithmetic means and sample medians are
+    averaged across multiple runs, and both arithmetic means and
+    sample medians are
     reported to protect against skewed outliers.
 \end{itemize}
 
@@ -778,7 +951,8 @@ the observed results.
 \label{subsec:external_validity}
 
 Threats to external validity concern the generalizability of our conclusions
-across other software ecosystems, programming paradigms, and real-world codebases.
+across other software ecosystems, programming paradigms, and
+real-world codebases.
 
 \begin{itemize}[leftmargin=2.5em]
   \item \textbf{Paradigmatic Generalizability Beyond the C-Family}:
@@ -786,28 +960,43 @@ across other software ecosystems, programming paradigms, and real-world codebase
     (C, C++, Java, Python, and Rust), they all fundamentally share imperative,
     procedural, or object-oriented concepts within the broader C-family.
     \textit{Threat}: The primary threat to generalizability is that our findings
-    cannot be automatically assumed to hold for non-imperative programming paradigms.
-    In purely functional languages (such as Haskell, OCaml, or Lisp), architecture
-    is organized around higher-order functions, algebraic data types, and closures
+    cannot be automatically assumed to hold for non-imperative
+    programming paradigms.
+    In purely functional languages (such as Haskell, OCaml, or Lisp),
+    architecture
+    is organized around higher-order functions, algebraic data types,
+    and closures
     rather than class and package hierarchies. Similarly, declarative and logic
     languages (such as Prolog or SQL) rely on relation unification rather than
     procedural call graphs.
-    \textit{Mitigation and Limitation}: While the Intermediate Representation was
-    formalized to be language-agnostic, extending extraction heuristics and query
-    algebra to functional and declarative paradigms remains an explicit limitation
+    \textit{Mitigation and Limitation}: While the Intermediate
+    Representation was
+    formalized to be language-agnostic, extending extraction
+    heuristics and query
+    algebra to functional and declarative paradigms remains an
+    explicit limitation
     and an avenue for future work.
 
   \item \textbf{Dataset Scale and Representativeness}:
-    A potential threat is that the 156 evaluated repositories were sourced exclusively
-    from open-source projects on GitHub, which might introduce selection bias toward
+    A potential threat is that the 156 evaluated repositories were
+    sourced exclusively
+    from open-source projects on GitHub, which might introduce
+    selection bias toward
     well-structured or conventional repository layouts.
-    \textit{Mitigation}: To ensure representativeness, the dataset was designed to span
-    nearly 98 million lines of code and cover diverse application domains, including
-    low-level operating systems utilities (\texttt{git}, \texttt{tmux}), high-throughput
-    database engines (\texttt{redis}, \texttt{ClickHouse}, \texttt{duckdb}), enterprise
-    platforms (\texttt{elasticsearch}, \texttt{flink}), and game engines (\texttt{godot}).
-    Project sizes range from compact libraries under 1,000 LOC to monolithic codebases
-    exceeding one million LOC, reflecting realistic software engineering diversity.
+    \textit{Mitigation}: To ensure representativeness, the dataset
+    was designed to span
+    nearly 98 million lines of code and cover diverse application
+    domains, including
+    low-level operating systems utilities (\texttt{git},
+    \texttt{tmux}), high-throughput
+    database engines (\texttt{redis}, \texttt{ClickHouse},
+    \texttt{duckdb}), enterprise
+    platforms (\texttt{elasticsearch}, \texttt{flink}), and game
+    engines (\texttt{godot}).
+    Project sizes range from compact libraries under 1,000 LOC to
+    monolithic codebases
+    exceeding one million LOC, reflecting realistic software
+    engineering diversity.
 \end{itemize}
 
 \section{Chapter Summary}
