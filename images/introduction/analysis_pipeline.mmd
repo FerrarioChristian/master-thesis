@@ -1,13 +1,19 @@
+%%{init: {
+    'flowchart': {
+    'rankSpacing': 30
+  },
+  'themeVariables': {'fontSize': '24px'}
+}}%%
 flowchart LR
     %% Inputs and Outputs
-    Src[\Source Code\]
-    CST([Concrete Syntax<br/>Trees])
-    IR([Unresolved IR])
+    Src[\Source<br/>Code\]
+    CST([Syntax<br/>Trees])
+    IR([Raw IR])
     ResIR([Resolved IR])
-    Graph((Dependency<br/>Graph))
+    Graph([Dependency<br/>Graph])
 
     %% Processes
-    P0[Tree-sitter Parser]
+    P0[Tree-sitter <br/>Parser]
     P1[Phase 1:<br/>Extraction]
     P2[Phase 2:<br/>Resolution]
     P3[Phase 3:<br/>Graph<br/>Generation]
