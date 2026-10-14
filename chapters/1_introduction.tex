@@ -67,28 +67,28 @@ inherently language-agnostic.
     \centering
     \small{(a) Rust Syntax Tree}\\[0.5em]
     \begin{adjustbox}{max width=\linewidth}
-    \begin{forest}
-      cst tree
-      [call\_expression
-        [field\_expression
+      \begin{forest}
+        cst tree
+        [call\_expression
           [field\_expression
-            [call\_expression
-              [field\_expression
+            [field\_expression
+              [call\_expression
                 [field\_expression
-                  [identifier]
+                  [field\_expression
+                    [identifier]
+                    [field\_identifier]
+                  ]
                   [field\_identifier]
                 ]
-                [field\_identifier]
+                [argument]
               ]
-              [argument]
+              [field\_identifier]
             ]
             [field\_identifier]
           ]
-          [field\_identifier]
+          [argument]
         ]
-        [argument]
-      ]
-    \end{forest}
+      \end{forest}
     \end{adjustbox}
   \end{subfigure}%
   \hfill%
@@ -97,28 +97,28 @@ inherently language-agnostic.
     \centering
     \small{(b) Python Syntax Tree}\\[0.5em]
     \begin{adjustbox}{max width=\linewidth}
-    \begin{forest}
-      cst tree
-      [call
-        [attribute
+      \begin{forest}
+        cst tree
+        [call
           [attribute
-            [call
-              [attribute
+            [attribute
+              [call
                 [attribute
-                  [identifier]
+                  [attribute
+                    [identifier]
+                    [identifier]
+                  ]
                   [identifier]
                 ]
-                [identifier]
+                [argument\_list]
               ]
-              [argument\_list]
+              [identifier]
             ]
             [identifier]
           ]
-          [identifier]
+          [argument\_list]
         ]
-        [argument\_list]
-      ]
-    \end{forest}
+      \end{forest}
     \end{adjustbox}
   \end{subfigure}
   \caption{Rust and Python CST comparison from the code \textit{a.b.c().d.e()}}
@@ -214,7 +214,7 @@ language introduces novel semantic patterns not yet modeled by the
 configuration, limited extensions to the resolution engine may be
 necessary\cite{vacchi_neverlang_2015}.
 
-\subsection{Scope and Limitations}
+\subsubsection{Scope}
 It is important to emphasize that this tool is designed exclusively
 for \textbf{static} architectural analysis. The extraction and
 resolution of dependencies are based solely on the source code as it
@@ -225,14 +225,18 @@ architecture explicitly declared by the developer, offering a
 deterministic view of the codebase's structural dependencies.
 
 \subsection{Source Code Availability and Reproducibility}
-The \textit{Omnideps} framework developed during this thesis is
-entirely open-source. For instructions on how to access the
-repository, download the standalone executables, replicate the
-benchmarks, or build the project from source, please refer to
-Appendix \ref{app:reproducibility}.
+The \textit{OmniDeps} framework and the \textit{Graph-Synchron}
+benchmarking pipeline developed during this thesis are entirely
+open-source. A complete reproducibility package containing the
+source code of both tools, the snapshots of the 156 evaluated
+repositories, the extracted dependency graphs, and the comparative
+evaluation reports is permanently archived on Zenodo at
+\url{https://doi.org/10.5281/zenodo.23315197}. For instructions on
+how to access the repositories, download the standalone executables,
+build the project from source, or replicate the experimental
+benchmarks, please refer to Appendix \ref{app:reproducibility}.
 
 \section{Organization of the Thesis}
-\todo{Verify chapter structure matches final version}
 
 The remainder of this thesis is organized as follows:
 
@@ -263,7 +267,8 @@ The remainder of this thesis is organized as follows:
     formal evaluation methodology and empirical results across multiple
     benchmark projects and programming languages.
   \item \textbf{Chapter \ref{ch:discussion}} discusses the empirical findings,
-    trade-offs, architectural efficacy, practical implications, and threats to validity.
+    trade-offs, architectural efficacy, practical implications, and
+    threats to validity.
   \item \textbf{Chapter \ref{ch:conclusions}} draws conclusions and outlines
     potential directions for future work.
 \end{itemize}
@@ -275,8 +280,9 @@ ensure reproducibility:
     glossary of the mathematical symbols and notation used to
     formalize the Intermediate Representation and the algebraic query engine.
   \item \textbf{Appendix \ref{app:reproducibility}} details the
-    open-source availability of the \textit{Omnideps} framework. It
-    provides the repository link and exhaustive instructions for
+    open-source availability of the \textit{OmniDeps} framework and its
+    Zenodo reproducibility package (\url{https://doi.org/10.5281/zenodo.23315197}).
+    It provides the repository links and exhaustive instructions for
     end-users and developers to download the executables, build the
     project from source, and replicate the experimental benchmarks.
 \end{itemize}

@@ -1320,17 +1320,13 @@ Against \textbf{Arcan in Java}, file-level \texttt{import} statements are
 removed entirely
 ($\Delta_{B \setminus A} = 0.0\%$), retaining only resolved type references.
 
-Against \textbf{Depends in Java}, both analyzers extract thousands of
-syntactic import statements per repository. However, they diverge
-fundamentally in their architectural binding: OmniDeps distributes
-file-level imports to each declaring class within the compilation
-unit, modeling precise type-level inclusion (\texttt{class $\to$
-target}), whereas Depends lifts imports to the enclosing package
-(\texttt{package $\to$ target}). Because the source vertices occupy
-distinct architectural tiers, their edge sets do not intersect in
-strict pairwise matching (averaging only 0.6 shared edges). A
-comprehensive architectural analysis of this granularity trade-off is
-provided in Section \ref{subsec:discussion_oo_parity}.
+Against \textbf{Depends in Java}, both analyzers capture thousands of
+syntactic import statements per repository, but differ in their structural
+representation: while OmniDeps links imports to the declaring classes,
+Depends models them at the package level. Because the two representations
+bind dependencies to different abstraction levels (\texttt{class} vs.
+\texttt{package}), their edges do not overlap directly in strict pairwise
+matching (averaging only 0.6 shared edges).
 
 Against \textbf{Depends in Python}, OmniDeps extracts all explicit
 syntactic import directives (\texttt{import} and \texttt{from ...
