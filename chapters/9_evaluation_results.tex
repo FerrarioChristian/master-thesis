@@ -1037,7 +1037,8 @@ tools: the impact of translation-unit preprocessing when comparing
 against Depends, and a fundamental granularity mismatch when
 comparing against Arcan.
 
-When compared against \textbf{Depends}, analyzing raw source code without mac\-ro
+When compared against \textbf{Depends}, analyzing raw source code
+without mac\-ro
 expansion and header inclusion makes it difficult to link types across files.
 As reported in Table~\ref{tab:results_depends}, preprocessing translation units
 (\texttt{clang -E}) substantially improves concordance in both languages:
@@ -1047,7 +1048,8 @@ As reported in Table~\ref{tab:results_depends}, preprocessing translation units
     to 7.218, while edge Jaccard similarity increases from 0.115 to
     0.136. On small,
     self-contained libraries such as \texttt{antirez/sds}, both tools extract
-    identical\linebreak graphs ($J_{\text{nodes}} = J_{\text{edges}} = 1.0$). On larger
+    identical\linebreak graphs ($J_{\text{nodes}} = J_{\text{edges}}
+    = 1.0$). On larger
     systems, preprocessing achieves moderate agreement: \texttt{sqlite} reaches
     $J_{\text{nodes}} = 0.399$ and $J_{\text{edges}} = 0.340$, \texttt{redis}
     achieves $0.311$ and $0.157$, and \texttt{FFmpeg} attains $0.308$
@@ -1141,7 +1143,8 @@ analysis is provided in Section~\ref{subsec:discussion_rust_modularity}.
   \label{fig:jaccard_similarity_comparison}
 \end{figure}
 
-\subsection[RQ3: Discrepancy Analysis Across Dependency Kinds]{RQ3: Discrepancy Analysis Across Dependency\linebreak Kinds}
+\subsection[RQ3: Discrepancy Analysis Across Dependency Kinds]{RQ3:
+Discrepancy Analysis Across Dependency\linebreak Kinds}
 \label{subsec:results_rq3}
 \label{subsec:rq3_discordance}
 
@@ -1149,7 +1152,8 @@ To address \textbf{RQ3}, we analyze how graph discrepancies are
 distributed across the five relationship types in our unified
 taxonomy: structural containment (\texttt{belongsTo}), type
 inheritance (\texttt{isChildOf}), interface implementation
-(\texttt{isImp}\-\texttt{lemen}\-\texttt{tation}\-\texttt{Of}), behavioral coupling
+(\texttt{isImp}\-\texttt{lemen}\-\texttt{tation}\-\texttt{Of}),
+behavioral coupling
 (\texttt{dependsOn}), and module inclusion (\texttt{in}\-\texttt{cludes}). Table
 \ref{tab:categorical_discordance_java} presents the shared edges and
 directional discrepancy rates evaluated across Java repositories for
@@ -1351,7 +1355,8 @@ breakdown of preprocessor macro masking, header inlining, and the
 limitations of linemarker-based header stripping is presented in
 Section \ref{subsec:discussion_procedural_dilemma}.
 
-\subsection[RQ4: Runtime Scalability, Throughput, and Speedup]{RQ4: Runtime Scalability, Throughput, and Speed\-up}
+\subsection[RQ4: Runtime Scalability, Throughput, and Speedup]{RQ4:
+Runtime Scalability, Throughput, and Speed\-up}
 \label{subsec:results_rq4}
 
 To answer \textbf{RQ4}, we evaluated the execution runtimes,

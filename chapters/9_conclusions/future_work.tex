@@ -14,7 +14,7 @@ Throughout the development of this thesis, the primary objective was ensuring
 the correctness, sound formalization, and baseline algorithmic scalability of
 the intermediate representation and analysis pipeline. While the algorithmic
 complexity remains well bounded, sustaining high throughput on modern hardware,
-large-scale enterprise monorepos and continuous integration pipelines can
+large-scale enterprise code bases and continuous integration pipelines can
 benefit from deeper concurrency across all stages of the pipeline.
 
 Currently, OmniDeps exploits data-parallelism during both syntactic extraction,
@@ -59,7 +59,8 @@ research opportunity:
     architectural coupling in these ecosystems will require refining the query
     algebra to track function composition and lexical binding without relying
     on class-like encapsulation.
-  \item \textbf{Logic Programming}: Languages such as Prolog rely on relations
+  \item \textbf{Declarative and Logic Paradigms}: Languages such as
+    Prolog rely on relations
     rather than traditional functions and classes. However, because relations
     can be treated similarly to functions for dependency analysis, this
     approach could also be extended to logic paradigms.
@@ -71,11 +72,13 @@ research opportunity:
 Beyond concurrency and paradigm extensions, several architectural refinements
 to the extraction and resolution algorithms warrant future investigation:
 \begin{itemize}
-  \item \textbf{Automated Discovery of Primitive Types}: OmniDeps currently\linebreak
+  \item \textbf{Automated Discovery of Primitive Types}: OmniDeps
+    currently\linebreak
     maintains explicit per-language catalogs to identify built-in and primitive
     types and synthesize terminal primitive endpoints. Future work could
     explore automated primitive type identification through statistical
-    frequency heu\-ris\-tics across syntax nodes or automated scraping of language
+    frequency heu\-ris\-tics across syntax nodes or automated
+    scraping of language
     specification headers, eliminating the need for manual list configuration
     when onboarding new languages.
   \item \textbf{Early Query Resolution for Superclasses}: Currently, resolving

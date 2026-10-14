@@ -132,7 +132,8 @@ them into their final namespace paths.
 
 \subsubsection{Pending Attributes Mechanism}
 
-Annotations, decorators or attributes (e.g., Python's \texttt{@static}\-\texttt{method},
+Annotations, decorators or attributes (e.g., Python's
+  \texttt{@static}\-\texttt{method},
 Rust's \texttt{\#[derive(Debug)]}, Java's \texttt{@Override}) are
 syntactically placed \textit{before} the component they annotate. The
 CST represents them as sibling nodes, not as children of the
@@ -234,7 +235,8 @@ or syntactic context must \textit{not} indicate a different semantic role).
     \texttt{is\_impl\_block} & \texttt{impl\_item},
     \texttt{impl\_block} & None \\ \hline
     \texttt{is\_free\_variable} & \texttt{static\_item}, \texttt{const\_item},
-    \texttt{global\_variable\_}\-\texttt{declaration}; or top-level \texttt{declaration},
+    \texttt{global\_variable\_}\-\texttt{declaration}; or top-level
+    \texttt{declaration},
     \texttt{variable\_declaration} & Ancestor is function, method,
     body, or block scope;
     or contains nested \texttt{function\_declarator} \\ \hline
@@ -436,7 +438,8 @@ into three categories:
         When callable identifiers or expressions are enclosed in protective
         parentheses (e.g., \texttt{(func)()} or macro expansions), the
         function \texttt{extr}\-\texttt{act\_call\_path} recursively unwraps
-        \texttt{parenthesized\_expression} \linebreak CST nodes. This strips literal
+        \texttt{parenthesized\_expression} \linebreak CST nodes. This
+        strips literal
         punctuation tokens and yields clean identifier sequences without
         attempting semantic resolution during syntactic extraction.
       \item \textbf{Field and Member Accesses}: Explicit property

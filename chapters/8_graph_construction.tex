@@ -82,7 +82,8 @@ constructs extracted from the workspace:
     in the hierarchy becomes a vertex of type \texttt{Module}. Because
     Phase 1 extracts individual source files independently into modular
     trees, multiple compilation units within the same package or namespace
-    share common ancestor paths (e.g., \texttt{org.a}\-\texttt{pache.flink}). During
+    share common ancestor paths (e.g.,
+    \texttt{org.a}\-\texttt{pache.flink}). During
     flattening, canonical module paths are deduplicated via a tracking set
     ($\textit{seen\_modules} \subseteq \Pi$) so that each logical module is
     emitted exactly once as a vertex in $V$, while structural parent-child
@@ -254,39 +255,39 @@ categories. Table \ref{tab:edge_taxonomy} provides a complete classification.
   \centering
   \small
   \begin{adjustbox}{max width=\textwidth}
-  \begin{tabular}{|l|l|l|l|}
-    \hline
-    \textbf{Category} & \textbf{Edge Kind} & \textbf{Source} &
-    \textbf{Target} \\ \hline
-    \multirow{2}{*}{\textit{Structural}} & \texttt{ModuleContainment}
-    & Module & Direct child \\ \cline{2-4}
-    & \texttt{NestedIn} & StructuredType & Field, method, or nested
-    type \\ \hline
+    \begin{tabular}{|l|l|l|l|}
+      \hline
+      \textbf{Category} & \textbf{Edge Kind} & \textbf{Source} &
+      \textbf{Target} \\ \hline
+      \multirow{2}{*}{\textit{Structural}} & \texttt{ModuleContainment}
+      & Module & Direct child \\ \cline{2-4}
+      & \texttt{NestedIn} & StructuredType & Field, method, or nested
+      type \\ \hline
 
-    \multirow{2}{*}{\textit{Inheritance}} & \texttt{IsA} &
-    StructuredType & Super type \\ \cline{2-4}
-    & \texttt{Implements} & Module / StructuredType & Type / Trait \\ \hline
+      \multirow{2}{*}{\textit{Inheritance}} & \texttt{IsA} &
+      StructuredType & Super type \\ \cline{2-4}
+      & \texttt{Implements} & Module / StructuredType & Type / Trait \\ \hline
 
-    \multirow{6}{*}{\textit{Type-Level}} & \texttt{UsesFieldType} &
-    Field & Type of a field \\ \cline{2-4}
-    & \texttt{UsesLocalType} & Function & Type of a local variable
-    \\ \cline{2-4}
-    & \texttt{UsesParamType} & Function & Type of a parameter \\ \cline{2-4}
-    & \texttt{UsesReturnType} & Function & Return type \\ \cline{2-4}
-    & \texttt{UsesType} & StructuredType / Function & Generic
-    constraint bound \\ \cline{2-4}
-    & \texttt{Aliases} & TypeAlias & Aliased target type \\ \hline
+      \multirow{6}{*}{\textit{Type-Level}} & \texttt{UsesFieldType} &
+      Field & Type of a field \\ \cline{2-4}
+      & \texttt{UsesLocalType} & Function & Type of a local variable
+      \\ \cline{2-4}
+      & \texttt{UsesParamType} & Function & Type of a parameter \\ \cline{2-4}
+      & \texttt{UsesReturnType} & Function & Return type \\ \cline{2-4}
+      & \texttt{UsesType} & StructuredType / Function & Generic
+      constraint bound \\ \cline{2-4}
+      & \texttt{Aliases} & TypeAlias & Aliased target type \\ \hline
 
-    \multirow{3}{*}{\textit{Behavioral}} & \texttt{Calls} & Function
-    & Invoked function/type \\ \cline{2-4}
-    & \texttt{Instantiates} & Function & Instantiated type \\ \cline{2-4}
-    & \texttt{AccessesField} & Function & Accessed component \\ \hline
+      \multirow{3}{*}{\textit{Behavioral}} & \texttt{Calls} & Function
+      & Invoked function/type \\ \cline{2-4}
+      & \texttt{Instantiates} & Function & Instantiated type \\ \cline{2-4}
+      & \texttt{AccessesField} & Function & Accessed component \\ \hline
 
-    \multirow{3}{*}{\textit{Auxiliary}} & \texttt{Imports} & Module /
-    Type & Imported path \\ \cline{2-4}
-    & \texttt{CastsTo} & Function & Cast target type \\ \cline{2-4}
-    & \texttt{AnnotatedWith} & Any component & Annotation type \\ \hline
-  \end{tabular}
+      \multirow{3}{*}{\textit{Auxiliary}} & \texttt{Imports} & Module /
+      Type & Imported path \\ \cline{2-4}
+      & \texttt{CastsTo} & Function & Cast target type \\ \cline{2-4}
+      & \texttt{AnnotatedWith} & Any component & Annotation type \\ \hline
+    \end{tabular}
   \end{adjustbox}
   \caption{Complete taxonomy of the 16 dependency edge kinds,
   organized by category.}
@@ -318,7 +319,8 @@ implementation extensions:
     interface implementation (such as Java's \texttt{implements}), and
     trait super-traits into a single subtyping relation.
   \item \textbf{Implements}: Reserved for decoupled implementation blocks
-    (\texttt{Impl}-\linebreak\texttt{Block}), such as Rust's \texttt{impl} blocks or out-of-line
+    (\texttt{Impl}-\linebreak\texttt{Block}), such as Rust's
+    \texttt{impl} blocks or out-of-line
     type extensions. Because implementation blocks are dissolved during node
     flattening, two distinct edges model their semantic bindings:
     \begin{enumerate}
@@ -378,7 +380,8 @@ resulting fine-grained dependency graph
 members via \texttt{NestedIn} edges, while the type dependency
 \texttt{UsesFieldType} originates strictly from the field node
 \texttt{Car::engine} toward \texttt{Engine}. Concurrently, the method
-\texttt{Car::drive} exhibits an \texttt{Ac}\-\texttt{cess}\-\texttt{es}\-\texttt{Field} dependency
+\texttt{Car::drive} exhibits an
+\texttt{Ac}\-\texttt{cess}\-\texttt{es}\-\texttt{Field} dependency
 toward \texttt{Car::engine} and a \texttt{Calls} dependency toward
 \texttt{En}\-\texttt{gine::}\-\texttt{start}.
 
