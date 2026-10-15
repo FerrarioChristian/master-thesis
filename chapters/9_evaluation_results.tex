@@ -889,7 +889,7 @@ Entangle, respectively.
   \vspace{0.2em}
   \footnotesize
   Values report means (medians in parentheses for Jaccard indices).\\
-  $^*$In procedural C and C++, Arcan models dependencies at the file
+  $^*$In C and C++, Arcan models dependencies at the file
   and header level (\texttt{IMPL\_FILE}, \texttt{HEADER}), whereas
   OmniDeps extracts user-defined types, resulting in disjoint entity sets.
 \end{table}
@@ -1031,7 +1031,7 @@ resolution, and polyglot workspace traversal, is presented in
 Section~\ref{subsec:discussion_dynamic_languages}.
 
 \paragraph{Structural Alignment in C and C++.}
-In procedural and systems codebases, evaluating structural
+In C and C++ codebases, evaluating structural
 concordance reveals two distinct phenomena across the comparator
 tools: the impact of translation-unit preprocessing when comparing
 against Depends, and a fundamental granularity mismatch when
@@ -1067,7 +1067,7 @@ As reported in Table~\ref{tab:results_depends}, preprocessing translation units
 \end{itemize}
 An in-depth analysis of the architectural trade-offs between macro
 expansion, header inlining, and compiler dependency resolution in
-procedural code is presented in
+C and C++ is presented in
 Section~\ref{subsec:discussion_procedural_dilemma}.
 
 When compared against \textbf{Arcan}, direct pairwise comparison
@@ -1094,19 +1094,19 @@ Because Arcan outputs file paths while OmniDeps outputs type names,
 their node sets do not intersect ($V_{\text{Arcan}} \cap
 V_{\text{OmniDeps}} = \emptyset$). This difference illustrates how
 smell detection tools prioritize file-level organization over type
-hierarchies when analyzing procedural code. A formal analysis of this
+hierarchies when analyzing C and C++ code. A formal analysis of this
 construct validity limitation is provided in
 Section~\ref{subsec:construct_validity}.
 
-Overall, structural concordance in C and C++ remains markedly lower than in
-Java and Python. This disparity reflects the procedural compilation model of the
-C family: unlike the explicit package and module hierarchies of Java
+Overall, structural concordance in C and C++ remains lower than in
+Java and Python. This disparity reflects the separate compilation model of
+C and C++: unlike the explicit package and module hierarchies of Java
 and Python, C and C++ rely on preprocessor inclusion across physical
 header files. In single-pass analyzers operating without a
 whole-program linker, shared header types are parsed repeatedly
 within each translation unit, producing duplicated representations
 and limiting cross-file entity alignment. A comprehensive analysis of
-this procedural dilemma is presented in
+these compilation and preprocessing trade-offs is presented in
 Section~\ref{subsec:discussion_procedural_dilemma}.
 
 \paragraph{Extraction Feasibility in Rust.}
@@ -1278,11 +1278,13 @@ inheritance and interface implementation under a unified subtyping relation
 Against \textbf{Depends in Python}, OmniDeps achieves a low omission
 rate of 22.2\% ($\Delta_{B \setminus A} = 22.2\%$), sharing an
 average of 246.9 inheritance edges. OmniDeps identifies 39.0\%
-additional subtyping edges ($\Delta_{A \setminus B} = 39.0\%$)
-because Depends classifies relative imports and dynamically inherited
-mixins lacking static type annotations as speculative candidate types
-and discards them. Because Python does not provide an explicit
-interface construct, interface implementation is unified under
+additional subtyping edges ($\Delta_{A \setminus B} = 39.0\%$).
+This difference primarily stems from whole-workspace traversal,
+capturing inheritance in test suites and examples that Depends
+omits, as well as multiple-inheritance mixins where Depends classifies
+unresolved targets as speculative candidate types that are pruned during
+harmonization. Because Python does not provide an explicit interface
+construct, interface implementation is unified under
 \texttt{isChildOf}, leaving \texttt{isImplementationOf} unpopulated.
 
 \paragraph{Behavioral Coupling and Method Calls (\texttt{dependsOn}).}
@@ -1341,18 +1343,18 @@ graph ($\Delta_{A \setminus B} = 100.0\%$), leading to a complete
 directional asymmetry in this category.
 
 \paragraph{Structural and Preprocessing Dynamics in C and C++.}
-\label{subsubsec:c_cpp_preprocessing_rq3} Unlike object-oriented and
-modular languages, categorical dependency decomposition in C and C++
-is predominantly governed by the compilation model and
-translation-unit preprocessing. Because preprocessor macros obscure
+\label{subsubsec:c_cpp_preprocessing_rq3} Unlike languages with first-class
+module systems (such as Java, Python, and Rust), categorical dependency
+decomposition in C and C++ is predominantly governed by the separate compilation
+model and translation-unit preprocessing. Because preprocessor macros obscure
 raw syntax, evaluating preprocessed sources (\texttt{clang -E})
 resolves macro-masked declarations but inlines shared headers into
 every translation unit. This produces duplicate type declarations and
-external POSIX dependencies across compilation units, creating an
+external standard library dependencies across translation units, creating an
 unavoidable trade-off between complete type visibility and vertex
 multiplication in single-pass analyzers. A thorough architectural
 breakdown of preprocessor macro masking, header inlining, and the
-limitations of linemarker-based header stripping is presented in
+trade-offs of linemarker-based header filtering is presented in
 Section \ref{subsec:discussion_procedural_dilemma}.
 
 \subsection[RQ4: Runtime Scalability, Throughput, and Speedup]{RQ4:
@@ -1554,7 +1556,7 @@ direct answers to the four research questions guiding this evaluation:
     \textit{OmniDeps demonstrates high structural alignment with
       established analyzers in structured object-oriented codebases,
       with lower edge overlap in dynamically typed languages and
-    procedural code.}
+    in C and C++ code.}
     In Java, OmniDeps aligns closely with all three comparators
     ($J_{\text{nodes}} = 0.814$, $J_{\text{edges}} = 0.587$, and
     only 2.1\% entity omission against Depends). In Python, entity

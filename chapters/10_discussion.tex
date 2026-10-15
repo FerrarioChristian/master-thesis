@@ -111,8 +111,7 @@ in function signatures and variable declarations, real-world Python
 repositories in the dataset adopt type annotations only partially or
 inconsistently \cite{magalhaes_understanding_2026}. In unannotated
 code, both OmniDeps and Depends inevitably arrive at divergent
-heuristics when resolving ambiguous method calls, naturally bounding
-edge Jaccard agreement to $\approx 0.30$--$0.33$.
+heuristics when resolving ambiguous method calls.
 
 \paragraph{Node Disparity and Method-Local Closures.}
 At the entity tier, an initial unharmonized comparison indicated substantial
@@ -169,15 +168,16 @@ edges:
     all relation categories into a single unweighted set, this categorical
     asymmetry accounts for over half of all edges unique to OmniDeps in large
     scientific libraries.
-  \item \textbf{High-Fidelity Cross-Module Inheritance Resolution}: In
-    subtyping hierarchies (\texttt{isChildOf}), OmniDeps exhibits higher recall
-    than Depends, identifying 1,041 inheritance arcs in \texttt{scikit-learn}
-    compared to 491 in Depends. In large Python libraries, inheritance
-    hierarchies frequently rely on relative module imports to compose mixins
-    and base abstractions. Because these relative imports lack static type
-    annotations, Depends treats them as ambiguous symbols and discards them,
-    whereas OmniDeps deterministically resolves relative import paths across
-    the file system using its hierarchical Scope Tree.
+  \item \textbf{Cross-Module Inheritance Resolution}: In subtyping hierarchies
+    (\texttt{isChildOf}), OmniDeps identifies 1,041 inheritance arcs in
+    \texttt{scikit-learn} compared to 491 in Depends. A structural diff reveals
+    two main reasons for this difference: over half of the additional edges
+    (50.5\%) come from test suites and examples where mock estimators extend
+    base classes, which OmniDeps captures through whole-workspace traversal.
+    Furthermore, on multiple-inheritance mixins, Depends frequently marks
+    unresolved targets as speculative candidate types that are pruned during
+    harmonization, whereas OmniDeps resolves declared base classes directly
+    across the project Scope Tree.
   \item \textbf{Language-Agnostic Polyglot Workspace Traversal}: Modern
     software projects are increasingly polyglot. While Depends Python parses
     only \texttt{.py} files within declared roots, OmniDeps recursively
@@ -187,8 +187,9 @@ edges:
     and serializers, whereas single-language Python analyzers treat compiled
     extensions as opaque external binaries.
 \end{itemize}
-Thus, the higher edge count comes from broader syntactic coverage, relative
-imports, and multi-language files, rather than false-positive dependencies.
+Thus, the higher edge count comes from broader syntactic coverage, complete
+workspace traversal, and multi-language files, rather than
+false-positive dependencies.
 
 \paragraph{Behavioral Concordance Without Imports.}
 To verify that the aggregate edge metric is distorted by the unmodeled import
@@ -248,110 +249,111 @@ edge isolation across the Python benchmark suite.
 \label{subsec:discussion_procedural_dilemma}
 
 The empirical evaluation of C and C++ repositories highlights a central
-trade-off driven by two factors: macro expansion and header inlining.
+trade-off driven by two factors: macro expansion and textual header inclusion.
 
 \paragraph{Macro Masking in Raw Sources.}
 In raw, unprocessed C and C++ source code, extensive use of preprocessor
 macros fundamentally obscures the underlying syntax. Macros are routinely used
-to declare function wrappers, synthesize struct typedefs, declare interface
-dispatch tables, and implement conditional compilation. As shown in
-Table~\ref{tab:results_summary_rq2}, analyzing raw C code produces a modest
-edge Jaccard similarity of $0.115$. Tree-sitter parsers, encountering macro
-invocations that do not conform to standard C grammar, frequently classify
-complex macro statements as generic call expressions or syntax errors, causing
-referenced structs and typedefs to remain unlinked.
+to declare function wrappers, synthesize struct and class definitions, configure
+template boilerplate, declare dispatch tables, and implement conditional
+compilation. As shown in Table~\ref{tab:results_summary_rq2}, analyzing raw
+source code produces modest edge Jaccard similarities of $0.115$ in C and
+$0.081$ in C++. Tree-sitter parsers, encountering macro invocations that do not
+conform to standard C or C++ grammar, frequently classify complex macro
+statements as generic call expressions or syntax error nodes, causing
+referenced classes, structs, and types to remain unlinked.
 
 \paragraph{Preprocessing vs. Header Duplication.}
-When translation units are preprocessed via the compiler frontend, macros are
-fully expanded, conditional directives are evaluated, and all included header
-files are inlined directly into the source stream. As documented in
-Section~\ref{subsec:results_rq2}, this produces a substantial boost in
-structural recall: in C++, edge Jaccard agreement doubles from $0.081$ to
-$0.165$ (reaching $0.459$ on \texttt{re2} and $0.320$ on \texttt{ninja}), while
-node inferiority drops significantly. At the categorical level
-(Section~\ref{subsec:results_rq3}), macro expansion resolves masked type
-declarations and function signatures, cutting structural containment omission
-in C++ nearly in half (from $93.5\%$ down to $47.4\%$) and substantially
-reducing behavioral dependency omission (from $92.6\%$ to $67.8\%$).
+When translation units are preprocessed via the compiler preprocessor
+(\texttt{clang -E}), macros are fully expanded, conditional directives are
+evaluated, and all included header files are textually inlined directly into the
+source stream. As documented in Section~\ref{subsec:results_rq2}, this produces
+a substantial boost in structural recall: in C++, edge Jaccard agreement
+doubles from $0.081$ to $0.165$ (reaching $0.459$ on \texttt{re2} and $0.320$
+on \texttt{ninja}), while node inferiority drops significantly. At the
+categorical level (Section~\ref{subsec:results_rq3}), macro expansion resolves
+masked type declarations and function signatures, cutting structural
+containment omission in C++ nearly in half (from $93.5\%$ down to $47.4\%$) and
+substantially reducing behavioral dependency omission (from $92.6\%$ to
+$67.8\%$).
 
-However, preprocessing causes header duplication: inlining headers copies
-standard library and shared project declarations into every file. Because each
-preprocessed file is parsed as a self-contained translation unit, types
-declared in shared headers are replicated across every module that includes
-them. This replication inflates both node superiority
+However, preprocessing causes header duplication. In C and C++, headers contain
+not only type declarations, but class definitions, inline member functions, and
+template implementations required by the separate compilation model. Because
+each preprocessed file is parsed as a self-contained translation unit, entities
+defined in shared headers are replicated across every translation unit that
+includes them. This replication inflates both node superiority
 ($\text{Sup}_{\text{nodes}} = 7.22$ in C and $4.91$ in C++) and the proportion
 of edges unique to OmniDeps ($\Delta_{A \setminus B}$), as OmniDeps extracts
-these duplicated and external declarations directly from each expanded syntax
-tree.
+these duplicated declarations directly from each expanded syntax tree without a
+whole-program linking step.
 
 \paragraph{System Headers and Enum Granularity.}
 Looking closely at the node differences between OmniDeps and Depends reveals
 three main causes:
 \begin{itemize}
-  \item \textbf{Standard Library and POSIX Header Inlining}: Under
-    translation-unit preprocessing, the compiler inlines not only local project
-    headers, but the entire POSIX and C runtime library, injecting standard
-    system structs into every file. OmniDeps faithfully extracts every
-    syntax-level struct definition from the CST, whereas Depends leverages
-    Eclipse CDT's build-system configuration to filter out external system
-    include paths.
-  \item \textbf{Enum Variant Harmonization Granularity}: In C, enumerations are
-    ubiquitous. In the graph harmonization model, OmniDeps preserves each
-    individual enum variant as an architectural component. In contrast, Depends
-    models enum constants as scalar variables, which the restricted
-    harmonization filter prunes as volatile entities. In projects like
-    \texttt{redis}, this granularity difference alone accounts for roughly half
-    of the entire node divergence (673 out of 1,343 nodes missing in Depends).
+  \item \textbf{Standard Library and System Header Inclusion}: Under
+    translation-unit preprocessing, the preprocessor expands not only local
+    project headers, but also system headers (such as the C runtime, POSIX
+    headers, or C++ Standard Library templates), injecting standard types into
+    each file. While OmniDeps extracts syntax-level struct and class
+    definitions directly from the parsed concrete syntax tree (CST), Depends
+    leverages Eclipse CDT's build configuration and symbol indexer to filter out
+    external system include paths and deduplicate indexed symbols.
+  \item \textbf{Enum Variant Harmonization Granularity}: In C and C++,
+    enumerations are widely used (including scoped \texttt{enum class}
+    constructs in modern C++). In the graph harmonization model, OmniDeps
+    preserves each individual enum constant (variant) as an architectural
+    component in its hierarchical scope tree. In contrast, Depends models enum
+    constants as scalar variables, which the restricted harmonization filter
+    prunes as volatile entities. In projects like \texttt{redis}, this
+    granularity difference alone accounts for roughly half of the entire node
+    divergence (673 out of 1,343 nodes missing in Depends).
   \item \textbf{Vendored Directory Traversal}: While build-system-coupled
     analyzers restrict extraction to targets declared in primary build scripts,
     OmniDeps performs a recursive workspace walk, parsing vendored dependencies
     nested in subdirectories (such as bundled \texttt{jemalloc} and
     \texttt{lua} sources in \texttt{redis}) as well as anonymous typedefs.
 \end{itemize}
-Crucially, despite this large set of additional nodes, entity omission remains
-low ($\text{Inf}_{\text{nodes}} = 0.057$ on \texttt{git}, $0.202$ on
-\texttt{redis}, and $0.140$ on \texttt{curl}), confirming that OmniDeps
-captures virtually all core entities extracted by Depends. The lower Jaccard
-score is therefore due to duplicated header nodes inflating the denominator,
-rather than missed project entities.
+Entity omission dynamics, however, differ markedly between C and C++. In
+well-structured C codebases such as \texttt{git} ($\text{Inf}_{\text{nodes}} =
+0.057$), \texttt{curl} ($0.140$), and \texttt{redis} ($0.202$), entity omission
+remains low, indicating that OmniDeps captures the vast majority of core types
+extracted by Depends, and that the low Jaccard agreement is primarily driven by
+header duplication inflating the denominator. Across the full C dataset, the
+median entity omission remains moderate ($\text{Inf}_{\text{nodes}} = 0.300$),
+though projects with complex macros (such as \texttt{htop} and \texttt{tinycc})
+increase the mean to $0.733$. In contrast, C++ exhibits substantially higher
+entity omission (mean $\text{Inf}_{\text{nodes}} = 3.229$, median $1.825$).
+While modular C++ projects like \texttt{ninja} ($0.204$), \texttt{duckdb}
+($0.206$), and \texttt{re2} ($0.240$) attain low omission, template-heavy
+codebases (such as \texttt{googletest} and \texttt{protobuf}) produce high
+divergence, as Eclipse CDT resolves instantiated template specializations and
+nested member types that syntax-directed AST extraction cannot synthesize
+without semantic evaluation. Thus, while header duplication inflates the
+denominator across both languages, genuine semantic omission also contributes
+significantly in C++.
 
-\paragraph{Incomplete Types in Header Stripping.}
+\paragraph{Incomplete Types and Header Stripping.}
 To address this duplication, our exploratory investigation evaluated stripping
 inlined header declarations using compiler linemarkers. However, this
-experiment exposed a fatal flaw in compiler-dependent baseline tools: removing
-header definitions leaves source files with incomplete forward type
-declarations. While OmniDeps' query engine tolerates incomplete forward
-declarations, compiler frontends such as Eclipse CDT within Depends require
-complete struct layouts to resolve member offsets and pointer dereferences.
-Consequently, CDT crashed with syntax and unresolved symbol exceptions across
-nearly every stripped project, proving that compiler-based frontends cannot
-function without complete header inlining.
+experiment highlighted a fundamental constraint of compiler-based frontends:
+removing header definitions leaves source files with incomplete or undeclared
+types. In C and C++, semantic analysis strictly requires complete type
+definitions to resolve member access, verify class inheritance, bind out-of-line
+member functions (\texttt{Class::method}), and instantiate templates. When
+headers were stripped, Eclipse CDT within Depends failed to resolve symbols and
+encountered unhandled parse errors across nearly every project, demonstrating
+that semantic compiler frontends cannot operate without complete header
+visibility in each translation unit. In contrast, OmniDeps' query engine
+tolerates incomplete forward declarations because Tree-sitter performs
+grammar-directed structural extraction without requiring complete type layouts.
 
-These results show that in C and C++, files cannot be treated as isolated
-modules. Handling headers accurately requires deduplicating identical struct
-declarations across files after parsing, while preserving their dependencies.
-
-\subsection{Modularity and Traits in Rust}
-\label{subsec:discussion_rust_modularity}
-
-The evaluation of Rust repositories provides an instructive counterpoint to C
-and C++. Rust combines low-level systems programming performance with a modern,
-strictly enforced modularity model:
-\begin{itemize}[noitemsep]
-  \item Module hierarchies map strictly to the filesystem hierarchy.
-  \item Dependencies across crates and submodules are explicitly declared via
-    canonical \texttt{use} paths.
-  \item Behavioral polymorphism is governed by explicit trait implementation
-    blocks rather than header files or preprocessor macros.
-\end{itemize}
-
-OmniDeps successfully analyzed 100\% of the 32 Rust repositories, sustaining a
-throughput of over 97,000 LOC/s. Because Rust's grammar provides unambiguous
-syntactic demarcations for struct definitions, enum variants, and trait
-implementations, the algebraic query engine resolves cross-module type
-references with high determinism. This confirms that modern systems languages
-engineered with clean module systems allow CST-based static analysis to achieve
-compiler-level fidelity while completely bypassing compiler toolchain overhead.
+These results show that in C and C++, source files cannot be treated as
+wholly isolated units of analysis. Handling header-declared entities accurately
+requires linking or deduplicating identical class, struct, and function
+declarations across translation units after parsing, while preserving their
+architectural dependencies.
 
 % ==============================================================================
 % 2. ARCHITECTURAL EFFICACY ASSESSMENT
@@ -512,8 +514,8 @@ representation artifacts.
     platform-specific aliases may remain unclassified and be treated as
     external symbols.
 
-  \item \textbf{Granularity Mismatch in Procedural Languages}:
-    In procedural C and C++, while OmniDeps and Depends extract user-defined
+  \item \textbf{Granularity Mismatch in C and C++}:
+    In C and C++, while OmniDeps and Depends extract user-defined
     types such as structs, unions, and classes, Arcan models dependencies
     primarily at the physical file and header level. Because intersecting
     file-level and type-level vertex sets produces an empty overlap that would
