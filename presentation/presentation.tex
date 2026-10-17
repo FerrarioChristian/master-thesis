@@ -1,0 +1,730 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+
+% --- Pacchetti di base ---
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{adjustbox}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{qrcode}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,backgrounds,calc,positioning,shapes.multipart}
+\usepackage[edges]{forest}
+
+% --- Stile Forest per i Concrete Syntax Trees (Slide 4) ---
+\forestset{
+  cst tree/.style={
+    for tree={
+      l=0cm,
+      l sep=0.20cm,
+      inner sep=0.03cm,
+      s sep=0.03cm,
+      font=\fontsize{9.0}{10.5}\selectfont\ttfamily,
+    }
+  }
+}
+
+% --- Colori Personalizzati (Palette Bicocca & Cookie Theme) ---
+\definecolor{cookieDemoBlue}{HTML}{356AE6}
+\definecolor{unimibBlue}{HTML}{0B3C68}
+\definecolor{unimibRed}{HTML}{990000}
+\definecolor{techAccent}{HTML}{1A5276}
+\definecolor{cardBg}{HTML}{F8FAFC}
+\definecolor{metricGreen}{HTML}{1E8449}
+\colorlet{WHITE}{white}
+\colorlet{BLACK}{black}
+
+% --- Tema Cookie ---
+\usetheme[
+  accent=cookieDemoBlue,
+  progressbar=foot,
+  sectionpage=progressbar,
+  numbering=fraction,
+  numberrail=section,
+  block=fill,
+  toc=aftertitle,
+]{cookie}
+
+% --- Regolazione Dimensioni Font Titoli e Struttura ---
+\setbeamerfont{frametitle}{size=\fontsize{13}{16}\selectfont,series=\bfseries}
+\setbeamerfont{number rail}{size=\fontsize{13}{16}\selectfont,series=\bfseries}
+\setbeamerfont{cookie kicker}{size=\fontsize{7.5}{9.5}\selectfont,series=\bfseries}
+
+% --- Margini compatti per sfruttare al meglio lo spazio orizzontale ---
+\setbeamersize{text margin left=0.055\paperwidth, text margin right=0.045\paperwidth}
+
+% --- Rientro compatto per elenchi puntati e numerati ---
+\setlength{\leftmargini}{1.15em}
+\setlength{\leftmarginii}{1.15em}
+\setlength{\leftmarginiii}{1.15em}
+\setbeamertemplate{itemize/enumerate body begin}{\setlength{\leftmargini}{1.15em}}
+\setbeamertemplate{itemize/enumerate subbody begin}{\setlength{\leftmarginii}{1.15em}}
+
+% --- Metadati Presentazione ---
+\title[OmniDeps]{A Language-Agnostic Framework\\ for Dependency Extraction}
+\subtitle{Master's Thesis in Computer Science}
+\author[C. Ferrario]{Christian Ferrario}
+\institute{University of Milano-Bicocca}
+\date{A.Y. 2025--2026}
+
+% ==============================================================================
+% TEMPLATE PER IL FRONTESPIZIO (Slide 1)
+% Integrato con lo stile nativo di Cookie Beamer e la gerarchia tipografica
+% ==============================================================================
+\setbeamertemplate{title page}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    % Cuneo diagonale nativo Cookie
+    \coordinate (cuttop) at ($(current page.north east)+(-0.31\paperwidth,0)$);
+    \coordinate (cutbottom) at ($(current page.south east)+(-0.43\paperwidth,0)$);
+    \fill[cookieAccent] (cuttop) -- (current page.north east) -- (current page.south east) -- (cutbottom) -- cycle;
+    % Badge istituzionale con Logo Bicocca nel cuneo
+    \node[anchor=center,fill=white,rounded corners=6pt,inner sep=10pt,draw=cookieLine!40,line width=0.6pt]
+      at ($(current page.east)+(-0.16\paperwidth,0)$) {
+        \includegraphics[width=0.20\paperwidth,keepaspectratio]{../images/logo_unimib.pdf}
+      };
+  \end{tikzpicture}%
+  % Colonna testuale sinistra in stile nativo Cookie (.58\paperwidth)
+  \vspace*{0.02\paperheight}%
+  \begin{minipage}[t]{0.56\paperwidth}
+    \raggedright
+    \cookiekicker{UNIVERSITÀ DEGLI STUDI DI MILANO-BICOCCA}\par\vspace{0.2em}
+    {\fontsize{8.0}{10.0}\selectfont\color{cookieMuted}Dipartimento di Informatica, Sistemistica e Comunicazione\par}
+    \vspace{0.85em}
+    {\fontsize{22}{26}\selectfont\bfseries A Language-Agnostic\\Framework for Dependency\\Extraction\par}
+    \vspace{0.55em}
+    {\fontsize{10.5}{13.0}\selectfont\color{cookieMuted}Master's Thesis in Computer Science\par}
+    \vspace{0.75em}
+    {\color{cookieAccent}\rule{0.16\paperwidth}{1.4pt}}\par
+    \vspace{0.85em}
+    \begin{columns}[t,onlytextwidth]
+      \column{0.46\linewidth}
+        {\fontsize{7.5}{9.5}\selectfont\color{cookieMuted}Candidate}\par\vspace{0.15em}
+        {\normalsize\bfseries Christian Ferrario\par}
+        \vspace{0.75em}
+        {\fontsize{7.5}{9.5}\selectfont\color{cookieMuted}Academic Year 2025--2026\par}
+      \column{0.52\linewidth}
+        {\fontsize{7.5}{9.5}\selectfont\color{cookieMuted}Supervisors}\par\vspace{0.15em}
+        {\small\textbf{Prof. Francesca Arcelli Fontana}}\par\vspace{0.1em}
+        {\small\textbf{Dr. Francesco Refolli}\par}
+    \end{columns}
+  \end{minipage}%
+}
+
+\begin{document}
+
+% ==============================================================================
+% FRONTESPIZIO & ROADMAP (Cookie nativo via \maketitle e toc=aftertitle)
+% ==============================================================================
+\maketitle
+
+% ==============================================================================
+% SEZIONE 1: CONTESTO E MOTIVAZIONE
+% ==============================================================================
+\section{Context \& Motivation}
+
+% ==============================================================================
+% SLIDE 2: CONTESTO & MOTIVAZIONE
+% ==============================================================================
+\begin{frame}{Context: Software Evolution \& Dependency Analysis}{Technical Debt and the Role of Dependency Graphs}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+      \textbf{Software Evolution \& Degradation}\par\vspace{0.2em}
+      {\small Continuous feature delivery and refactoring degrade code structure over time, accumulating architectural technical debt.}\par\vspace{0.8em}
+
+      \textbf{The Polyglot Landscape}\par\vspace{0.2em}
+      {\small Modern enterprise systems routinely combine multiple languages and runtime environments, breaking single-language assumptions.}\par\vspace{0.8em}
+
+      \textbf{The Core Problem}\par\vspace{0.2em}
+      {\small Detecting structural degradation requires extracting accurate dependency graphs across diverse, heterogeneous codebases.}
+
+    \column{0.48\textwidth}
+      \begin{cookiecard}[title={Why Extract Dependency Graphs?}]
+        \fontsize{8.0}{10.5}\selectfont
+        \textbf{Architectural Smell Detection}\par
+        Identify cyclical dependencies, unstable interfaces, hub-like modules, and god components.\par\vspace{0.45em}
+        
+        \textbf{Impact Analysis \& Refactoring}\par
+        Trace ripple effects and blast radius across modules before applying architectural changes.\par\vspace{0.45em}
+        
+        \textbf{System Comprehension}\par
+        Provide an objective, queryable structural topology of enterprise software assets.
+      \end{cookiecard}
+  \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 3: STATO DELL'ARTE & FRAMMENTAZIONE
+% ==============================================================================
+\begin{frame}{State of the Art: Tooling Fragmentation}{The Cost of Language-Specific Analysis Pipelines}
+  \begin{columns}[c,onlytextwidth]
+    \column{0.48\textwidth}
+      \begin{itemize}\setlength{\itemsep}{0.30em}
+        \item \textbf{Tightly Coupled to Compilers:}\\
+          {\small Analyzers depend on specific compiler front-ends and heavy runtimes (\texttt{javac}, Clang, JVM).}
+          
+        \item \textbf{Duplicated Engineering:}\\
+          {\small AST traversal, scope resolution, and graph emission are re-implemented from scratch for every language.}
+          
+        \item \textbf{Heavyweight Multi-Language Tools:}\\
+          {\small Supporting multiple languages forces tools to ship and maintain all underlying compiler toolchains.}
+          
+        \item \textbf{Tooling Fragmentation:}\\
+          {\small High engineering barrier leads to fragmented, single-language tools and slow adoption.}
+      \end{itemize}
+
+    \column{0.48\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.44\textheight,keepaspectratio]{../images/background/mxn_problem.png}
+      \vspace{0.2em}
+      \captionof{figure}{\scriptsize Tool proliferation ($M \times N$) vs unified intermediate representation ($M + N$).}
+  \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 4: L'INTUIZIONE DEI CST
+% ==============================================================================
+\begin{frame}{Structural Convergence of Syntax Trees}{Syntactic Homology Across Language Grammars}
+  \begin{columns}[c,onlytextwidth]
+    \column{0.40\textwidth}
+      \textbf{Generic Parsers}\par\vspace{0.15em}
+      {\small Tree-sitter generates Concrete Syntax Trees (CSTs) from formal grammars across 40+ languages.}\par\vspace{0.6em}
+      
+      \textbf{Structural Convergence}\par\vspace{0.15em}
+      {\small Despite lexical differences, equivalent architectural patterns yield structurally aligned syntax subtrees.}\par\vspace{0.6em}
+          
+      \textbf{Pragmatic Assumption}\par\vspace{0.15em}
+      {\small Code under analysis compiles; extraction focuses purely on dependency topology without re-checking validity.}
+
+    \column{0.58\textwidth}
+      \centering
+      {\scriptsize\textbf{CST Comparison for} \texttt{a.b.c().d.e()}}\par\vspace{0.25em}
+      \begin{minipage}[t]{0.485\linewidth}
+        \centering
+        {\scriptsize\textbf{(a) Rust CST}}\\[0.15em]
+        \begin{adjustbox}{max width=\linewidth,max totalheight=0.62\textheight}
+          \begin{forest}
+            cst tree
+            [call\_expression
+              [field\_expression
+                [field\_expression
+                  [call\_expression
+                    [field\_expression
+                      [field\_expression
+                        [identifier]
+                        [field\_identifier]
+                      ]
+                      [field\_identifier]
+                    ]
+                    [argument]
+                  ]
+                  [field\_identifier]
+                ]
+                [field\_identifier]
+              ]
+              [argument]
+            ]
+          \end{forest}
+        \end{adjustbox}
+      \end{minipage}\hspace{0.015\linewidth}%
+      \begin{minipage}[t]{0.485\linewidth}
+        \centering
+        {\scriptsize\textbf{(b) Python CST}}\\[0.15em]
+        \begin{adjustbox}{max width=\linewidth,max totalheight=0.62\textheight}
+          \begin{forest}
+            cst tree
+            [call
+              [attribute
+                [attribute
+                  [call
+                    [attribute
+                      [attribute
+                        [identifier]
+                        [identifier]
+                      ]
+                      [identifier]
+                    ]
+                    [argument\_list]
+                  ]
+                  [identifier]
+                ]
+                [identifier]
+              ]
+              [argument\_list]
+            ]
+          \end{forest}
+        \end{adjustbox}
+      \end{minipage}
+      \vspace{0.25em}
+      \captionof{figure}{\scriptsize Structural convergence across languages for identical call semantics.}
+  \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 5: OBIETTIVI E OMNIDEPS
+% ==============================================================================
+\begin{frame}{Research Objectives \& OmniDeps Proposal}{Design Principles and Evaluation Targets}
+  \centering
+  {\small Design, formalize, and implement \textbf{OmniDeps}: an extensible, language-agnostic static analysis framework for extracting architectural dependency graphs.}\par\vspace{0.4em}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.32\textwidth}
+      \begin{cookiecard}[title={Formal IR},height=3.65cm]
+        \fontsize{7.5}{9.5}\selectfont
+        \textbf{Universal Data Model:}\\
+        Algebraic Data Types abstracting away syntactic peculiarities.\par\vspace{0.35em}
+        \textbf{Structural Normalization:}\\
+        Standardizes modules, composite types, and invocations into uniform IR entities.
+      \end{cookiecard}
+
+    \column{0.32\textwidth}
+      \begin{cookiecard}[title={Rust Engine},height=3.65cm]
+        \fontsize{7.5}{9.5}\selectfont
+        \textbf{Functional Pipeline:}\\
+        Decoupled 3-phase design ($\varepsilon \to \rho \to \gamma$) ensuring type safety and memory robustness.\par\vspace{0.35em}
+        \textbf{Query Algebra:}\\
+        Symbol resolution via scope tree climbing without compiler coupling.
+      \end{cookiecard}
+
+    \column{0.32\textwidth}
+      \begin{cookiecard}[title={Empirical Benchmark},height=3.65cm]
+        \fontsize{7.5}{9.5}\selectfont
+        \textbf{Graph Harmonization:}\\
+        Semantic alignment methodology for fair cross-tool comparisons.\par\vspace{0.35em}
+        \textbf{Large-Scale Evaluation:}\\
+        Evaluated on 156 open-source projects ($\sim$98M LOC) against Arcan, Depends, and Entangle.
+      \end{cookiecard}
+  \end{columns}
+
+  \vspace{0.45em}
+  \cookiebadge{Java} \hspace{0.2em}
+  \cookiebadge{C / C++} \hspace{0.2em}
+  \cookiebadge{Python} \hspace{0.2em}
+  \cookiebadge{Rust} \hspace{0.6em}
+  {\fontsize{7.2}{9.0}\selectfont\color{cookieMuted}Diverse paradigms evaluated to validate language-agnostic extensibility}
+\end{frame}
+
+% ==============================================================================
+% SEZIONE 2: ARCHITETTURA DEL FRAMEWORK OMNIDEPS
+% ==============================================================================
+\section{The OmniDeps Framework}
+
+% ==============================================================================
+% SLIDE 6: ARCHITETTURA DELLA PIPELINE
+% ==============================================================================
+\begin{frame}[t]{Analysis Pipeline Overview}{Functional Composition and Type-Safe Staging}
+  \vspace{-0.2em}
+  \centering
+  {\small $\displaystyle \phi : \mathcal{W} \to \mathcal{G}, \qquad \phi = \gamma \circ \rho \circ \varepsilon = \gamma \circ (\rho_{\text{exec}} \circ \rho_{\text{build}}) \circ \varepsilon$}\par
+  \vspace{0.5em}
+
+  \centering
+  \includegraphics[width=\textwidth,keepaspectratio]{../images/analysis_process/pipeline_detailed.png}
+
+  \begin{columns}[T,onlytextwidth]
+    \column{0.32\textwidth}
+      {\fontsize{7.5}{9.2}\selectfont
+      $\varepsilon : \mathcal{W} \to \mathcal{D}$\par
+      Parses raw CSTs via Tree-sitter and applies heuristic extraction into unlinked IR. Only phase aware of native syntax.
+      }
+
+    \column{0.34\textwidth}
+      {\fontsize{7.5}{9.2}\selectfont
+      $\rho : \mathcal{D} \to \mathcal{D}_{\text{res}}$\par
+      Builds Scope Tree ($\rho_{\text{build}}$) and resolves symbolic identifiers ($\rho_{\text{exec}}$) via algebraic scope climbing. Purely logical.
+      }
+
+    \column{0.31\textwidth}
+      {\fontsize{7.5}{9.2}\selectfont
+      $\gamma : \mathcal{D}_{\text{res}} \to \mathcal{G}$\par
+      Flattens resolved entities into component vertices ($V$) and emits directed dependency edges ($E$). Purely structural.
+      }
+  \end{columns}
+
+
+\end{frame}
+
+% ==============================================================================
+% SLIDE 7: FASE 1 - EXTRACTION
+% ==============================================================================
+\begin{frame}{Phase 1: Syntactic Extraction}{From Concrete Syntax Trees to Intermediate Representation}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.32\textwidth}
+      \cookiekicker{CST Traversal}\par\vspace{0.2em}
+      {\fontsize{7.5}{9.2}\selectfont
+      Parses source files into Concrete Syntax Trees using Tree-sitter. Systematically traverses the tree to inspect syntactic constructs while abstracting lexical noise.
+      }
+
+    \column{0.34\textwidth}
+      \cookiekicker{Heuristic Recognition}\par\vspace{0.2em}
+      {\fontsize{7.5}{9.2}\selectfont
+      Applies declarative heuristics on CST nodes to identify architectural constructs. Directly leverages \textbf{structural convergence} to recognize equivalent patterns across languages.
+      }
+
+    \column{0.31\textwidth}
+      \cookiekicker{IR Instantiation}\par\vspace{0.2em}
+      {\fontsize{7.5}{9.2}\selectfont
+      Extracts relevant identifiers, types, and references from source buffers, populating the unlinked universal Intermediate Representation for subsequent analysis.
+      }
+  \end{columns}
+
+  \vspace{0.45em}
+  \centering
+  \includegraphics[width=0.96\textwidth,height=0.33\textheight,keepaspectratio]{../images/extraction/extraction_layers.png}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 8: UNIVERSAL INTERMEDIATE REPRESENTATION
+% ==============================================================================
+\begin{frame}{Universal Intermediate Representation (IR)}{Hierarchical Domain Model and Language Abstraction}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.32\textwidth}
+      \cookiekicker{Conservative Extension}\par\vspace{0.15em}
+      {\fontsize{7.5}{9.0}\selectfont
+      Preserves architectural semantics (modules, types, functions, calls) while discarding lexical syntax.
+      }
+
+    \column{0.34\textwidth}
+      \cookiekicker{Hierarchical Model}\par\vspace{0.15em}
+      {\fontsize{7.5}{9.0}\selectfont
+      Tree structure of modules, structured types, and functions that decouples downstream analysis from source languages.
+      }
+
+    \column{0.31\textwidth}
+      \cookiekicker{Unified Abstraction}\par\vspace{0.15em}
+      {\fontsize{7.5}{9.0}\selectfont
+      Normalizes diverse constructs (classes, traits, namespaces) into a uniform model isolating subsequent phases from syntax.
+      }
+  \end{columns}
+
+  \vspace{0.25em}
+  \centering
+  \includegraphics[width=\linewidth,height=0.52\textheight,keepaspectratio]{../images/formal_ir/IR_model.png}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 9: FASE 2 - RISOLUZIONE DEI NOMI DISACCOPPIATA
+% ==============================================================================
+\begin{frame}{Phase 2: Decoupled Name Resolution}{TypeRef Binding and Two-Step Scope Navigation}
+  \begin{columns}[c,onlytextwidth]
+    \column{0.35\textwidth}
+      \cookiekicker{TypeRef Resolution}\par\vspace{0.15em}
+      {\fontsize{7.5}{9.2}\selectfont
+      Symbol references (variable types, calls) start as unresolved \texttt{TypeRef}s. Phase 2 binds them to concrete targets.\par}
+      \vspace{0.45em}
+
+      \cookiekicker{Two-Step Decoupling}\par\vspace{0.15em}
+      {\fontsize{7.5}{9.2}\selectfont
+      \textbf{1. Local Query Building:}\\
+      Local symbol stack rewrites references into closed queries, then frees local state.\par\vspace{0.20em}
+      \textbf{2. Global Query Execution:}\\
+      Evaluates queries deterministically over the global Scope Tree without file-order bias.\par}
+      \vspace{0.45em}
+
+      \cookiekicker{Three Query Primitives}\par\vspace{0.20em}
+      \cookiebadge{Find} {\fontsize{7.0}{8.5}\selectfont Lexical climbing}\hspace{0.2em}\\
+      \cookiebadge{Extract} {\fontsize{7.0}{8.5}\selectfont Member descent}\hspace{0.2em}\\
+      \cookiebadge{Call} {\fontsize{7.0}{8.5}\selectfont Return propagation}\\
+
+    \column{0.64\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{../images/name_resolution/two_phase_resolution.png}\par\vspace{0.15em}
+      {\fontsize{6.8}{8.0}\selectfont\color{cookieMuted}Two-phase resolution: local stack ($\rho_{\text{build}}$) $\to$ global Scope Tree ($\rho_{\text{exec}}$)}
+  \end{columns}
+\end{frame}
+
+
+
+% ==============================================================================
+% SLIDE 10: FASE 3 - GRAPH CONSTRUCTION
+% ==============================================================================
+\begin{frame}{Phase 3: Graph Construction \& Projection}{From Resolved IR Trees to Directed Dependency Multigraphs}
+  \begin{columns}[c,onlytextwidth]
+    \column{0.56\textwidth}
+      \cookiekicker{Construction Pipeline}\par\vspace{0.25em}
+      \centering
+      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{../images/graph_construction/graph_construction_pipeline.png}\par\vspace{0.2em}
+      {\fontsize{6.8}{8.0}\selectfont\color{cookieMuted}Two-pass traversal: node flattening, edge emission, and referential closure}
+
+    \column{0.42\textwidth}
+      \cookiekicker{Resulting Dependency Graph}\par\vspace{0.25em}
+      \centering
+      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{../images/graph_construction/dep_graph_example.png}\par\vspace{0.2em}
+      {\fontsize{6.8}{8.0}\selectfont\color{cookieMuted}Concrete multigraph: internal components and external endpoints}
+  \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SEZIONE 3: VALIDAZIONE SPERIMENTALE
+% ==============================================================================
+\section{Experimental Validation}
+
+% ==============================================================================
+% SLIDE 11: METODOLOGIA DI VALIDAZIONE & GRAPH HARMONIZATION
+% ==============================================================================
+\begin{frame}{Experimental Methodology \& Graph Harmonization}{Evaluation Framework, Cross-Tool Normalization, and Controlled Ground Truth}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+      \cookiekicker{Empirical Framework \& RQs}\par\vspace{0.12em}
+      {\fontsize{7.2}{8.5}\selectfont
+      Evaluated on \textbf{156 open-source repositories} ($\sim$98M LOC) across 5 languages against mature baseline analyzers:\par}
+      \vspace{0.15em}
+      {\fontsize{6.8}{7.8}\selectfont
+      \textbf{RQ1:} Baseline correctness on synthetic oracles\par
+      \textbf{RQ2:} Cross-tool structural alignment on real software\par
+      \textbf{RQ3:} Discrepancy decomposition (C/C++ macros \& headers)\par
+      \textbf{RQ4:} Throughput, speedup, and linear scalability\par}
+      \vspace{0.25em}
+
+      \cookiekicker{Baseline Tool Language Coverage}\par\vspace{0.12em}
+      {\fontsize{6.8}{8.0}\selectfont
+      \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lccccc@{}}
+        \toprule
+        \textbf{Tool} & \textbf{C} & \textbf{C++} & \textbf{Java} & \textbf{Python} & \textbf{Rust} \\
+        \midrule
+        \textbf{OmniDeps} & \textcolor{metricGreen}{\tikz[baseline=-0.25ex,line width=0.9pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);}} & \textcolor{metricGreen}{\tikz[baseline=-0.25ex,line width=0.9pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);}} & \textcolor{metricGreen}{\tikz[baseline=-0.25ex,line width=0.9pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);}} & \textcolor{metricGreen}{\tikz[baseline=-0.25ex,line width=0.9pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);}} & \textcolor{metricGreen}{\tikz[baseline=-0.25ex,line width=0.9pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);}} \\
+        \textbf{Depends}  & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \color{cookieMuted}--- \\
+        \textbf{Arcan}    & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \color{cookieMuted}--- \\
+        \textbf{Entangle} & \color{cookieMuted}--- & \color{cookieMuted}--- & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \color{cookieMuted}--- & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} \\
+        \bottomrule
+      \end{tabular*}}\par
+      \vspace{0.12em}
+      \cookiebadge{156 Repositories} \hspace{0.2em}
+      \cookiebadge{98M LOC} \hspace{0.2em}
+      \cookiebadge{5 Languages}
+
+    \column{0.49\textwidth}
+      \cookiekicker{Graph Harmonization (Graph-Synchron)}\par\vspace{0.12em}
+      {\fontsize{7.2}{8.5}\selectfont
+      Reconciles tool disparities in naming, granularity, and taxonomies without penalizing valid differences:\par}
+      \vspace{0.15em}
+      {\fontsize{6.8}{8.0}\selectfont
+      \textbullet~~\textbf{Path Normalization} \& \textbf{Package Synthesis}\par\vspace{0.12em}
+      \textbullet~~\textbf{Semantic Entity Lifting} (member $\to$ type)\par\vspace{0.12em}
+      \textbullet~~\textbf{Unified Taxonomy} (\texttt{belongsTo}, \texttt{dependsOn}, \texttt{isChildOf})\par}
+      \vspace{0.18em}
+
+      \cookiekicker{Cross-Tool Similarity Metric}\par\vspace{0.10em}
+      {\fontsize{7.2}{8.5}\selectfont
+      Laplace-smoothed Jaccard index avoids undefined forms on sparse subgraphs:\par}
+      \vspace{-0.65em}
+      $$J(A, B) = \frac{|A \cap B| + 1}{|A \cup B| + 1}, \qquad J_{\text{nodes}}, \; J_{\text{edges}}$$
+      \vspace{-0.70em}
+      {\fontsize{6.5}{7.6}\selectfont\color{cookieMuted}Ensures numerical stability when subgraphs have empty edge sets.\par}
+  \end{columns}
+
+  \vspace{0.02em}
+  \begin{cookiecard}[title={RQ1 Ground-Truth Verification (Controlled Synthetic Oracles)}, top=0.7mm, bottom=0.7mm]
+    {\fontsize{6.8}{8.3}\selectfont
+    OmniDeps achieves full concordance (\textbf{100\% node and edge accuracy}) across the dedicated test suites in all 5 languages (C, C++, Java, Python, Rust), confirming the algorithmic correctness of CST extraction and scoped query resolution on isolated constructs prior to large-scale empirical evaluation.\par}
+  \end{cookiecard}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 12: RISULTATI RQ2 - ALLINEAMENTO JAVA & PYTHON
+% ==============================================================================
+\begin{frame}{RQ2: Cross-Tool Structural Alignment}{Large-Scale Feasibility and Graph Convergence Across 156 Repositories}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+      \cookiekicker{Empirical Robustness \& Convergence}\par\vspace{0.15em}
+      {\fontsize{7.2}{8.8}\selectfont
+      \begin{itemize}\setlength{\itemsep}{0.22em}\setlength{\leftskip}{-1.2em}
+        \item \textbf{Execution Robustness:} OmniDeps achieves \textbf{\color{metricGreen}99.4\% completion} (155/156) vs Depends (92.7\%), Arcan (49.2\%), Entangle (29.7\%).
+        \item \textbf{Java Structural Parity:} High agreement with mature compiler tools ($J_{\text{nodes}} = \mathbf{0.814}$ vs Depends, $\mathbf{0.770}$ vs Entangle; $J_{\text{edges}} \approx \mathbf{0.59}$).
+        \item \textbf{Negligible Omission:} Misses only \textbf{0.3\%} of nodes extracted by Arcan ($\text{Inf} = 0.003$) and \textbf{2.1\%} vs Depends.
+        \item \textbf{Dynamic Python:} $J_{\text{nodes}} = \mathbf{0.852}$ (4.8\% omission) after lifting test fixtures; behavioral edge agreement reaches $\sim\mathbf{0.37}$.
+        \item \textbf{Rust Baseline:} \textbf{32/32} projects extracted (100\%), establishing the first empirical baseline.
+      \end{itemize}\par}
+      \vspace{0.4em}
+      \cookiebadge{\textcolor{metricGreen}{\textbf{99.4\% Completion}}} \hspace{0.2em}
+      \cookiebadge{Java $J_{\text{nodes}} > 0.81$} \hspace{0.2em}
+      \cookiebadge{Rust 100\%}
+
+    \column{0.50\textwidth}
+      \cookiekicker{Pairwise Similarity in Java}\par\vspace{0.2em}
+      \centering
+      \includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]{../images/evaluation/comparisons/summary-jaccard-java.png}\par\vspace{0.2em}
+      {\fontsize{6.8}{8.0}\selectfont\color{cookieMuted}Smoothed Jaccard indices across Java projects against Depends ($N=31$), Arcan ($N=18$), and Entangle ($N=19$)\par}
+  \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 13: RISULTATI RQ3 - IL CASO C/C++ E PREPROCESSING
+% ==============================================================================
+\begin{frame}{RQ3: Discrepancy Decomposition in C \& C++}{Ontological Divergence, Preprocessor Macro Masking, and Header Duplication}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.50\textwidth}
+      \cookiekicker{Architectural Discrepancy Analysis}\par\vspace{0.15em}
+      {\fontsize{7.2}{8.8}\selectfont
+      \begin{itemize}\setlength{\itemsep}{0.22em}\setlength{\leftskip}{-1.2em}
+        \item \textbf{Arcan (Ontological Divergence):} Arcan models physical files (\texttt{.c}/\texttt{.h}) for packaging smells; OmniDeps models user-defined types (\texttt{struct}/\texttt{class}). Vertices are disjoint by design, not extraction failure.
+        \item \textbf{Depends (The Preprocessor Dilemma):}
+          \begin{itemize}\setlength{\itemsep}{0.12em}\setlength{\leftskip}{-0.8em}
+            \item \textit{Macro Expansion:} Preprocessing (\texttt{clang -E}) doubles C++ edge recall ($0.081 \to 0.165$) and halves containment omission ($93.5\% \to 47.4\%$).
+            \item \textit{Header Duplication:} Textually inlining headers replicates declarations across translation units, deflating global Jaccard similarity.
+          \end{itemize}
+        \item \textbf{Modular Codebases:} Near-perfect alignment on clean, modular libraries: complete match on \texttt{sds} ($J = 1.0$), strong convergence on \texttt{re2} ($0.46$) and \texttt{ninja} ($0.41$).
+      \end{itemize}\par}
+      \vspace{0.35em}
+      \cookiebadge{Macro Masking} \hspace{0.2em}
+      \cookiebadge{Header Inlining} \hspace{0.2em}
+      \cookiebadge{\texttt{sds} $J=1.0$}
+
+    \column{0.48\textwidth}
+      \cookiekicker{Preprocessing Impact (Raw vs. Preprocessed)}\par\vspace{0.2em}
+      \centering
+      \includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]{../images/evaluation/comparisons/summary-jaccard-c-cpp-preprocessing.png}\par\vspace{0.2em}
+      {\fontsize{6.8}{8.0}\selectfont\color{cookieMuted}Node and edge Jaccard indices before and after macro expansion against Depends in C and C++\par}
+  \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 14: RISULTATI RQ4 - PRESTAZIONI & SCALABILITÀ
+% ==============================================================================
+\begin{frame}{RQ4: Runtime Performance and Scalability}{Throughput Acceleration and Linear Scaling for CI/CD Auditing}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.48\textwidth}
+      \cookiekicker{Throughput Acceleration \& Speedup}\par\vspace{0.15em}
+      {\fontsize{7.2}{8.8}\selectfont
+      \begin{itemize}\setlength{\itemsep}{0.22em}\setlength{\leftskip}{-1.2em}
+        \item \textbf{Analysis Throughput:} Mean \textbf{\textcolor{metricGreen}{74,445 LOC/s}} across 156 projects, with peaks exceeding \textbf{97,000 LOC/s} on Rust and C.
+        \item \textbf{Speedup vs. Depends:} \textbf{13.2x} faster overall (up to 79x on C, 25x on Python, 6.2x on Java).
+        \item \textbf{Speedup vs. Arcan:} \textbf{48.2x} faster overall (up to 116x on Java, 62x on C).
+        \item \textbf{Speedup vs. Entangle:} \textbf{4.0x} faster overall on Java.
+        \item \textbf{Strict $O(N)$ Scalability:} Single-pass CST parsing and Scope Tree resolution scale linearly with LOC; processes 1M+ LOC codebases in seconds.
+      \end{itemize}\par}
+      \vspace{0.35em}
+      \cookiebadge{\textcolor{metricGreen}{\textbf{74k+ LOC/s}}} \hspace{0.2em}
+      \cookiebadge{Up to 116x vs Arcan} \hspace{0.2em}
+      \cookiebadge{$O(N)$ Linear}
+
+    \column{0.50\textwidth}
+      \cookiekicker{Execution Time vs. Codebase Size}\par\vspace{0.2em}
+      \centering
+      \includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]{../images/evaluation/times/graph-cloc-log-java.png}\par\vspace{0.2em}
+      {\fontsize{6.8}{8.0}\selectfont\color{cookieMuted}Wall-clock extraction time vs. codebase size (LOC) across Java repositories on semi-log scale\par}
+  \end{columns}
+\end{frame}
+
+% ==============================================================================
+% SEZIONE 4: DISCUSSIONE E CONCLUSIONI
+% ==============================================================================
+\section{Discussion \& Conclusion}
+
+% ==============================================================================
+% SLIDE 15: DISCUSSIONE DEI TRADE-OFF
+% ==============================================================================
+\begin{frame}{Discussion: Architectural Trade-offs}{Compiler-Coupled Precision vs. Lightweight Polyglot Scalability}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.49\textwidth}
+      \begin{cookiecard}[title={Demonstrated Advantages}]
+        {\fontsize{7.0}{8.6}\selectfont
+        \begin{itemize}\setlength{\itemsep}{0.22em}\setlength{\leftskip}{-1.2em}
+          \item \textbf{Zero Build Configuration:} Operates directly on source code without host SDKs, compiler toolchains, or build scripts.
+          \item \textbf{Polyglot Extensibility:} Single unified pipeline; adding a language requires only CST mapping heuristics in Phase 1.
+          \item \textbf{High Throughput \& Low Memory:} Flat memory footprint; scans multi-million-line repositories in seconds.
+          \item \textbf{Practical Resilience:} \textbf{99.4\% completion rate} across real-world software where compiler tools crash or timeout.
+        \end{itemize}\par}
+      \end{cookiecard}
+
+    \column{0.49\textwidth}
+      \begin{cookiecard}[title={Recognized Limitations}]
+        {\fontsize{7.0}{8.6}\selectfont
+        \begin{itemize}\setlength{\itemsep}{0.22em}\setlength{\leftskip}{-1.2em}
+          \item \textbf{External Binary Boundaries:} Call chains traversing closed precompiled libraries cannot resolve intermediate return types.
+          \item \textbf{Dynamic Ecosystems:} In dynamic languages (Python), call-site precision is fundamentally bounded by PEP 484 type hint adoption.
+          \item \textbf{Separate Compilation:} C/C++ macro masking requires preprocessing, which replicates shared headers across translation units.
+        \end{itemize}\par}
+      \end{cookiecard}
+  \end{columns}
+  \vspace{0.45em}
+  \centering
+  {\fontsize{7.5}{9.0}\selectfont\textbf{Core Architectural Trade-off:} \textit{Exhaustive Compiler Verification} $\;\longleftrightarrow\;$ \textit{Lightweight Scalability for Continuous Auditing}\par}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 16: CONCLUSIONI E SVILUPPI FUTURI
+% ==============================================================================
+\begin{frame}{Conclusions \& Future Directions}{Contributions to Architectural Analysis and Polyglot Tooling}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.49\textwidth}
+      \begin{cookiecard}[title={Core Research Contributions}]
+        {\fontsize{7.0}{8.6}\selectfont
+        \begin{itemize}\setlength{\itemsep}{0.25em}\setlength{\leftskip}{-1.2em}
+          \item \textbf{Theoretical Foundation:} Universal Intermediate Representation based on ADTs, paired with two-phase algebraic name resolution.
+          \item \textbf{High-Performance Engine:} Open-source \textbf{OmniDeps} framework in Rust, sustaining 74k+ LOC/s throughput with low memory footprint.
+          \item \textbf{Empirical Methodology:} Graph Harmonization framework (\textit{Graph-Synchron}) and benchmark across 156 repositories ($\sim$98M LOC).
+        \end{itemize}\par}
+      \end{cookiecard}
+
+    \column{0.49\textwidth}
+      \begin{cookiecard}[title={Future Research Directions}]
+        {\fontsize{7.0}{8.6}\selectfont
+        \begin{itemize}\setlength{\itemsep}{0.25em}\setlength{\leftskip}{-1.2em}
+          \item \textbf{Parallel Name Resolution:} Extending multi-core concurrency to modular query construction and concurrent Scope Tree evaluation.
+          \item \textbf{Link-Time Symbol Deduplication:} Consolidating shared header declarations across C/C++ translation units without build coupling.
+          \item \textbf{Cross-Language Boundaries:} Tracking foreign function interfaces (FFI/JNI) and generalizing scoping to functional architectures.
+        \end{itemize}\par}
+      \end{cookiecard}
+  \end{columns}
+  \vspace{0.4em}
+  \centering
+  \cookiebadge{Language-Agnostic} \quad \cookiebadge{High-Throughput} \quad \cookiebadge{Open Science}
+\end{frame}
+
+% ==============================================================================
+% SLIDE 17: CHIUSURA & Q&A
+% Slide personalizzata con sfondo Unimib Blue, QR code Zenodo e niente mascotte
+% ==============================================================================
+\begin{frame}[plain,noframenumbering]
+  \begin{tikzpicture}[remember picture,overlay]
+    \fill[unimibBlue] (current page.south west) rectangle (current page.north east);
+    % Cerchi decorativi
+    \draw[white,opacity=0.08,line width=3pt] ($(current page.north east)+(-0.15\paperwidth,-0.15\paperheight)$) circle[radius=0.18\paperheight];
+    \draw[white,opacity=0.05,line width=2pt] ($(current page.south west)+(0.20\paperwidth,0.20\paperheight)$) circle[radius=0.12\paperheight];
+  \end{tikzpicture}%
+  \vspace*{0.02\paperheight}%
+  \begin{columns}[c,onlytextwidth]
+    \column{0.58\textwidth}
+      {\usebeamerfont{cookie kicker}\color{white!70} UNIVERSITÀ DEGLI STUDI DI MILANO-BICOCCA \quad $\cdot$ \quad DISCo}\par\vspace{0.35em}
+      {\fontsize{22}{26}\selectfont\bfseries\color{white} Thanks for your\\ attention!}\par\vspace{0.55em}
+      {\fontsize{10.0}{12.5}\selectfont\color{white!95}\textbf{A Language-Agnostic Framework\\ for Dependency Extraction}}\par\vspace{0.55em}
+      {\color{white!35}\rule{0.28\paperwidth}{0.8pt}}\par\vspace{0.75em}
+      \begin{columns}[t,onlytextwidth]
+        \column{0.48\textwidth}
+          {\fontsize{6.8}{8.0}\selectfont\color{white!70} CANDIDATE\par}\vspace{0.15em}
+          {\fontsize{8.5}{10.5}\selectfont\bfseries\color{white} Christian Ferrario\par}\vspace{0.1em}
+          {\fontsize{6.5}{8.0}\selectfont\color{white!70}\texttt{c.ferrario30@campus.unimib.it}\par}
+        \column{0.52\textwidth}
+          {\fontsize{6.8}{8.0}\selectfont\color{white!70} SUPERVISORS\par}\vspace{0.15em}
+          {\fontsize{8.5}{10.5}\selectfont\bfseries\color{white} Prof.~Francesca Arcelli Fontana\par}
+          {\fontsize{7.0}{8.5}\selectfont\color{white!80} Supervisor\par}\vspace{0.25em}
+          {\fontsize{8.5}{10.5}\selectfont\bfseries\color{white} Dr.~Francesco Refolli\par}
+          {\fontsize{7.0}{8.5}\selectfont\color{white!80} Co-Supervisor\par}
+      \end{columns}
+      \vspace{0.9em}
+      {\small\itshape\color{white!85} Questions and discussion are welcome}
+
+    \column{0.38\textwidth}
+      \centering
+      \begin{tcolorbox}[
+        colback=white,
+        colframe=white,
+        arc=3.5mm,
+        boxrule=0pt,
+        width=0.92\linewidth,
+        halign=center,
+        valign=center,
+        top=4.5mm,bottom=4.5mm,left=3mm,right=3mm
+      ]
+        \href{https://doi.org/10.5281/zenodo.23315197}{\color{black}\qrcode[height=2.35cm]{https://doi.org/10.5281/zenodo.23315197}}\par
+        \vspace{0.45em}
+        {\fontsize{8.5}{10.0}\selectfont\bfseries\color{unimibBlue} Replicability Package}\par\vspace{0.15em}
+        {\fontsize{6.8}{8.0}\selectfont\color{cookieMuted} Zenodo DOI: 10.5281/zenodo.23315197\par}\vspace{0.25em}
+        {\fontsize{5.8}{7.0}\selectfont\texttt{\color{cookieDemoBlue}github.com/FerrarioChristian/omnideps}\par}
+      \end{tcolorbox}
+  \end{columns}
+
+\end{frame}
+
+\end{document}
