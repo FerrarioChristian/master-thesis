@@ -43,7 +43,7 @@
   numbering=fraction,
   numberrail=section,
   block=fill,
-  toc=aftertitle,
+  toc=none,
 ]{cookie}
 
 % --- Regolazione Dimensioni Font Titoli e Struttura ---
@@ -214,7 +214,7 @@
     \column{0.7\textwidth}
       \hspace{5em}{\scriptsize\textbf{(a) Rust CST}}\par
       \centering
-      \begin{adjustbox}{max width=\linewidth,max totalheight=0.3\textheight}
+      \begin{adjustbox}{max width=\linewidth,max totalheight=0.28\textheight}
         \begin{forest}
           cst tree
           [call\_expression
@@ -240,7 +240,7 @@
       \end{adjustbox}
 
       \raggedright
-      \vspace{1em}\hspace{5em}{\scriptsize\textbf{(b) Python CST}}\par
+      \vspace{0.6em}\hspace{5em}{\scriptsize\textbf{(b) Python CST}}\par
       \centering
       \begin{adjustbox}{max width=\linewidth,max totalheight=0.26\textheight}
         \begin{forest}
@@ -266,8 +266,8 @@
           ]
         \end{forest}
       \end{adjustbox}
-      \vspace{0.1em}
-      {\scriptsize\color{cookieMuted}Figure: Structural convergence across languages for identical call semantics.\par}
+
+      {\par\vspace{1em}\scriptsize\color{cookieMuted}Structural convergence across languages for the code \texttt{a.b.c().d.e()}.\par}
   \end{columns}
 \end{frame}
 
@@ -318,7 +318,7 @@
 % ==============================================================================
 % SEZIONE 2: ARCHITETTURA DEL FRAMEWORK OMNIDEPS
 % ==============================================================================
-\section{The OmniDeps Framework}
+\section{The Framework}
 
 % ==============================================================================
 % SLIDE 6: ARCHITETTURA DELLA PIPELINE
@@ -411,9 +411,9 @@
       }
   \end{columns}
 
-  \vspace{0.25em}
+  \vspace{0.15em}
   \centering
-  \includegraphics[width=\linewidth,height=0.52\textheight,keepaspectratio]{../images/formal_ir/IR_model.png}
+  \includegraphics[width=\linewidth,height=0.61\textheight,keepaspectratio]{../images/formal_ir/IR_model_simplified.png}
 \end{frame}
 
 % ==============================================================================
@@ -481,11 +481,10 @@
     \column{0.48\textwidth}
       \cookiekicker{Research Questions}\par\vspace{0.2em}
       {\small
-      \textbf{RQ1:} Baseline construct coverage on synthetic oracles\par\vspace{0.15em}
-      \textbf{RQ2:} Cross-tool structural alignment (156 repos)\par\vspace{0.15em}
-      \textbf{RQ3:} Discrepancy beetween edge kinds\par\vspace{0.15em}
-      \textbf{RQ4:} Execution throughput, speedup, and scalability\par}
-      \vspace{2em}
+      \textbf{RQ1:} Baseline construct coverage on synthetic oracles\par\vspace{0.25em}
+      \textbf{RQ2:} Cross-tool structural alignment (156 repos, 5 languages)\par\vspace{0.25em}
+      \textbf{RQ3:} Execution throughput, speedup, and scalability\par}
+      \vspace{2.5em}
 
       \cookiekicker{Baseline Tool Language Coverage}\par\vspace{0.6em}
       {\footnotesize
@@ -499,10 +498,6 @@
         \textbf{Entangle} & \color{cookieMuted}--- & \color{cookieMuted}--- & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} & \color{cookieMuted}--- & \tikz[baseline=-0.25ex,line width=0.8pt]{\draw (0,0.07) -- (0.04,0.01) -- (0.12,0.13);} \\
         \bottomrule
       \end{tabular*}}\par
-      \vspace{0.45em}
-      \cookiebadge{156 Repositories} \hspace{0.2em}
-      \cookiebadge{98M LOC} \hspace{0.2em}
-      \cookiebadge{5 Languages}
 
     \column{0.48\textwidth}
       \cookiekicker{RQ1: Synthetic Oracles}\par\vspace{0.15em}
@@ -570,8 +565,8 @@
         \bottomrule
       \end{tabular*}}\par
       \vspace{0.35em}
-      \cookiekicker{Graph Comparison Metrics}\par\vspace{-0.5em}
-      {\footnotesize\setlength{\abovedisplayskip}{0pt}\setlength{\belowdisplayskip}{0pt}\setlength{\jot}{3pt}
+       \cookiekicker{Graph Comparison Metrics}\par\vspace{0.05em}
+      {\scriptsize\setlength{\abovedisplayskip}{1pt}\setlength{\belowdisplayskip}{1pt}\setlength{\jot}{1.5pt}
       \begin{align*}
         J(A, B) &= \frac{|A \cap B| + 1}{|A \cup B| + 1} && \text{\footnotesize (Smoothed Jaccard)} \\
         \text{Inf}(A, B) &= \frac{|B \setminus A|}{|A \cap B|}, \quad \text{Sup} = \frac{|A \setminus B|}{|A \cap B|} && \text{\footnotesize (Omission / Novelty)} \\
@@ -581,155 +576,150 @@
 \end{frame}
 
 % ==============================================================================
-% SLIDE 12: RISULTATI RQ2 - ALLINEAMENTO JAVA & PYTHON
+% SLIDE 13: RISULTATI RQ2 - ALLINEAMENTO STRUTTURALE
 % ==============================================================================
-\begin{frame}{RQ2: Cross-Tool Structural Alignment}{Large-Scale Feasibility and Graph Convergence Across 156 Repositories}
+\begin{frame}{RQ2: Cross-Tool Structural Alignment}{Object-Oriented Parity, Dynamic Entity Lifting, and First Rust Baseline}
   \begin{columns}[T,onlytextwidth]
-    \column{0.48\textwidth}
-      \cookiekicker{Empirical Robustness \& Convergence}\par\vspace{0.15em}
+    \column{0.50\textwidth}
+      \cookiekicker{Cross-Tool Agreement Across Paradigms}\par\vspace{0.15em}
       {\scriptsize
-      \begin{itemize}\setlength{\itemsep}{0.22em}
-        \item \textbf{Execution Robustness:} OmniDeps achieves \textbf{\color{metricGreen}99.4\% completion} (155/156) vs Depends (92.7\%), Arcan (49.2\%), Entangle (29.7\%).
-        \item \textbf{Java Structural Parity:} High agreement with mature compiler tools ($J_{\text{nodes}} = \mathbf{0.814}$ vs Depends, $\mathbf{0.770}$ vs Entangle; $J_{\text{edges}} \approx \mathbf{0.59}$).
-        \item \textbf{Negligible Omission:} Misses only \textbf{0.3\%} of nodes extracted by Arcan ($\text{Inf} = 0.003$) and \textbf{2.1\%} vs Depends.
-        \item \textbf{Dynamic Python:} $J_{\text{nodes}} = \mathbf{0.852}$ (4.8\% omission) after lifting test fixtures; behavioral edge agreement reaches $\sim\mathbf{0.37}$.
-        \item \textbf{Rust Baseline:} \textbf{32/32} projects extracted (100\%), establishing the first empirical baseline.
+      \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lccccc@{}}
+        \toprule
+        \textbf{Lang} & \textbf{Baseline} & $\mathbf{J_{\text{nodes}}}$ & \textbf{Omission} & \textbf{Novelty} & $\mathbf{J_{\text{edges}}}$ \\
+        \midrule
+        \textbf{Java}   & Depends  & \textbf{0.814} & \textbf{2.1\%} & 28.6\% & 0.587 \\
+                        & Entangle & \textbf{0.770} & 19.6\%         & 19.9\% & 0.600 \\
+                        & Arcan    & 0.630          & \textbf{0.3\%} & 79.6\% & 0.580 \\
+        \midrule
+        \textbf{Python} & Depends  & \textbf{0.852} & \textbf{4.8\%} & 16.1\% & 0.368$^*$ \\
+        \midrule
+        \textbf{C / C++}& \multicolumn{5}{c}{\textit{Detailed on next slide (preprocessor dynamics)}} \\
+        \bottomrule
+      \end{tabular*}}\par
+      \vspace{0.15em}
+      {\tiny\color{cookieMuted}$^*$Behavioral edges only (excludes syntactic imports omitted by baseline).\par}
+      \vspace{0.25em}
+
+      \cookiekicker{Empirical Takeaways}\par\vspace{0.15em}
+      {\scriptsize
+      \begin{itemize}\setlength{\itemsep}{0.20em}
+        \item \textbf{Object-Oriented Parity (Java):} Near-identical topology with mature compiler tools; misses $\le 2.1\%$ of nodes without JVM/bytecode.
+        \item \textbf{Dynamic Typing \& Lifting (Python):} Harmonizing method-local test fixtures raises node Jaccard to \textbf{0.852} (omission $33.2\% \to 4.8\%$).
+        \item \textbf{Polyglot Workspace Traversal:} Extracts across all languages (e.g. Rust core in Pydantic), unlike single-language baselines.
       \end{itemize}\par}
-      \vspace{0.4em}
-      \cookiebadge{\textcolor{metricGreen}{\textbf{99.4\% Completion}}} \hspace{0.2em}
+      \vspace{0.25em}
       \cookiebadge{Java $J_{\text{nodes}} > 0.81$} \hspace{0.2em}
+      \cookiebadge{Python $\text{Inf}=4.8\%$} \hspace{0.2em}
       \cookiebadge{Rust 100\%}
 
-    \column{0.50\textwidth}
+    \column{0.48\textwidth}
       \cookiekicker{Pairwise Similarity in Java}\par\vspace{0.2em}
       \centering
       \includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]{../images/evaluation/comparisons/summary-jaccard-java.png}\par\vspace{0.2em}
-      {\scriptsize\color{cookieMuted}Smoothed Jaccard indices across Java projects against Depends ($N=31$), Arcan ($N=18$), and Entangle ($N=19$)\par}
+      {\scriptsize\color{cookieMuted}Smoothed Jaccard indices across Java projects against Depends, Arcan and Entangle\par}
   \end{columns}
 \end{frame}
 
 % ==============================================================================
-% SLIDE 13: RISULTATI RQ3 - IL CASO C/C++ E PREPROCESSING
+% SLIDE 14: RISULTATI RQ2 - DEEP DIVE C & C++
 % ==============================================================================
-\begin{frame}{RQ3: Discrepancy Decomposition in C \& C++}{Ontological Divergence, Preprocessor Macro Masking, and Header Duplication}
+\begin{frame}{RQ2: Structural Alignment in C \& C++}{The Preprocessor Dilemma and Ontological Disparity}
   \begin{columns}[T,onlytextwidth]
-    \column{0.50\textwidth}
-      \cookiekicker{Architectural Discrepancy Analysis}\par\vspace{0.15em}
+    \column{0.48\textwidth}
+      \cookiekicker{Cross-Tool Agreement in C \& C++}\par\vspace{0.15em}
       {\scriptsize
-      \begin{itemize}\setlength{\itemsep}{0.22em}
-        \item \textbf{Arcan (Ontological Divergence):} Arcan models physical files (\texttt{.c}/\texttt{.h}) for packaging smells; OmniDeps models user-defined types (\texttt{struct}/\texttt{class}). Vertices are disjoint by design, not extraction failure.
-        \item \textbf{Depends (The Preprocessor Dilemma):}
-          \begin{itemize}\setlength{\itemsep}{0.12em}
-            \item \textit{Macro Expansion:} Preprocessing (\texttt{clang -E}) doubles C++ edge recall ($0.081 \to 0.165$) and halves containment omission ($93.5\% \to 47.4\%$).
-            \item \textit{Header Duplication:} Textually inlining headers replicates declarations across translation units, deflating global Jaccard similarity.
-          \end{itemize}
-        \item \textbf{Modular Codebases:} Near-perfect alignment on clean, modular libraries: complete match on \texttt{sds} ($J = 1.0$), strong convergence on \texttt{re2} ($0.46$) and \texttt{ninja} ($0.41$).
-      \end{itemize}\par}
+      \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}llccc@{}}
+        \toprule
+        \textbf{Lang} & \textbf{Baseline / Mode} & $\mathbf{J_{\text{nodes}}}$ & $\mathbf{J_{\text{edges}}}$ & \textbf{Outcome} \\
+        \midrule
+        \textbf{C}   & Depends (Raw)       & 0.191 & 0.115 & Baseline \\
+                     & Depends (Preproc.)  & \textbf{0.204} & \textbf{0.136} & +18\% Edges \\
+        \midrule
+        \textbf{C++} & Depends (Raw)       & 0.143 & 0.081 & Baseline \\
+                     & Depends (Preproc.)  & \textbf{0.192} & \textbf{0.165} & \textbf{2$\times$ Recall} \\
+        \midrule
+        \textbf{C/C++}& Arcan (File-level) & $\le 0.01$ & $\le 0.00$ & Ontological \\
+        \midrule
+        \textbf{C} (\texttt{sds}) & Depends & \textbf{1.000} & \textbf{1.000} & Perfect Parity \\
+        \bottomrule
+      \end{tabular*}}\par
       \vspace{0.35em}
-      \cookiebadge{Macro Masking} \hspace{0.2em}
-      \cookiebadge{Header Inlining} \hspace{0.2em}
-      \cookiebadge{\texttt{sds} $J=1.0$}
+
+      \cookiekicker{Key Empirical Findings}\par\vspace{0.15em}
+      {\scriptsize
+      \begin{itemize}\setlength{\itemsep}{0.20em}
+        \item \textbf{Preprocessor Dilemma:} Macro expansion doubles C++ edge recall ($0.081 \to 0.165$), but header inlining duplicates types across translation units.
+        \item \textbf{Ontological Disparity (Arcan):} Arcan tracks physical files/headers for smell detection; OmniDeps extracts logical AST types ($V_A \cap V_B = \emptyset$).
+        \item \textbf{Isolated Modular Soundness:} On clean modular libraries like \texttt{antirez/sds}, extraction achieves \textbf{perfect agreement ($J = 1.0$)}.
+      \end{itemize}\par}
+      \vspace{0.25em}
+      \cookiebadge{Preproc: $2\times$ Edges} \hspace{0.2em}
+      \cookiebadge{\texttt{sds} $J=1.0$} \hspace{0.2em}
+      \cookiebadge{Ontological Disparity}
 
     \column{0.48\textwidth}
-      \cookiekicker{Preprocessing Impact (Raw vs. Preprocessed)}\par\vspace{0.2em}
+      \cookiekicker{Impact of Macro Preprocessing}\par\vspace{0.2em}
       \centering
-      \includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]{../images/evaluation/comparisons/summary-jaccard-c-cpp-preprocessing.png}\par\vspace{0.2em}
-      {\scriptsize\color{cookieMuted}Node and edge Jaccard indices before and after macro expansion against Depends in C and C++\par}
+      \includegraphics[width=\linewidth,height=0.48\textheight,keepaspectratio]{../images/evaluation/comparisons/summary-jaccard-c-cpp-preprocessing.png}\par\vspace{0.2em}
+      {\scriptsize\color{cookieMuted}Jaccard similarity before and after macro expansion (\texttt{clang -E}) against Depends across 31 C and 22 C++ repositories\par}
   \end{columns}
 \end{frame}
 
 % ==============================================================================
-% SLIDE 14: RISULTATI RQ4 - PRESTAZIONI & SCALABILITÀ
+% SLIDE 15: RISULTATI RQ3 - PRESTAZIONI & SCALABILITÀ
 % ==============================================================================
-\begin{frame}{RQ4: Runtime Performance and Scalability}{Throughput Acceleration and Linear Scaling for CI/CD Auditing}
+\begin{frame}{RQ3: Runtime Performance and Scalability}{Linear Scaling and Throughput for Continuous Auditing}
   \begin{columns}[T,onlytextwidth]
-    \column{0.48\textwidth}
-      \cookiekicker{Throughput Acceleration \& Speedup}\par\vspace{0.15em}
-      {\scriptsize
-      \begin{itemize}\setlength{\itemsep}{0.22em}
-        \item \textbf{Analysis Throughput:} Mean \textbf{\textcolor{metricGreen}{74,445 LOC/s}} across 156 projects, with peaks exceeding \textbf{97,000 LOC/s} on Rust and C.
-        \item \textbf{Speedup vs. Depends:} \textbf{13.2x} faster overall (up to 79x on C, 25x on Python, 6.2x on Java).
-        \item \textbf{Speedup vs. Arcan:} \textbf{48.2x} faster overall (up to 116x on Java, 62x on C).
-        \item \textbf{Speedup vs. Entangle:} \textbf{4.0x} faster overall on Java.
-        \item \textbf{Strict $O(N)$ Scalability:} Single-pass CST parsing and Scope Tree resolution scale linearly with LOC; processes 1M+ LOC codebases in seconds.
+    \column{0.42\textwidth}
+      \cookiekicker{Computational Efficiency}\par\vspace{0.2em}
+      {\small
+      \begin{itemize}\setlength{\itemsep}{0.35em}
+        \item \textbf{Strict $O(N)$ Linear Scaling:} Single-pass parsing and scoped resolution scale proportionally with LOC.
+        \item \textbf{Seconds on 1M+ LOC:} Extraction finishes in seconds even on large codebases, with flat memory usage.
+        \item \textbf{High Throughput:} Sustained mean of \textbf{\textcolor{metricGreen}{74k+ LOC/s}}, consistently matching or exceeding baselines.
+        \item \textbf{Continuous CI/CD:} Fast runtimes enable practical adoption in automated quality gates.
       \end{itemize}\par}
-      \vspace{0.35em}
-      \cookiebadge{\textcolor{metricGreen}{\textbf{74k+ LOC/s}}} \hspace{0.2em}
-      \cookiebadge{Up to 116x vs Arcan} \hspace{0.2em}
-      \cookiebadge{$O(N)$ Linear}
+      \vspace{0.4em}
+      \cookiebadge{$O(N)$ Linear} \hspace{0.2em}
+      \cookiebadge{Seconds on 1M+ LOC}
 
-    \column{0.50\textwidth}
-      \cookiekicker{Execution Time vs. Codebase Size}\par\vspace{0.2em}
+    \column{0.56\textwidth}
+      \cookiekicker{Execution Time vs. Codebase Size}\par\vspace{0.15em}
       \centering
-      \includegraphics[width=\linewidth,height=0.60\textheight,keepaspectratio]{../images/evaluation/times/graph-cloc-log-java.png}\par\vspace{0.2em}
+      \includegraphics[width=\linewidth,height=0.62\textheight,keepaspectratio]{../images/evaluation/times/graph-cloc-log-java.png}\par\vspace{0.15em}
       {\scriptsize\color{cookieMuted}Wall-clock extraction time vs. codebase size (LOC) across Java repositories on semi-log scale\par}
   \end{columns}
 \end{frame}
 
 % ==============================================================================
-% SEZIONE 4: DISCUSSIONE E CONCLUSIONI
-% ==============================================================================
-\section{Discussion \& Conclusion}
-
-% ==============================================================================
-% SLIDE 15: DISCUSSIONE DEI TRADE-OFF
-% ==============================================================================
-\begin{frame}{Discussion: Architectural Trade-offs}{Compiler-Coupled Precision vs. Lightweight Polyglot Scalability}
-  \begin{columns}[T,onlytextwidth]
-    \column{0.49\textwidth}
-      \begin{cookiecard}[title={Demonstrated Advantages}]
-        {\footnotesize
-        \begin{itemize}\setlength{\itemsep}{0.22em}
-          \item \textbf{Zero Build Configuration:} Operates directly on source code without host SDKs, compiler toolchains, or build scripts.
-          \item \textbf{Polyglot Extensibility:} Single unified pipeline; adding a language requires only CST mapping heuristics in Phase 1.
-          \item \textbf{High Throughput \& Low Memory:} Flat memory footprint; scans multi-million-line repositories in seconds.
-          \item \textbf{Practical Resilience:} \textbf{99.4\% completion rate} across real-world software where compiler tools crash or timeout.
-        \end{itemize}\par}
-      \end{cookiecard}
-
-    \column{0.49\textwidth}
-      \begin{cookiecard}[title={Recognized Limitations}]
-        {\footnotesize
-        \begin{itemize}\setlength{\itemsep}{0.22em}
-          \item \textbf{External Binary Boundaries:} Call chains traversing closed precompiled libraries cannot resolve intermediate return types.
-          \item \textbf{Dynamic Ecosystems:} In dynamic languages (Python), call-site precision is fundamentally bounded by PEP 484 type hint adoption.
-          \item \textbf{Separate Compilation:} C/C++ macro masking requires preprocessing, which replicates shared headers across translation units.
-        \end{itemize}\par}
-      \end{cookiecard}
-  \end{columns}
-  \vspace{0.45em}
-  \centering
-  {\small\textbf{Core Architectural Trade-off:} \textit{Exhaustive Compiler Verification} $\;\longleftrightarrow\;$ \textit{Lightweight Scalability for Continuous Auditing}\par}
-\end{frame}
-
-% ==============================================================================
 % SLIDE 16: CONCLUSIONI E SVILUPPI FUTURI
 % ==============================================================================
-\begin{frame}{Conclusions \& Future Directions}{Contributions to Architectural Analysis and Polyglot Tooling}
+\begin{frame}{Conclusions \& Outlook}{Viability of Language-Agnostic Extraction and Future Research Directions}
+    Language-agnostic, syntax-directed extraction proves to be a \textbf{viable and sound approach} for architectural
+    dependency analysis: it recovers reliable dependency graphs in seconds without compiler or build-system friction,
+     while establishing clear methodological boundaries and open research avenues.\par
+  \vspace{1em}
+
   \begin{columns}[T,onlytextwidth]
     \column{0.49\textwidth}
-      \begin{cookiecard}[title={Core Research Contributions}]
-        {\footnotesize
-        \begin{itemize}\setlength{\itemsep}{0.25em}
-          \item \textbf{Theoretical Foundation:} Universal Intermediate Representation based on ADTs, paired with two-phase algebraic name resolution.
-          \item \textbf{High-Performance Engine:} Open-source \textbf{OmniDeps} framework in Rust, sustaining 74k+ LOC/s throughput with low memory footprint.
-          \item \textbf{Empirical Methodology:} Graph Harmonization framework (\textit{Graph-Synchron}) and benchmark across 156 repositories ($\sim$98M LOC).
-        \end{itemize}\par}
-      \end{cookiecard}
+      \cookiekicker{Threats to Validity}\par\vspace{0.15em}
+      {\footnotesize
+      \begin{itemize}\setlength{\itemsep}{0.25em}
+        \item \textbf{Absence of Real-World Oracles:} Evaluating against mature analyzers measures cross-tool concordance rather than absolute correctness.
+        \item \textbf{Harmonization Abstraction:} Semantic entity lifting evaluates macro-architectural (type-level) convergence, abstracting statement details.
+        \item \textbf{Syntactic Premise in C/C++:} Macro masking challenges raw CST fidelity, forcing a trade-off with header duplication.
+      \end{itemize}\par}
 
     \column{0.49\textwidth}
-      \begin{cookiecard}[title={Future Research Directions}]
-        {\footnotesize
-        \begin{itemize}\setlength{\itemsep}{0.25em}
-          \item \textbf{Parallel Name Resolution:} Extending multi-core concurrency to modular query construction and concurrent Scope Tree evaluation.
-          \item \textbf{Link-Time Symbol Deduplication:} Consolidating shared header declarations across C/C++ translation units without build coupling.
-          \item \textbf{Cross-Language Boundaries:} Tracking foreign function interfaces (FFI/JNI) and generalizing scoping to functional architectures.
-        \end{itemize}\par}
-      \end{cookiecard}
+      \cookiekicker{Future Research Directions}\par\vspace{0.15em}
+      {\footnotesize
+      \begin{itemize}\setlength{\itemsep}{0.25em}
+        \item \textbf{Link-Time Symbol Deduplication:} Linker-like reconciliation pass to merge duplicated C/C++ header declarations across compilation units.
+        \item \textbf{Non-Imperative Paradigms:} Generalizing query algebra to functional composition (Haskell/OCaml) and declarative logic relations.
+        \item \textbf{Cross-Language Boundaries:} Tracing foreign function interfaces (FFI/JNI) across language boundaries via the shared Scope Tree.
+      \end{itemize}\par}
   \end{columns}
-  \vspace{0.4em}
-  \centering
-  \cookiebadge{Language-Agnostic} \quad \cookiebadge{High-Throughput} \quad \cookiebadge{Open Science}
+  \vspace{0.35em}
 \end{frame}
 
 % ==============================================================================
@@ -786,6 +776,113 @@
   \end{columns}
 \end{frame}
 
-\end{document}
+% ==============================================================================
+% APPENDIX / BACKUP SLIDES
+% ==============================================================================
+\appendix
+
+% BACKUP SLIDE 1: Cross-Language Pairwise Similarity Overview
+\begin{frame}[noframenumbering]{Appendix: Cross-Language Graph Similarity}{Pairwise Laplace-Smoothed Jaccard Index Across All Analyzed Tool Pairs}
+  \centering
+  \includegraphics[width=0.98\linewidth,height=0.74\textheight,keepaspectratio]{../images/evaluation/comparisons/summary-jaccard-cross-language.png}\par
+  \vspace{0.2em}
+  {\scriptsize\color{cookieMuted}Mean Laplace-smoothed Jaccard similarity for nodes and edges across all comparative tool pairs\par}
+\end{frame}
+
+% BACKUP SLIDE 2: Full Empirical Agreement Matrix (Table 9.3)
+\begin{frame}[noframenumbering]{Appendix: Pairwise Agreement \& Discrepancy Matrix}{Full Cross-Tool Evaluation Results Across All Comparators ($N=156$)}
+  \centering
+  \vspace{-0.2em}
+  {\scriptsize
+  \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lccccccr@{}}
+    \toprule
+    \textbf{Target Pair} & $N$ & $\mathbf{J_{\text{nodes}}}$ & $\mathbf{\text{Sup}_{\text{n}}}$ & $\mathbf{\text{Inf}_{\text{n}}}$ & $\mathbf{J_{\text{edges}}}$ & $\mathbf{\text{Sup}_{\text{e}}}$ & $\mathbf{\text{Inf}_{\text{e}}}$ \\
+    \midrule
+    \textbf{Java} (vs. Depends)       & 31 & 0.814 (0.849) & 0.286  & 0.021  & 0.587 (0.609) & 0.406  & 0.345 \\
+    \textbf{Java} (vs. Entangle)      & 19 & 0.770 (0.782) & 0.199  & 0.196  & 0.600 (0.598) & 0.359  & 0.366 \\
+    \textbf{Java} (vs. Arcan)         & 18 & 0.630 (0.693) & 0.796  & 0.003  & 0.580 (0.575) & 0.759  & 0.092 \\
+    \midrule
+    \textbf{Python} (vs. Depends)     & 29 & 0.852 (0.882) & 0.161  & 0.048  & 0.323 (0.300) & 1.474  & 0.805 \\
+    \textbf{Python} (No Imports)      & 29 & 0.852 (0.882) & 0.161  & 0.048  & 0.368 (0.387) & 1.017  & 0.834 \\
+    \midrule
+    \textbf{C Raw} (vs. Depends)      & 30 & 0.191 (0.167) & 14.017 & 0.619  & 0.115 (0.042) & 44.307 & 1.636 \\
+    \textbf{C Preproc} (vs. Depends)  & 31 & 0.204 (0.158) & 7.218  & 0.733  & 0.136 (0.083) & 37.777 & 3.993 \\
+    \textbf{C++ Raw} (vs. Depends)    & 25 & 0.143 (0.127) & 12.493 & 2.969  & 0.081 (0.039) & 58.836 & 4.769 \\
+    \textbf{C++ Preproc} (vs. Depends)& 22 & 0.192 (0.151) & 4.911  & 3.229  & 0.165 (0.083) & 9.962  & 8.320 \\
+    \bottomrule
+  \end{tabular*}}\par
+  \vspace{0.4em}
+  {\tiny\color{cookieMuted}Values report arithmetic means (medians in parentheses). $\text{Sup} = |A \setminus B| / |A \cap B|$, $\text{Inf} = |B \setminus A| / |A \cap B|$. Arcan in C/C++ omitted due to ontological disparity (file vs. type).\par}
+\end{frame}
+
+% BACKUP SLIDE 3: Categorical Edge Discrepancy Breakdown (Tables 9.4 & 9.5)
+\begin{frame}[noframenumbering]{Appendix: Categorical Edge Discrepancy Breakdown}{Detailed Directional Discrepancy Rates Across Dependency Kinds}
+  \begin{columns}[T,onlytextwidth]
+    \column{0.52\textwidth}
+      \cookiekicker{Java: OmniDeps vs. Depends \& Arcan}\par\vspace{0.15em}
+      {\scriptsize
+      \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lrrrr@{}}
+        \toprule
+        \textbf{Relation} & \multicolumn{2}{c}{\textbf{vs. Depends}} & \multicolumn{2}{c}{\textbf{vs. Arcan}} \\
+        & $\Delta_{A \setminus B}$ & $\Delta_{B \setminus A}$ & $\Delta_{A \setminus B}$ & $\Delta_{B \setminus A}$ \\
+        \midrule
+        \texttt{belongsTo}          & 17.0\% & \textbf{1.8\%} & 36.7\% & \textbf{0.3\%} \\
+        \texttt{isChildOf}          & 24.9\% & \textbf{8.7\%} & 61.3\% & \textbf{2.4\%} \\
+        \texttt{dependsOn}          & 26.1\% & 26.1\%         & 43.4\% & 29.9\%         \\
+        \bottomrule
+      \end{tabular*}}\par
+      \vspace{0.3em}
+      {\tiny\color{cookieMuted}Shared edges $|A \cap B|$: \texttt{belongsTo} (6,419.1 / 3,295.7), \texttt{dependsOn} (27,890.7 / 11,374.1).\par}
+
+    \column{0.46\textwidth}
+      \cookiekicker{Python: OmniDeps vs. Depends}\par\vspace{0.15em}
+      {\scriptsize
+      \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lrrr@{}}
+        \toprule
+        \textbf{Relation} & \textbf{Shared} & $\Delta_{A \setminus B}$ & $\Delta_{B \setminus A}$ \\
+        \midrule
+        \texttt{belongsTo} & 1,415.1 & 10.9\% & \textbf{4.4\%} \\
+        \texttt{isChildOf} &   246.9 & 39.0\% & \textbf{22.2\%} \\
+        \texttt{dependsOn} &   629.2 & 72.7\% & 72.2\% \\
+        \texttt{includes}  &     0.1 & 100.0\%& 61.1\% \\
+        \bottomrule
+      \end{tabular*}}\par
+      \vspace{0.3em}
+      {\tiny\color{cookieMuted}Directional discrepancy: $\Delta_{A \setminus B} = |E_A \setminus E_B| / |E_A|$, $\Delta_{B \setminus A} = |E_B \setminus E_A| / |E_B|$.\par}
+  \end{columns}
+\end{frame}
+
+% BACKUP SLIDE 4: Multi-Language Runtime Scalability (2x2 grid of log plots)
+\begin{frame}[noframenumbering]{Appendix: Multi-Language Runtime Scalability}{Wall-Clock Extraction Time vs. Codebase Size (LOC) on Semi-Log Scale}
+  \centering
+  \begin{columns}[c,onlytextwidth]
+    \column{0.50\textwidth}
+      \centering
+      \includegraphics[width=0.96\linewidth,height=0.36\textheight,keepaspectratio]{../images/evaluation/times/graph-cloc-log-c.png}\par
+      \vspace{0.3em}
+      \includegraphics[width=0.96\linewidth,height=0.36\textheight,keepaspectratio]{../images/evaluation/times/graph-cloc-log-python.png}
+    \column{0.50\textwidth}
+      \centering
+      \includegraphics[width=0.96\linewidth,height=0.36\textheight,keepaspectratio]{../images/evaluation/times/graph-cloc-log-c++.png}\par
+      \vspace{0.3em}
+      \includegraphics[width=0.96\linewidth,height=0.36\textheight,keepaspectratio]{../images/evaluation/times/graph-cloc-log-rust.png}
+  \end{columns}
+\end{frame}
+
+% BACKUP SLIDE 5: Dataset Distributions (LOC & Files)
+\begin{frame}[noframenumbering]{Appendix: Dataset Distributions}{Code Density (LOC/Files) and Pure Codebase Size (CLOC) across 156 Repositories}
+  \begin{columns}[c,onlytextwidth]
+    \column{0.50\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{../images/evaluation/dataset/projects-lof.png}\par
+      \vspace{0.2em}
+      {\scriptsize\color{cookieMuted}Code density: Lines of Code over Files ratio\par}
+    \column{0.50\textwidth}
+      \centering
+      \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{../images/evaluation/dataset/projects-cloc.png}\par
+      \vspace{0.2em}
+      {\scriptsize\color{cookieMuted}Pure codebase size: Lines of Code (CLOC) ordered ascending\par}
+  \end{columns}
+\end{frame}
 
 \end{document}

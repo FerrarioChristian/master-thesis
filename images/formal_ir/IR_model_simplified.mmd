@@ -1,0 +1,79 @@
+%%{init: {
+  'themeVariables': {
+    'fontSize': '24px'
+  }
+}}%%
+classDiagram
+    direction LR
+
+    class Component {
+        <<enumeration>>
+        Core Hierarchy
+    }
+    class TypeRef {
+        <<enumeration>>
+        Resolution Target
+    }
+
+    class Module {
+        Files / Packages
+    }
+    class StructuredType {
+        Class / Struct / Trait
+    }
+    class ImplBlock {
+        Trait Implementation
+    }
+    class TypeAlias {
+        Type Definition
+    }
+
+    class Function {
+        Methods / Routines
+    }
+    class Signature {
+        Parameters & Return
+    }
+    class Block {
+        Statements & Scope
+    }
+
+    class Field {
+        Variables / Members
+    }
+    class Parameter {
+        Name & TypeRef
+    }
+    class Import {
+        Path / Alias
+    }
+
+    Component <|-- Module
+    Component <|-- StructuredType
+    Component <|-- Function
+    Component <|-- TypeAlias
+    Component <|-- Field
+
+    Module *-- Module : sub_modules
+    Module *-- StructuredType : contains
+    Module *-- ImplBlock : contains
+    Module *-- Import : imports
+    
+    StructuredType *-- StructuredType : nested
+    StructuredType *-- Function : methods
+    StructuredType *-- Import : imports
+    ImplBlock *-- Function : methods
+
+    Function *-- Signature : signature
+    Function *-- Block : body
+    Signature *-- Parameter : params
+    Block *-- Block : nested
+    Block *-- Field : vars
+    StructuredType *-- Field : fields
+
+    Field ..> TypeRef : types
+    Parameter ..> TypeRef : types
+    Signature ..> TypeRef : return
+    TypeAlias ..> TypeRef : aliases
+    ImplBlock ..> TypeRef : impl_for
+    Block ..> TypeRef : references
