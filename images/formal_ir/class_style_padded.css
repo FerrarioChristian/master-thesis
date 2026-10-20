@@ -1,0 +1,51 @@
+* {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+.node rect, .node circle, .node polygon, .node path {
+    rx: 8px !important;
+    ry: 8px !important;
+}
+
+.node .label {
+    text-align: center;
+    line-height: 1.25;
+}
+
+.node-title {
+    font-size: 36px !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    margin-bottom: 4px !important;
+    letter-spacing: -0.2px;
+}
+
+.node-sub {
+    font-size: 28px !important;
+    font-weight: 400 !important;
+    color: #64748b !important;
+    letter-spacing: -0.1px;
+}
+
+.edgeLabel,
+.edgeLabel span,
+.edgeLabel p,
+.edgeLabel div,
+.edgeLabels foreignObject div,
+.edgeLabels foreignObject span {
+    font-size: 28px !important;
+    font-weight: 500 !important;
+    color: #1e293b !important;
+    background-color: #ffffff !important;
+    line-height: 1.2 !important;
+}
+
+.edgeLabel {
+    padding: 3px 8px !important;
+    border-radius: 5px !important;
+}
+
+.edgePath path {
+    stroke: #64748b !important;
+    stroke-width: 2px !important;
+}

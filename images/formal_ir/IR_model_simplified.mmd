@@ -1,79 +1,70 @@
 %%{init: {
+  'flowchart': {
+    'nodeSpacing': 24, 
+    'rankSpacing': 36,
+    'padding': 8,
+    'curve': 'basis'
+  },
   'themeVariables': {
-    'fontSize': '24px'
+    'fontSize': '32px',
+    'fontFamily': 'Helvetica Neue, Helvetica, Arial, sans-serif',
+    'edgeLabelBackground': '#ffffff'
   }
 }}%%
-classDiagram
-    direction LR
+flowchart LR
 
-    class Component {
-        <<enumeration>>
-        Core Hierarchy
-    }
-    class TypeRef {
-        <<enumeration>>
-        Resolution Target
-    }
+    Component["<div class='node-title'>Component</div><div class='node-sub'>Core Hierarchy</div>"]
+    Module["<div class='node-title'>Module</div><div class='node-sub'>Files / Packages</div>"]
+    StructuredType["<div class='node-title'>StructuredType</div><div class='node-sub'>Class / Struct / Trait</div>"]
+    ImplBlock["<div class='node-title'>ImplBlock</div><div class='node-sub'>Trait Implementation</div>"]
+    TypeAlias["<div class='node-title'>TypeAlias</div><div class='node-sub'>Type Definition</div>"]
+    Function["<div class='node-title'>Function</div><div class='node-sub'>Methods / Routines</div>"]
+    Signature["<div class='node-title'>Signature</div><div class='node-sub'>Parameters & Return</div>"]
+    Block["<div class='node-title'>Block</div><div class='node-sub'>Statements & Scope</div>"]
+    Parameter["<div class='node-title'>Parameter</div><div class='node-sub'>Name & TypeRef</div>"]
+    Field["<div class='node-title'>Field</div><div class='node-sub'>Variables / Members</div>"]
+    Import["<div class='node-title'>Import</div><div class='node-sub'>Path / Alias</div>"]
+    TypeRef["<div class='node-title'>TypeRef</div><div class='node-sub'>Resolution Target</div>"]
 
-    class Module {
-        Files / Packages
-    }
-    class StructuredType {
-        Class / Struct / Trait
-    }
-    class ImplBlock {
-        Trait Implementation
-    }
-    class TypeAlias {
-        Type Definition
-    }
+    Component --- Module
+    Component --- StructuredType
+    Component --- Function
+    Component --- TypeAlias
+    Component --- Field
 
-    class Function {
-        Methods / Routines
-    }
-    class Signature {
-        Parameters & Return
-    }
-    class Block {
-        Statements & Scope
-    }
+    Module -->|"sub_modules"| Module
+    Module -->|"contains"| StructuredType
+    Module -->|"contains"| ImplBlock
+    Module -->|"imports"| Import
 
-    class Field {
-        Variables / Members
-    }
-    class Parameter {
-        Name & TypeRef
-    }
-    class Import {
-        Path / Alias
-    }
+    StructuredType -->|"nested"| StructuredType
+    StructuredType -->|"methods"| Function
+    StructuredType -->|"imports"| Import
+    ImplBlock -->|"methods"| Function
 
-    Component <|-- Module
-    Component <|-- StructuredType
-    Component <|-- Function
-    Component <|-- TypeAlias
-    Component <|-- Field
+    Function -->|"signature"| Signature
+    Function -->|"body"| Block
+    Signature -->|"params"| Parameter
+    Block -->|"nested"| Block
+    Block -->|"vars"| Field
+    StructuredType -->|"fields"| Field
 
-    Module *-- Module : sub_modules
-    Module *-- StructuredType : contains
-    Module *-- ImplBlock : contains
-    Module *-- Import : imports
-    
-    StructuredType *-- StructuredType : nested
-    StructuredType *-- Function : methods
-    StructuredType *-- Import : imports
-    ImplBlock *-- Function : methods
+    Field -.->|"types"| TypeRef
+    Parameter -.->|"types"| TypeRef
+    Signature -.->|"return"| TypeRef
+    TypeAlias -.->|"aliases"| TypeRef
+    ImplBlock -.->|"impl_for"| TypeRef
+    Block -.->|"references"| TypeRef
 
-    Function *-- Signature : signature
-    Function *-- Block : body
-    Signature *-- Parameter : params
-    Block *-- Block : nested
-    Block *-- Field : vars
-    StructuredType *-- Field : fields
-
-    Field ..> TypeRef : types
-    Parameter ..> TypeRef : types
-    Signature ..> TypeRef : return
-    TypeAlias ..> TypeRef : aliases
-    ImplBlock ..> TypeRef : impl_for
-    Block ..> TypeRef : references
+    style Component fill:#FDF4FF,stroke:#E879F9,stroke-width:2.2px,color:#1e293b
+    style Module fill:#FFF7ED,stroke:#FB923C,stroke-width:2.4px,color:#1e293b
+    style ImplBlock fill:#F0FDF4,stroke:#4ADE80,stroke-width:2.2px,color:#1e293b
+    style StructuredType fill:#ECFEFF,stroke:#22D3EE,stroke-width:2.4px,color:#1e293b
+    style TypeAlias fill:#F5F3FF,stroke:#A78BFA,stroke-width:2.2px,color:#1e293b
+    style Function fill:#FEF2F2,stroke:#F87171,stroke-width:2.2px,color:#1e293b
+    style Import fill:#FFF1F2,stroke:#FB7185,stroke-width:2.2px,color:#1e293b
+    style Signature fill:#FEFCE8,stroke:#FACC15,stroke-width:2.2px,color:#1e293b
+    style Block fill:#EEF2FF,stroke:#818CF8,stroke-width:2.4px,color:#1e293b
+    style Parameter fill:#F0F9FF,stroke:#38BDF8,stroke-width:2.2px,color:#1e293b
+    style Field fill:#F7FEE7,stroke:#A3E635,stroke-width:2.2px,color:#1e293b
+    style TypeRef fill:#F0FDFA,stroke:#2DD4BF,stroke-width:2.4px,color:#1e293b
