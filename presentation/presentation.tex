@@ -44,7 +44,9 @@
   numberrail=section,
   block=fill,
   toc=none,
+  mathfonts=none,
 ]{cookie}
+\usefonttheme[onlymath]{serif}
 
 % --- Regolazione Dimensioni Font Titoli e Struttura ---
 \setbeamerfont{frametitle}{size=\fontsize{13}{16}\selectfont,series=\bfseries}
@@ -166,28 +168,27 @@
 % ==============================================================================
 % SLIDE 3: STATO DELL'ARTE & FRAMMENTAZIONE
 % ==============================================================================
-\begin{frame}{State of the Art: Tooling Fragmentation}{The Cost of Language-Specific Analysis Pipelines}
+\begin{frame}{State of the Art}{The Cost of Language-Specific Analysis Pipelines}
   \begin{columns}[c,onlytextwidth]
-    \column{0.48\textwidth}
+    \column{0.4\textwidth}
       \cookiekicker{Compiler Coupling}\par\vspace{0.15em}
-      {\small\textbf{Tied to Native Front-Ends}\par
-      Existing analyzers depend on specific compiler internals (\texttt{javac}, Clang, JVM), forcing pipelines to be rebuilt for each language.\par}
+      {\small\textbf{Tied to Native Front-Ends}\par}
+      {\footnotesize Analyzers rely on compiler internals forcing extraction pipelines to be re-engineered for each language.\par}
       \vspace{0.65em}
 
       \cookiekicker{Engineering Burden}\par\vspace{0.15em}
-      {\small\textbf{The $M \times N$ Proliferation}\par
-      Supporting multiple languages requires bundling heterogeneous toolchains, leading to duplicated engineering and tool fragmentation.\par}
+      {\small\textbf{The $M \times N$ Proliferation}\par}
+      {\footnotesize Supporting new languages requires adapting and bundling toolchains, duplicating engineering efforts.\par}
       \vspace{0.65em}
 
       \cookiekicker{The Core Goal}\par\vspace{0.15em}
-      {\small\textbf{Decoupled Analysis Pipeline}\par
-      Replace language-specific pipelines with a single unified extraction flow.\par}
+      {\small\textbf{Decoupled Analysis Pipeline}\par}
+      {\footnotesize A single, language-agnostic extraction flow replacing fragmented pipelines.\par}
 
-    \column{0.48\textwidth}
+    \column{0.57\textwidth}
       \centering
-      \includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{../images/background/mxn_problem.png}
-      \vspace{0.2em}
-      \captionof{figure}{\scriptsize\color{cookieMuted}Tool proliferation ($M \times N$) vs. unified intermediate representation ($M + N$).}
+      \includegraphics[width=\linewidth,height=0.55\textheight,keepaspectratio]{../images/background/mxn_problem.png}\par\vspace{0.4em}
+      {\scriptsize\color{cookieMuted}Tool proliferation ($M \times N$) vs. unified intermediate representation ($M + N$)\par}
   \end{columns}
 \end{frame}
 
@@ -196,23 +197,23 @@
 % ==============================================================================
 \begin{frame}{Structural Convergence of Syntax Trees}{Syntactic Homology Across Language Grammars}
   \begin{columns}[c,onlytextwidth]
-    \column{0.35\textwidth}
+    \column{0.38\textwidth}
       \cookiekicker{Generic Parsing}\par\vspace{0.15em}
-      {\small\textbf{Tree-sitter CSTs}\par
-      Generates high-performance concrete syntax trees from formal grammars across modern programming languages.\par}
-      \vspace{0.40em}
+      {\small\textbf{Tree-sitter CSTs}\par}
+      {\footnotesize Fast, incremental parser generation producing concrete syntax trees from formal grammars.\par}
+      \vspace{0.65em}
+
+      \cookiekicker{Production Ecosystem}\par\vspace{0.15em}
+      {\small\textbf{Universal Coverage}\par}
+      {\footnotesize Broad open-source adoption covering virtually all programming languages used in production.\par}
+      \vspace{0.65em}
 
       \cookiekicker{Structural Convergence}\par\vspace{0.15em}
-      {\small\textbf{Syntactic Homology}\par
-      Equivalent architectural constructs yield structurally identical syntax subtrees across grammars.\par}
-      \vspace{0.40em}
-          
-      \cookiekicker{Pragmatic Assumption}\par\vspace{0.15em}
-      {\small\textbf{Compilation-Ready Code}\par
-      Source code compiles; extraction maps dependencies without re-validating compiler types or semantics.\par}
+      {\small\textbf{Syntactic Homology}\par}
+      {\footnotesize Shared grammar design patterns lead equivalent constructs to yield isomorphic syntax subtrees.\par}
 
-    \column{0.7\textwidth}
-      \hspace{5em}{\scriptsize\textbf{(a) Rust CST}}\par
+    \column{0.59\textwidth}
+      \hspace{4em}{\scriptsize\textbf{(a) Rust CST}}\par
       \centering
       \begin{adjustbox}{max width=\linewidth,max totalheight=0.28\textheight}
         \begin{forest}
@@ -240,7 +241,7 @@
       \end{adjustbox}
 
       \raggedright
-      \vspace{0.6em}\hspace{5em}{\scriptsize\textbf{(b) Python CST}}\par
+      \vspace{0.5em}\hspace{4em}{\scriptsize\textbf{(b) Python CST}}\par
       \centering
       \begin{adjustbox}{max width=\linewidth,max totalheight=0.26\textheight}
         \begin{forest}
@@ -267,7 +268,7 @@
         \end{forest}
       \end{adjustbox}
 
-      {\par\vspace{1em}\scriptsize\color{cookieMuted}Structural convergence across languages for the code \texttt{a.b.c().d.e()}.\par}
+      {\par\vspace{0.7em}\scriptsize\color{cookieMuted}Structural convergence across languages for the code \texttt{a.b.c().d.e()}.\par}
   \end{columns}
 \end{frame}
 
@@ -276,43 +277,43 @@
 % ==============================================================================
 \begin{frame}{Research Objectives \& OmniDeps Proposal}{Design Principles and Evaluation Targets}
   \centering
-  {\small Design, formalize, and implement \textbf{OmniDeps}: an extensible, language-agnostic static analysis framework for extracting architectural dependency graphs.}\par\vspace{0.4em}
+  {\small Design, formalize, and implement \textbf{OmniDeps}: an extensible, language-agnostic static analysis framework for extracting architectural dependency graphs.}\par\vspace{0.6em}
 
   \begin{columns}[T,onlytextwidth]
     \column{0.32\textwidth}
-      \begin{cookiecard}[title={Pipeline Formalization},height=3.10cm]
+      \begin{cookiecard}[title={Pipeline Formalization}]
         \footnotesize
         \textbf{Functional Staging}\par
-        Rigorous 3-phase model guaranteeing sound, type-safe execution.\par\vspace{0.45em}
+        Type-safe 3-phase composition\par\vspace{0.12em}
         \textbf{Universal IR}\par
-        Algebraic data types abstracting language-specific syntax.\par
+        Language-agnostic domain model\par
       \end{cookiecard}
 
     \column{0.32\textwidth}
-      \begin{cookiecard}[title={Rust Implementation},height=3.10cm]
+      \begin{cookiecard}[title={Rust Implementation}]
         \footnotesize
         \textbf{Decoupled Engine}\par
-        Standalone Rust engine operating without native compiler toolchains.\par\vspace{0.45em}
+        Zero compiler dependencies\par\vspace{0.12em}
         \textbf{Query Algebra}\par
-        Symbol resolution driven by formal scope navigation.\par
+        Formal scope navigation\par
       \end{cookiecard}
 
     \column{0.32\textwidth}
-      \begin{cookiecard}[title={Empirical Evaluation},height=3.10cm]
+      \begin{cookiecard}[title={Empirical Evaluation}]
         \footnotesize
         \textbf{Graph Harmonization}\par
-        Formal alignment framework for fair cross-tool comparison.\par\vspace{0.45em}
+        Cross-tool ontological alignment\par\vspace{0.12em}
         \textbf{Large-Scale Benchmark}\par
-        Validated on 156 repositories ($\sim$98M LOC) against SOTA tools.\par
+        156 repos ($\sim$98M LOC) vs SOTA\par
       \end{cookiecard}
   \end{columns}
 
-  \vspace{0.55em}
+  \vspace{0.9em}
   \cookiebadge{Java} \hspace{0.2em}
   \cookiebadge{C / C++} \hspace{0.2em}
   \cookiebadge{Python} \hspace{0.2em}
   \cookiebadge{Rust} \hspace{0.6em}
-  {\scriptsize\color{cookieMuted}Diverse paradigms evaluated to validate language-agnostic extensibility\par}
+  {\scriptsize\color{cookieMuted} Syntactically and semantically diverse languages evaluated to validate language-agnostic extensibility\par}
 \end{frame}
 
 % ==============================================================================
@@ -323,97 +324,66 @@
 % ==============================================================================
 % SLIDE 6: ARCHITETTURA DELLA PIPELINE
 % ==============================================================================
-\begin{frame}[t]{Analysis Pipeline Overview}{Functional Composition and Type-Safe Staging}
-  \vspace{-0.2em}
+\begin{frame}{Analysis Pipeline Overview}{Functional Composition and Type-Safe Staging}
   \centering
-  {\small $\displaystyle \phi : \mathcal{W} \to \mathcal{G}, \qquad \phi = \gamma \circ \rho \circ \varepsilon = \gamma \circ (\rho_{\text{exec}} \circ \rho_{\text{build}}) \circ \varepsilon$}\par
-  \vspace{0.5em}
-
-  \centering
-  \includegraphics[width=\textwidth,keepaspectratio]{../images/analysis_process/pipeline_detailed.png}
+  {\normalsize $\displaystyle \phi : \mathcal{W} \to \mathcal{G}, \qquad \phi = \gamma \circ \rho \circ \varepsilon = \gamma \circ (\rho_{\text{exec}} \circ \rho_{\text{build}}) \circ \varepsilon$}\par
+  \vspace{0.9em}
 
   \begin{columns}[T,onlytextwidth]
     \column{0.32\textwidth}
-      \cookiekicker{Phase 1: Extraction}\par\vspace{0.15em}
-      {\footnotesize
-      \textbf{$\varepsilon : \mathcal{W} \to \mathcal{D}$}\par\vspace{0.1em}
-      Parses raw CSTs via Tree-sitter and applies heuristic extraction into unlinked IR. Only phase aware of native syntax.\par
-      }
+      \centering
+      {\footnotesize\cookiekicker{Phase 1: Extraction}}\par\vspace{0.2em}
+      {\normalsize $\varepsilon : \mathcal{W} \to \mathcal{D}$}
 
     \column{0.34\textwidth}
-      \cookiekicker{Phase 2: Resolution}\par\vspace{0.15em}
-      {\footnotesize
-      \textbf{$\rho : \mathcal{D} \to \mathcal{D}_{\text{res}}$}\par\vspace{0.1em}
-      Builds Scope Tree ($\rho_{\text{build}}$) and resolves symbolic identifiers ($\rho_{\text{exec}}$) via algebraic scope climbing.\par
-      }
+      \centering
+      {\footnotesize\cookiekicker{Phase 2: Resolution}}\par\vspace{0.2em}
+      {\normalsize $\rho : \mathcal{D} \to \mathcal{D}_{\text{res}}$}
 
     \column{0.31\textwidth}
-      \cookiekicker{Phase 3: Graph Construction}\par\vspace{0.15em}
-      {\footnotesize
-      \textbf{$\gamma : \mathcal{D}_{\text{res}} \to \mathcal{G}$}\par\vspace{0.1em}
-      Flattens resolved entities into component vertices ($V$) and emits directed dependency edges ($E$).\par
-      }
+      \centering
+      {\footnotesize\cookiekicker{Phase 3: Graph Construction}}\par\vspace{0.2em}
+      {\normalsize $\gamma : \mathcal{D}_{\text{res}} \to \mathcal{G}$}
   \end{columns}
 
-
+  \vspace{1.1em}
+  \centering
+  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{../images/analysis_process/pipeline_detailed.png}
 \end{frame}
 
 % ==============================================================================
 % SLIDE 7: FASE 1 - EXTRACTION
 % ==============================================================================
 \begin{frame}{Phase 1: Syntactic Extraction}{From Concrete Syntax Trees to Intermediate Representation}
+  \vspace{-0.1em}
   \begin{columns}[T,onlytextwidth]
     \column{0.32\textwidth}
-      \cookiekicker{CST Traversal}\par\vspace{0.15em}
-      {\footnotesize
-      Parses source files with Tree-sitter, systematically navigating the concrete syntax tree to discover candidate nodes.\par
-      }
+      {\footnotesize\cookiekicker{CST Traversal}}\par\vspace{0.2em}
+      {\small\textbf{Tree-sitter Parsing}\par}
+      {\footnotesize Systematic AST visitor across files\par}
 
     \column{0.34\textwidth}
-      \cookiekicker{Heuristic Recognition}\par\vspace{0.15em}
-      {\footnotesize
-      Evaluates declarative predicates (positive matches and negative exclusions) on CST nodes to identify architectural constructs.\par
-      }
+      {\footnotesize\cookiekicker{Heuristic Recognition}}\par\vspace{0.2em}
+      {\small\textbf{Declarative Guards}\par}
+      {\footnotesize Boolean rules for structural entities\par}
 
     \column{0.31\textwidth}
-      \cookiekicker{IR Instantiation}\par\vspace{0.15em}
-      {\footnotesize
-      Extracts textual identifiers and signatures directly from source buffers, populating the unlinked Intermediate Representation.\par
-      }
+      {\footnotesize\cookiekicker{IR Instantiation}}\par\vspace{0.2em}
+      {\small\textbf{Symbol Populating}\par}
+      {\footnotesize Direct extraction into unlinked IR\par}
   \end{columns}
 
-  \vspace{0.45em}
+  \vspace{1.4em}
   \centering
-  \includegraphics[width=0.96\textwidth,height=0.33\textheight,keepaspectratio]{../images/extraction/extraction_layers.png}
+  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{../images/extraction/extraction_layers.png}
 \end{frame}
 
 % ==============================================================================
 % SLIDE 8: UNIVERSAL INTERMEDIATE REPRESENTATION
 % ==============================================================================
 \begin{frame}{Universal Intermediate Representation (IR)}{Hierarchical Domain Model and Language Abstraction}
-  \begin{columns}[T,onlytextwidth]
-    \column{0.32\textwidth}
-      \cookiekicker{Domain Hierarchy}\par\vspace{0.15em}
-      {\footnotesize
-      Modules nest submodules, types, and functions, faithfully mirroring the logical structure of the codebase.\par
-      }
-
-    \column{0.34\textwidth}
-      \cookiekicker{Cross-Paradigm Model}\par\vspace{0.15em}
-      {\footnotesize
-      Unifies OOP, procedural, and systems constructs (classes, structs, traits) into shared algebraic data types.\par
-      }
-
-    \column{0.31\textwidth}
-      \cookiekicker{Symbolic Placeholders}\par\vspace{0.15em}
-      {\footnotesize
-      Encapsulates references to external or unlinked symbols as \texttt{TypeRef} variants, deferred to Phase 2.\par
-      }
-  \end{columns}
-
-  \vspace{0.15em}
   \centering
-  \includegraphics[width=\linewidth,height=0.61\textheight,keepaspectratio]{../images/formal_ir/IR_model_simplified.png}
+  \includegraphics[width=\linewidth,height=0.81\textheight,keepaspectratio]{../images/formal_ir/IR_model_simplified.png}
 \end{frame}
 
 % ==============================================================================
@@ -421,29 +391,24 @@
 % ==============================================================================
 \begin{frame}{Phase 2: Decoupled Name Resolution}{TypeRef Binding and Two-Step Scope Navigation}
   \begin{columns}[c,onlytextwidth]
-    \column{0.35\textwidth}
-      \cookiekicker{TypeRef Resolution}\par\vspace{0.15em}
-      {\footnotesize
-      Symbol references (variable types, calls) start as unresolved \texttt{TypeRef}s. Phase 2 binds them to concrete targets.\par}
-      \vspace{0.45em}
+    \column{0.29\textwidth}
+      {\footnotesize\cookiekicker{Two-Step Resolution}}\par\vspace{0.25em}
+      {\small\textbf{1. Query Building} ($\rho_{\text{build}}$)\par}
+      {\footnotesize Local stack \& closed queries\par}
+      \vspace{0.55em}
 
-      \cookiekicker{Two-Step Decoupling}\par\vspace{0.15em}
-      {\footnotesize
-      \textbf{1. Local Query Building:}\\
-      Local symbol stack rewrites references into closed queries, then frees local state.\par\vspace{0.20em}
-      \textbf{2. Global Query Execution:}\\
-      Evaluates queries deterministically over the global Scope Tree without file-order bias.\par}
-      \vspace{0.45em}
+      {\small\textbf{2. Query Execution} ($\rho_{\text{exec}}$)\par}
+      {\footnotesize Deterministic Scope Tree navigation\par}
+      \vspace{0.85em}
 
-      \cookiekicker{Three Query Primitives}\par\vspace{0.20em}
-      \cookiebadge{Find} {\scriptsize Lexical climbing}\hspace{0.2em}\\
-      \cookiebadge{Extract} {\scriptsize Member descent}\hspace{0.2em}\\
+      {\footnotesize\cookiekicker{Query Primitives}}\par\vspace{0.25em}
+      \cookiebadge{Find} {\scriptsize Lexical climbing}\par\vspace{0.25em}
+      \cookiebadge{Extract} {\scriptsize Member descent}\par\vspace{0.25em}
       \cookiebadge{Call} {\scriptsize Return propagation}\par
 
-    \column{0.64\textwidth}
+    \column{0.69\textwidth}
       \centering
-      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{../images/name_resolution/two_phase_resolution.png}\par\vspace{0.15em}
-      {\scriptsize\color{cookieMuted}Two-phase resolution: local stack ($\rho_{\text{build}}$) $\to$ global Scope Tree ($\rho_{\text{exec}}$)\par}
+      \includegraphics[width=\linewidth,height=0.75\textheight,keepaspectratio]{../images/name_resolution/resolution_simplified-edited.png}
   \end{columns}
 \end{frame}
 
