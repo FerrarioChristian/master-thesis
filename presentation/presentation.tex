@@ -419,17 +419,14 @@
 % ==============================================================================
 \begin{frame}{Phase 3: Graph Construction \& Projection}{From Resolved IR Trees to Directed Dependency Multigraphs}
   \begin{columns}[c,onlytextwidth]
-    \column{0.56\textwidth}
-      \cookiekicker{Construction Pipeline}\par\vspace{0.25em}
+    \column{0.63\textwidth}
       \centering
-      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{../images/graph_construction/graph_construction_pipeline.png}\par\vspace{0.2em}
-      {\scriptsize\color{cookieMuted}Two-pass traversal: node flattening, edge emission, and referential closure\par}
+      \includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{../images/graph_construction/graph_construction_pipeline_simplified.png}
 
-    \column{0.42\textwidth}
-      \cookiekicker{Resulting Dependency Graph}\par\vspace{0.25em}
+    \column{0.35\textwidth}
+      \cookiekicker{Resulting Dependency Graph}\par\vspace{1em}
       \centering
-      \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{../images/graph_construction/dep_graph_example.png}\par\vspace{0.2em}
-      {\scriptsize\color{cookieMuted}Concrete multigraph: internal components and external endpoints\par}
+      \includegraphics[width=\linewidth,height=0.76\textheight,keepaspectratio]{../images/graph_construction/dep_graph_example.png}
   \end{columns}
 \end{frame}
 
