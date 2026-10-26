@@ -649,28 +649,28 @@
 % SLIDE 16: CONCLUSIONI E SVILUPPI FUTURI
 % ==============================================================================
 \begin{frame}{Conclusions \& Outlook}{Viability of Language-Agnostic Extraction and Future Research Directions}
-    Language-agnostic, syntax-directed extraction proves to be a \textbf{viable and sound approach} for architectural
-    dependency analysis: it recovers reliable dependency graphs in seconds without compiler or build-system friction,
-     while establishing clear methodological boundaries and open research avenues.\par
-  \vspace{1em}
+  \centering
+  Language-agnostic, syntax-directed extraction proves to be a \textbf{viable and sound approach} for architectural analysis:
+  it recovers reliable dependency graphs in seconds without compiler friction.\par
+  \vspace{0.8em}
 
   \begin{columns}[T,onlytextwidth]
     \column{0.49\textwidth}
       \cookiekicker{Threats to Validity}\par\vspace{0.15em}
-      {\footnotesize
-      \begin{itemize}\setlength{\itemsep}{0.25em}
-        \item \textbf{Absence of Real-World Oracles:} Evaluating against mature analyzers measures cross-tool concordance rather than absolute correctness.
-        \item \textbf{Harmonization Abstraction:} Semantic entity lifting evaluates macro-architectural (type-level) convergence, abstracting statement details.
-        \item \textbf{Syntactic Premise in C/C++:} Macro masking challenges raw CST fidelity, forcing a trade-off with header duplication.
+      {\small
+      \begin{itemize}\setlength{\itemsep}{0.35em}
+        \item \textbf{Oracle Absence:} Measures cross-tool concordance against mature baselines rather than absolute ground truth.
+        \item \textbf{Harmonization Level:} Evaluates macro-architectural (type) convergence, abstracting statement-level details.
+        \item \textbf{C/C++ Preprocessing:} Trade-off between raw CST macro masking and translation-unit header duplication.
       \end{itemize}\par}
 
     \column{0.49\textwidth}
       \cookiekicker{Future Research Directions}\par\vspace{0.15em}
-      {\footnotesize
-      \begin{itemize}\setlength{\itemsep}{0.25em}
-        \item \textbf{Link-Time Symbol Deduplication:} Linker-like reconciliation pass to merge duplicated C/C++ header declarations across compilation units.
-        \item \textbf{Non-Imperative Paradigms:} Generalizing query algebra to functional composition (Haskell/OCaml) and declarative logic relations.
-        \item \textbf{Cross-Language Boundaries:} Tracing foreign function interfaces (FFI/JNI) across language boundaries via the shared Scope Tree.
+      {\small
+      \begin{itemize}\setlength{\itemsep}{0.35em}
+        \item \textbf{Linker Deduplication:} Reconciliation pass to merge duplicated header symbols across C/C++ translation units.
+        \item \textbf{Non-Imperative Paradigms:} Extending query algebra to functional (Haskell) and declarative logic models.
+        \item \textbf{Cross-Language FFI:} Tracking foreign function interface boundaries (FFI/JNI) via unified Scope Trees.
       \end{itemize}\par}
   \end{columns}
   \vspace{0.35em}
@@ -698,7 +698,6 @@
         \column{0.48\textwidth}
           {\scriptsize\color{white!70} CANDIDATE\par}\vspace{0.15em}
           {\normalsize\bfseries\color{white} Christian Ferrario\par}\vspace{0.1em}
-          {\scriptsize\color{white!70}\texttt{c.ferrario30@campus.unimib.it}\par}
         \column{0.52\textwidth}
           {\scriptsize\color{white!70} SUPERVISORS\par}\vspace{0.15em}
           {\normalsize\bfseries\color{white} Prof.~Francesca Arcelli Fontana\par}
